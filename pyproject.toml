@@ -15,6 +15,8 @@ dependencies = [
 [dependency-groups]
 lint = [
     "ruff==0.14.0",
+    "pre-commit >=3,<5"
+
 ]
 
 dev = [
