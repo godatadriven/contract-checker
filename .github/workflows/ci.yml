@@ -22,10 +22,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[dev]
-          pip install pytest
+      - name: Install uv
+        run: pip install uv
+
+      - name: Sync environment
+        run: uv sync --dev
 
       - name: Run pre-commit
         run: uv run pre-commit run --show-diff-on-failure --color=always --all-files
