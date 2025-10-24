@@ -1,0 +1,55 @@
+# Config
+data_contracts_path:
+  path: ./data_contracts/
+  include_paths:
+    - /domain/
+    - /source/
+  include_custom:
+    - field: info.status
+      value: active
+    - field: info.status
+      value: active
+  exclude_paths:
+    - "/marts/**"
+  exclude_custom:
+    - field: info.deprecated
+      value: true
+data_contract_standard: dcs
+data_contract_standard_version: 1.2.1
+
+# Severity options (1)
+data_contract_check_severity:
+  info:
+    title: fail
+  models:
+    fields:
+      unique: warn
+      examples: warn
+
+# Severity options (2)
+# data_contract_check_severity: warn
+
+
+
+data_contract_checks:
+# Info checks
+  - field: info.title
+    checks:
+      - required: true
+      - pattern: ^fct_|^dim_
+
+# Model checks
+  - field: models.fields
+    checks:
+      - required: true
+      - min_items: 1
+
+# Model field checks
+  - field: models.fields.unique
+    checks:
+      - required: true
+
+  - field: models.fields.examples
+    checks:
+      - required: true
+      - min_items: 3
