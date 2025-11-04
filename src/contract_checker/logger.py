@@ -3,6 +3,7 @@ import os
 
 
 def setup_console_logger(verbosity: bool) -> None:
+    """Initialise a logger with the specified log level."""
     logger = logging.getLogger("")
     logger.propagate = True
     logger.setLevel(logging.DEBUG)
