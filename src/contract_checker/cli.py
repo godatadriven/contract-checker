@@ -5,7 +5,11 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from contract_checker.contract.datacontract_parser import DataContractParser
+from contract_checker.checks.check_sample import (
+    check_if_field_present,
+    parse_checks_yml,
+)
+from contract_checker.contract.contract_dcs import DataContract
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.utils import (
     parse_data_contract_from_str,
@@ -35,15 +39,9 @@ def main(
     verbosity: Annotated[
         bool, typer.Option("--verbose", "-v", help="Enables verbose output.")
     ] = False,
-    version: Annotated[
-        Optional[bool],
-        typer.Option(
-            "--version",
-            "-V",
-            callback=version_callback,
-            help="Outputs the version of the contract-checker package.",
-        ),
-    ] = None,
+    contract_path: Annotated[
+        Optional[Path], typer.Option(help="The location of the data contract file.")
+    ] = Path("tests/fixtures/dcs/1.2.0/orders-latest.yaml"),
 ) -> None:
     """A CLI tool for checking data contracts."""
     setup_console_logger(verbosity)
@@ -56,14 +54,18 @@ def main(
     # Do stuff here.
 
     # Parse the config file
+    checks = parse_checks_yml(config_path)
+    # print(f"Parsed Checks: {checks}")
+
     ## Check if config file exists
     ## Check if config file is valid YAML
 
     # Parse the data contract specification
-    # Parse the data contracts
+    # spec_version = parse_field(checks, "data_contract_standard_version")
+    # spec_kind = parse_field(checks, "data_contract_standard")
+    # # Parse the data contracts
 
-    contract_path = Path("tests/fixtures/dcs/1.2.0/orders-latest.yaml")
-    # Load the contract
+    # # # Load the contract
     contract = parse_data_contract_from_str(contract_path=contract_path)
 
     # Identify type of contract
@@ -73,7 +75,7 @@ def main(
     # Parse the contract
     if spec_kind == "dataContractSpecification":
         # Initialize the DataContractSpecification contract
-        data_contract_parser = DataContractParser(
+        data_contract = DataContract(
             contract_path=contract_path,
             contract_content=contract,
             version=spec_version,
@@ -84,11 +86,17 @@ def main(
         pass
     else:
         raise ValueError(f"Unsupported contract specification kind: {spec_kind}")
-
-    print(data_contract_parser)
+    # print(f"Initialized Contract: {data_contract}")
 
     # Compare contracts vs. checks
-
+    for check in checks.get("data_contract_checks"):
+        result = check_if_field_present(
+            contract_content=data_contract.contract_content,
+            check_content=check,
+        )
+        print(f"Check: {check.get('field')}, Result: {result}")
+        # Remove break to perform all checks
+        break
     # Return results
 
     raise typer.Exit()
