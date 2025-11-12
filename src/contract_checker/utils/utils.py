@@ -6,10 +6,10 @@ from typing import Optional
 import yaml
 
 
-def parse_data_contract_from_str(contract_path: Path) -> Optional[dict]:
+def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
     """Parse a data contract from a YAML string."""
     try:
-        with open(contract_path, "r") as file:
+        with open(file_path, "r") as file:
             yaml_dict = yaml.safe_load(file)
         return yaml_dict if isinstance(yaml_dict, dict) else None
     except Exception as e:
