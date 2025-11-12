@@ -3,12 +3,12 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from contract_checker.utils.utils import parse_data_contract_from_str
+from contract_checker.utils.utils import parse_yml_to_dict
 
 
 def parse_checks_yml(checks_yml_path: Path) -> Optional[dict]:
     """Parse checks from a YAML file."""
-    checks_dict = parse_data_contract_from_str(checks_yml_path)
+    checks_dict = parse_yml_to_dict(file_path=checks_yml_path)
     if not checks_dict:
         raise ValueError(f"Failed to parse checks from {checks_yml_path}")
     return checks_dict if isinstance(checks_dict, dict) else None
@@ -18,7 +18,10 @@ def parse_field(check_content: dict[str, list[str]], field: str) -> list[str]:
     """Extract the field to be checked from the check content."""
     return check_content.get(field, [])
 
-def get_nested_value(contract_content: Mapping[str, Any], path: str, default: Optional[Any] = None) -> Optional[Any]:
+
+def get_nested_value(
+    contract_content: Mapping[str, Any], path: str, default: Optional[Any] = None
+) -> Optional[Any]:
     """Access nested dict using dot notation string."""
     keys = path.split(".")
     try:
@@ -33,7 +36,9 @@ def get_nested_value(contract_content: Mapping[str, Any], path: str, default: Op
         raise TypeError(f"Cannot access path '{path}': {e}") from e
 
 
-def check_if_field_present(contract_content: Mapping[str, Any], check_content: Mapping[str, Any]) -> bool:
+def check_if_field_present(
+    contract_content: Mapping[str, Any], check_content: Mapping[str, Any]
+) -> bool:
     """Perform a single check on the contract content."""
     field_path = check_content.get("field")
     if not isinstance(field_path, str):
