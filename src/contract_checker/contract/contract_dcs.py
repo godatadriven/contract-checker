@@ -24,7 +24,7 @@ def _get_supported_dcs_versions(schema_file_path: Path) -> list[str]:
     return supported_versions
 
 
-class DataContract(Contract):
+class DataContractSpecification(Contract):
     contract_path: Path
     contract_content: Optional[dict]
     version: str
