@@ -6,11 +6,11 @@ from typing import Any, Mapping, Optional
 from contract_checker.utils.utils import parse_yml_to_dict
 
 
-def parse_checks_yml(checks_yml_path: Path) -> Optional[dict]:
+def parse_checks_config(checks_config_path: Path) -> Optional[dict]:
     """Parse checks from a YAML file."""
-    checks_dict = parse_yml_to_dict(file_path=checks_yml_path)
+    checks_dict = parse_yml_to_dict(file_path=checks_config_path)
     if not checks_dict:
-        raise ValueError(f"Failed to parse checks from {checks_yml_path}")
+        raise ValueError(f"Failed to parse checks from {checks_config_path}")
     return checks_dict if isinstance(checks_dict, dict) else None
 
 

@@ -17,21 +17,28 @@ def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
         return None
 
 
-def parse_specification(contract_content: dict) -> tuple[str, str]:
+def parse_specification_from_contract(
+    contract_content: dict, checks_dict: dict
+) -> tuple[str, str]:
     """Check if the contract matches the expected version."""
     if not contract_content:
         raise ValueError("Contract content is not loaded.")
 
-    if "dataContractSpecification" in contract_content:
+    if "data_contract_standard" in checks_dict:
+        contract_specification = checks_dict["data_contract_standard"]
+    else:
+        raise ValueError("data_contract_standard not configured.")
+
+    # Maybe we can simplify this with a mapping dict in utils later?
+    if contract_specification == "dcs":
         version = contract_content["dataContractSpecification"]
-        contract_specification = "dataContractSpecification"
-        return version, contract_specification
-    elif "kind" in contract_content and "apiVersion" in contract_content:
+    elif contract_specification == "odcs":
         version = contract_content["apiVersion"]
-        contract_specification = contract_content["kind"]
         return version, contract_specification
     else:
-        raise ValueError("Specification field not found in contract content.")
+        raise ValueError("Specification field not found in data contract.")
+
+    return version, contract_specification
 
 
 def load_json_schema(schema_path: str) -> Optional[dict]:
