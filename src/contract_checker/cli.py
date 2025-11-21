@@ -47,32 +47,20 @@ def main(
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
 
-    # Parse the data contract specification
-    # spec_version = parse_field(checks, "data_contract_standard_version")
-    # spec_kind = parse_field(checks, "data_contract_standard")
-    # # Parse the data contracts
-
-    ## Check if config file exists
-    ## Check if config file is valid YAML
-
+    # Check if config file exists
+    # Check if config file is valid YAML
     # load_checks()
     checks_dict = parse_checks_config(config_path)
     print(f"Parsed Checks: {checks_dict}")
 
-    # # # Load the contract -> internally identify type of contract -> validate contract
+    # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
         contract_path=contract_path,
         contract_standard=checks_dict.get("data_contract_standard"),
     )
     print(len(contracts))
-    # validate_contracts(contract_path, checks_dict)
 
-    # # Identify type of contract
-    # spec_version, spec_kind = parse_specification_from_contract(
-    #   contract_content=contract,
-    #   checks_dict=checks_dict
-    # )
-    # print(f"Specification Version: {spec_version}, Specification Kind: {spec_kind}")
+    # validate_contracts(contract_path, checks_dict)
 
     raise typer.Exit()
 

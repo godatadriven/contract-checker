@@ -16,7 +16,7 @@ def _get_supported_odcs_versions(schema_file_path: Path) -> list[str]:
     return supported_versions
 
 
-class DataContract(Contract):
+class OpenDataContractSpecification(Contract):
     contract_path: Path
     contract_content: Optional[dict]
     version: str
@@ -35,7 +35,7 @@ class DataContract(Contract):
 
         if self.version not in self.supported_versions:
             raise ValueError(
-                f"Unsupported DataContractSpecification version: {self.version}. "
+                f"Unsupported OpenDataContractSpecification version: {self.version}. "
                 f"Supported versions are: {self.supported_versions}"
             )
         return self
