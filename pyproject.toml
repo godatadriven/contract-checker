@@ -10,7 +10,11 @@ dependencies = [
     "numpy==1.26.4",
     "ruff==0.14.0",
     "mypy==1.17.0",
-    "pre-commit >=3,<5"
+    "pre-commit >=3,<5",
+    "typer>=0.20.0",
+    "pydantic>=2.12",
+    "pyyaml>=6",
+    "types-PyYAML"
 ]
 
 [dependency-groups]
@@ -23,6 +27,9 @@ lint = [
 dev = [
     "contract-checker[test, lint]"
 ]
+
+[project.scripts]
+contract-checker = "contract_checker.cli:app"
 
 [build-system]
 requires = ["setuptools==69"]
