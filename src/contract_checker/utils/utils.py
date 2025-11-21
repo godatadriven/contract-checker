@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import yaml
 
@@ -51,3 +51,25 @@ def load_json_schema(schema_path: str) -> Optional[dict]:
     except Exception as e:
         logging.warning(f"Failed to load JSON schema: {e}")
         return None
+
+
+def get_specification_version(contract_content: dict, contract_standard: str) -> str:
+    """Get the version of the provided contract based on its standard."""
+    if contract_standard == "dcs":
+        return cast(str, contract_content["dataContractSpecification"])
+    elif contract_standard == "odcs":
+        return cast(str, contract_content["apiVersion"])
+    else:
+        raise ValueError("Specification field not found in data contract.")
+
+
+def is_dir_or_yaml(path: Path) -> str:
+    """Check if the provided path is a directory or a YAML file."""
+    if path.is_dir():
+        return "directory"
+    elif path.is_file() and path.suffix in [".yaml"]:
+        return "yaml_file"
+    else:
+        raise ValueError(
+            'Provided path is neither a directory nor a file with ".yaml" extension.'
+        )
