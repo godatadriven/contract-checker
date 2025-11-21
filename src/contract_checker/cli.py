@@ -51,7 +51,6 @@ def main(
     # Check if config file is valid YAML
     # load_checks()
     checks_dict = parse_checks_config(config_path)
-    print(f"Parsed Checks: {checks_dict}")
 
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(

@@ -1,4 +1,4 @@
-from contract_checker.checks.check_base import Check
+from contract_checker.checks.base_check import Check
 
 
 class CheckString(Check):

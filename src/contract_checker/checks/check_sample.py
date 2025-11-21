@@ -9,7 +9,6 @@ def parse_checks_config(checks_config_path: Path) -> Optional[dict]:
     checks_dict = parse_yml_to_dict(file_path=checks_config_path)
     if not checks_dict:
         raise ValueError(f"Failed to parse checks from {checks_config_path}")
-    # TODO: create pydantic model for checks config validation
     return checks_dict if isinstance(checks_dict, dict) else None
 
 

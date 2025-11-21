@@ -10,6 +10,7 @@ from contract_checker.contract.contract_base import Contract
 def _get_supported_odcs_versions(schema_file_path: Path) -> list[str]:
     """Get all supported versions of the OpenDataContractSpecification."""
 
+    # TODO: change to read from schema files after decision on versioning
     supported_versions = []
     folders = [item.name for item in schema_file_path.iterdir() if item.is_dir()]
     supported_versions.extend(folders)
