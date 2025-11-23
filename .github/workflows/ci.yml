@@ -22,8 +22,11 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: ${{ matrix.operating-system }}
 
       - name: Sync environment
+        if: steps.setup-uv.outputs.cache-hit == 'true'
         run: uv sync --dev
 
       - name: Run pre-commit
@@ -46,9 +49,13 @@ jobs:
           uses: astral-sh/setup-uv@v7
           with:
             python-version: ${{ matrix.python-version }}
+            enable-cache: true
+            cache-suffix: ${{ matrix.operating-system }}
 
         - name: Sync environment
+          if: steps.setup-uv.outputs.cache-hit == 'true'
           run: uv sync --dev
+
 
         - name: Run pytest (unit tests)
           run: uv run pytest
