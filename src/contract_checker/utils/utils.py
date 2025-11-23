@@ -33,7 +33,7 @@ def is_dir_or_yaml(path: Path) -> str:
     """Check if the provided path is a directory or a YAML file."""
     if path.is_dir():
         return "directory"
-    elif path.is_file() and path.suffix in [".yaml"]:
+    elif path.is_file() and path.suffix in [".yaml", ".yml"]:
         return "yaml_file"
     else:
         raise ValueError(
