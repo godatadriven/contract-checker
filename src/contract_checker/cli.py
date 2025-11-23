@@ -37,6 +37,15 @@ def main(
     contract_path: Annotated[
         Optional[Path], typer.Option(help="The location of the data contract file.")
     ] = Path("tests/fixtures/dcs/"),
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            "-V",
+            callback=version_callback,
+            help="Outputs the version of the contract-checker package.",
+        ),
+    ] = None,
 ) -> None:
     """A CLI tool for checking data contracts."""
     setup_console_logger(verbosity)
