@@ -56,6 +56,5 @@ jobs:
           if: steps.setup-uv.outputs.cache-hit == 'true'
           run: uv sync --dev
 
-
         - name: Run pytest (unit tests)
           run: uv run pytest
