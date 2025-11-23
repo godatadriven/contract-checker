@@ -13,22 +13,22 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12","3.13","3.14"]
+        python-version: ["3.10","3.11","3.12","3.13"]
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        run: pip install uv
 
       - name: Sync environment
         run: uv sync --dev
 
       - name: Run pre-commit
         run: uv run pre-commit run --show-diff-on-failure --color=always --all-files
+
   unit-tests:
       needs: [pre-commit]
       runs-on: ${{ matrix.operating-system }}
@@ -38,20 +38,15 @@ jobs:
               operating-system:
                 - ubuntu-22.04
                 - windows-latest
-              python-version:
-                  - '3.10'
-                  - '3.11'
-                  - '3.12'
-                  - '3.13'
-                  - '3.14'
+              python-version: ["3.10","3.11","3.12","3.13"]
       steps:
-          - uses: actions/checkout@v5
+        - name: Install the latest version of uv
+          uses: astral-sh/setup-uv@v7
+          with:
+            python-version: ${{ matrix.python-version }}
 
-          - name: Setup Python
-            uses: ./.github/actions/setup_python_env
-            with:
-              poetry-version: ${{ env.POETRY_VERSION }}
-              python-version: ${{ matrix.python-version }}
+        - name: Sync environment
+          run: uv sync --dev
 
-          - name: Run pytest (unit tests)
-            run: uv run pytest
+        - name: Run pytest (unit tests)
+          run: uv run pytest
