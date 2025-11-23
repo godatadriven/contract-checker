@@ -16,8 +16,7 @@ data_contracts_path:
     - field: info.deprecated
       value: true
 
-data_contract_standard: dcs
-data_contract_standard_version: 1.2.1
+data_contract_standard: oddcs
 
 # Severity options (1)
 data_contract_check_severity:
