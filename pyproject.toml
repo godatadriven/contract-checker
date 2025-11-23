@@ -25,7 +25,8 @@ lint = [
 ]
 
 dev = [
-    "contract-checker[test, lint]"
+    "contract-checker[test, lint]",
+    "pytest>=8.4.2",
 ]
 
 [project.scripts]
