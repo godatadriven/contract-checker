@@ -49,7 +49,7 @@ def load_contracts(contract_path: Path, contract_standard: str) -> list[dict]:
         contract_paths = [contract_path]
     else:
         # TODO: check working with different folder structures
-        contract_paths = list(contract_path.rglob("*.yaml"))
+        contract_paths = list(contract_path.rglob("*.yaml|*.yml"))
     contracts = []
     for contract_path in contract_paths:
         contract_content = parse_yml_to_dict(file_path=Path(contract_path))
