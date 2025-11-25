@@ -12,7 +12,7 @@ def _get_supported_dcs_versions(schema_file_path: Path) -> list[str]:
     """Get all supported versions of the DataContractSpecification."""
 
     supported_contract_specification_versions = []
-    schema_files = list(schema_file_path.rglob("**.json"))
+    schema_files = list(schema_file_path.rglob("*.json"))
     for schema_file in schema_files:
         schema_file_content = load_json_schema(schema_file)
         contract_specification_version = (
