@@ -64,8 +64,9 @@ def main(
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
         contract_path=contract_path,
-        contract_standard=checks_dict.get("data_contract_standard"),
+        contract_specification=checks_dict.get("data_contract_specification"),
     )
+
     print(len(contracts))
 
     # validate_contracts(contract_path, checks_dict)
