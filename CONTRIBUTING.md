@@ -1,8 +1,8 @@
-# Contributing to DuckLake
+# Contributing to Contract Checker
 
 ## Writing Hours
 
-The initial development of Contract Checker is being done as a CTO office innovation project within Xebia Data's Analytics Engineering Cell. As such, everyone (including people outside this group) are more than welcome to contribute to Ducklake. Currently, the core team of Ducklake consists of the following people:
+The initial development of Contract Checker is being done as a CTO office innovation project within Xebia Data's Analytics Engineering Cell. As such, everyone (including people outside this group) are more than welcome to contribute to Contract Checker. Currently, the core team of Contract Checker consists of the following people:
 
 - Thom van Engelenburg
 - Sonu Jacob
