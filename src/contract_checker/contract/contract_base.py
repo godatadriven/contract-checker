@@ -11,7 +11,9 @@ class Contract(BaseModel):
     contract_content: Optional[dict]
     contract_specification: str
     contract_specification_version: str
-    schema_file_directory: ClassVar[Path]
+    schema_file_directory: ClassVar[Path] = Path(
+        "src/contract_checker/contract_schemas"
+    )
 
     @model_validator(mode="after")
     def validate_version(self) -> Self:
@@ -20,7 +22,7 @@ class Contract(BaseModel):
         if (
             os.path.exists(
                 os.path.join(
-                    "src/contract_checker/contract_schemas",
+                    self.schema_file_directory,
                     self.contract_specification,
                     self.contract_specification_version,
                     "schema.json",
