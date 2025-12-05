@@ -5,11 +5,10 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from contract_checker.checks.check_sample import (
-    parse_checks_config,
-)
 from contract_checker.logger import setup_console_logger
+from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts
+from contract_checker.utils.utils import parse_yml_to_dict
 from contract_checker.version import version
 
 app = typer.Typer()
@@ -56,10 +55,8 @@ def main(
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
 
-    # Check if config file exists
-    # Check if config file is valid YAML
-    # load_checks()
-    checks_dict = parse_checks_config(config_path)
+    checks_dict = parse_yml_to_dict(config_path)
+    contract_path = Path("tests/fixtures/dcs/0.9.3/covid_cases.yaml")
 
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
@@ -67,9 +64,7 @@ def main(
         contract_specification=checks_dict.get("data_contract_specification"),
     )
 
-    print(len(contracts))
-
-    # validate_contracts(contract_path, checks_dict)
+    validate_contracts(contracts, config_path)
 
     raise typer.Exit()
 
