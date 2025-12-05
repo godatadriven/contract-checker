@@ -1,7 +1,7 @@
 [project]
 name = "contract_checker"
 description = "Data contract checker"
-requires-python = ">= 3.9.0"
+requires-python = ">= 3.10.0"
 version = "0.1.0"
 authors = [
     {name = "Thom van Engelenburg, Sonu Jacob"},
@@ -25,7 +25,8 @@ lint = [
 ]
 
 dev = [
-    "contract-checker[test, lint]"
+    "contract-checker[test, lint]",
+    "pytest>=8.4.2",
 ]
 
 [project.scripts]
