@@ -56,7 +56,6 @@ def main(
     logging.debug(f"Severity level: {severity}")
 
     checks_dict = parse_yml_to_dict(config_path)
-    contract_path = Path("tests/fixtures/dcs/0.9.3/covid_cases.yaml")
 
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
