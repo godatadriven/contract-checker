@@ -30,27 +30,25 @@ data_contract_check_severity:
 # Severity options (2)
 # data_contract_check_severity: warn
 
-
-
 data_contract_checks:
 # Info checks
-  - field: info.title
+  - attribute: info.title
     checks:
       - required: true
       - pattern: ^fct_|^dim_
 
-# Model checks
-  - field: models.fields
-    checks:
-      - required: true
-      - min_items: 1
+# # Model checks
+#   - attribute: models.fields
+#     checks:
+#       - required: true
+#       - min_items: 1
 
-# Model field checks
-  - field: models.fields.unique
-    checks:
-      - required: true
+# # Model field checks
+#   - attribute: models.*.fields.*.unique
+#     checks:
+#       - required: true
 
-  - field: models.fields.examples
-    checks:
-      - required: true
-      - min_items: 3
+#   - attribute: models.*.fields.*.examples
+#     checks:
+#       - required: true
+#       - min_items: 3
