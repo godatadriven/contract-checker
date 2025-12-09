@@ -60,9 +60,10 @@ def main(
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
         contract_path=contract_path,
-        contract_specification=checks_dict.get("data_contract_specification"),
+        contract_specification_type=checks_dict.get("data_contract_specification"),
     )
 
+    contract_path = Path("tests/fixtures/dcs/0.9.3/covid_cases.yaml")
     validate_contracts(contracts, config_path)
 
     raise typer.Exit()
