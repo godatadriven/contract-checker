@@ -9,7 +9,7 @@ from typing_extensions import Self
 class Contract(BaseModel):
     contract_path: Path
     contract_content: Optional[dict]
-    contract_specification: str
+    contract_specification_type: str
     contract_specification_version: str
     schema_file_directory: ClassVar[Path] = Path(
         "src/contract_checker/contract_schemas"
@@ -23,7 +23,7 @@ class Contract(BaseModel):
             os.path.exists(
                 os.path.join(
                     self.schema_file_directory,
-                    self.contract_specification,
+                    self.contract_specification_type,
                     self.contract_specification_version,
                     "schema.json",
                 )
@@ -31,6 +31,6 @@ class Contract(BaseModel):
             is False
         ):
             raise ValueError(
-                f"Contract version {self.contract_specification} is not supported."
+                f"Contract version {self.contract_specification_type} is not supported."
             )
         return self
