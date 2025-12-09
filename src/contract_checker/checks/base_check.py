@@ -40,7 +40,7 @@ class Check(ABC):
     @abstractmethod
     def execute(
         self,
-        field_path: str,
+        attribute_path: str,
         values: List[Any],
         check_value: Any,  # noqa: ANN401
     ) -> List[ValidationResult]:
@@ -48,7 +48,7 @@ class Check(ABC):
         Execute the check
 
         Args:
-            field_path: The field path being checked
+            attribute_path: The attritubte path being checked
             values: List of values to check
             check_value: The check configuration value
 
@@ -66,7 +66,7 @@ class Check(ABC):
 
 
 class RequiredCheck(Check):
-    """Check if a required field exists and is not null"""
+    """Check if a required attritubte exists and is not null"""
 
     @property
     def check_type(self) -> str:
@@ -367,8 +367,10 @@ class DataContractValidator:
 
         Args:
             data: The data dictionary
-            attribute_path: Dot-separated attribute path (e.g., 'models.fields.unique')
-                Supports wildcard '*' to match all items (e.g., 'models.*.fields')
+            attribute_path: Dot-separated attribute path
+                (e.g., 'models.attritubtes.unique')
+                Supports wildcard '*' to match all items
+                (e.g., 'models.*.attritubtes')
 
         Returns:
             List of values found at the attribute path
@@ -383,11 +385,11 @@ class DataContractValidator:
         current_path: List[str],
     ) -> List[Any]:
         """
-        Recursively traverse the data structure following the field path
+        Recursively traverse the data structure following the attritubte path
 
         Args:
             data: Current data node
-            parts: Remaining parts of the field path
+            parts: Remaining parts of the attritubte path
             current_path: Current traversed path for context
 
         Returns:
