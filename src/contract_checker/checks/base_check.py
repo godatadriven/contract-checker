@@ -1,7 +1,9 @@
+import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
+from typing import Any, Dict, List, Union
 
 import yaml
 
@@ -48,7 +50,7 @@ class Check(ABC):
         Execute the check
 
         Args:
-            attribute_path: The attritubte path being checked
+            attribute_path: The attribute path being checked
             values: List of values to check
             check_value: The check configuration value
 
@@ -65,8 +67,116 @@ class Check(ABC):
         pass
 
 
+class SchemaExistenceCheck(Check):
+    """Check if an attribute exists in the schema definition"""
+
+    def __init__(self, schema: Dict[str, Any]) -> None:
+        """
+        Initialize with schema definition
+
+        Args:
+            schema: The schema dictionary loaded from schema.json
+        """
+        self.schema = schema
+
+    @property
+    def check_type(self) -> str:
+        return "schema_exists"
+
+    def execute(
+        self, attribute_path: str, values: List[Any], check_value: bool = True
+    ) -> List[ValidationResult]:
+        """
+        Check if the attribute exists in the schema.
+
+        Args:
+            attribute_path: The attribute path being checked
+            values: List of values to check (not used here)
+            check_value: Whether to perform the check (default True)
+        """
+
+        if not check_value:
+            return [
+                ValidationResult(
+                    "",
+                    attribute_path,
+                    self.check_type,
+                    True,
+                    f"Schema existence check disabled for '{attribute_path}'",
+                )
+            ]
+
+        parts = attribute_path.split(".")
+        exists = self._path_exists_in_schema(parts, self.schema)
+
+        if exists:
+            message = f"Attribute '{attribute_path}' exists in the schema definition"
+        else:
+            message = (
+                f"Attribute '{attribute_path}' does not exist in the schema definition"
+            )
+        return [ValidationResult("", attribute_path, self.check_type, exists, message)]
+
+    def _path_exists_in_schema(self, parts: List[str], schema: Dict[str, Any]) -> bool:
+        """
+        Check if the given attribute path exists in the schema definition.
+        Args:
+            parts: List of parts in the attribute path
+            schema: The schema definition dictionary
+        Returns:
+            True if the path exists, False otherwise
+        """
+        if not parts:
+            return True
+
+        current_part = parts[0]
+        remaining_parts = parts[1:]
+
+        # Handle wildcard - check if schema allows iteration at this level
+        if current_part == "*":
+            if "type" in schema:
+                schema_type = schema["type"]
+                if schema_type == "array" and "items" in schema:
+                    return self._path_exists_in_schema(remaining_parts, schema["items"])
+                elif schema_type == "object" and "additionalProperties" in schema:
+                    return self._path_exists_in_schema(
+                        remaining_parts, schema["additionalProperties"]
+                    )
+            return False
+
+        # Check in properties
+        if "properties" in schema and current_part in schema["properties"]:
+            if not remaining_parts:
+                return True
+            return self._path_exists_in_schema(
+                remaining_parts, schema["properties"][current_part]
+            )
+
+        # Check in items (for arrays)
+        if "items" in schema:
+            if (
+                "properties" in schema["items"]
+                and current_part in schema["items"]["properties"]
+            ):
+                if not remaining_parts:
+                    return True
+                return self._path_exists_in_schema(
+                    remaining_parts, schema["items"]["properties"][current_part]
+                )
+
+        # Check in patternProperties (for dynamic keys)
+        if "patternProperties" in schema:
+            for pattern, pattern_schema in schema["patternProperties"].items():
+                if re.match(pattern, current_part):
+                    if not remaining_parts:
+                        return True
+                    return self._path_exists_in_schema(remaining_parts, pattern_schema)
+
+        return False
+
+
 class RequiredCheck(Check):
-    """Check if a required attritubte exists and is not null"""
+    """Check if a required attribute exists and is not null"""
 
     @property
     def check_type(self) -> str:
@@ -220,8 +330,15 @@ class MaxItemsCheck(Check):
 class CheckRegistry:
     """Registry for all available check types"""
 
-    def __init__(self) -> None:
+    def __init__(self, schema: Dict[str, Any] = None) -> None:
+        """
+        Initialize registry
+
+        Args:
+            schema: Optional schema dictionary for schema existence checks
+        """
         self._checks: Dict[str, Check] = {}
+        self.schema = schema
         self._register_default_checks()
 
     def _register_default_checks(self) -> None:
@@ -232,6 +349,10 @@ class CheckRegistry:
             MinItemsCheck(),
             MaxItemsCheck(),
         ]
+
+        # Add schema existence check if schema is provided
+        if self.schema:
+            default_checks.insert(0, SchemaExistenceCheck(self.schema))
 
         for check in default_checks:
             self.register(check)
@@ -255,19 +376,31 @@ class DataContractValidator:
     """Validates data contract YAML files against defined checks"""
 
     def __init__(
-        self, checks_file: str, check_registry: Optional[CheckRegistry] = None
+        self,
+        checks_file: str,
+        schema_file: str = None,
+        check_registry: CheckRegistry = None,
     ) -> None:
         """
         Initialize validator with checks configuration
 
         Args:
             checks_file: Path to the checks YAML file
+            schema_file: Optional path to the schema JSON file
             check_registry: Optional custom CheckRegistry instance
         """
         with open(checks_file, "r") as f:
             self.checks_config = yaml.safe_load(f)
 
-        self.registry = check_registry or CheckRegistry()
+        # Load schema if provided
+        self.schema = None
+        if schema_file:
+            schema_path = Path(schema_file)
+            if schema_path.exists():
+                with open(schema_file, "r") as f:
+                    self.schema = json.load(f)
+
+        self.registry = check_registry or CheckRegistry(schema=self.schema)
 
     def run_checks(self, data_contract: Contract) -> ContractValidationReport:
         """
@@ -285,6 +418,21 @@ class DataContractValidator:
         for check_group in self.checks_config["data_contract_checks"]:
             attribute_path = check_group["attribute"]
             checks = check_group["checks"]
+
+            # FIRST: Run schema existence check if schema is available
+            if self.schema and "schema_exists" in self.registry._checks:
+                schema_check = self.registry.get("schema_exists")
+                schema_results = schema_check.execute(attribute_path, [], True)
+
+                # Add contract file to schema check results
+                for result in schema_results:
+                    result.contract_file = data_contract.contract_path
+
+                results.extend(schema_results)
+
+                # If schema check fails, skip remaining checks for this attribute
+                if not all(r.passed for r in schema_results):
+                    continue
 
             # Get the value(s) at the specified attribute path
             values = self._get_attribute_values(
@@ -368,9 +516,9 @@ class DataContractValidator:
         Args:
             data: The data dictionary
             attribute_path: Dot-separated attribute path
-                (e.g., 'models.attritubtes.unique')
+                (e.g., 'models.attributes.unique')
                 Supports wildcard '*' to match all items
-                (e.g., 'models.*.attritubtes')
+                (e.g., 'models.*.attributes')
 
         Returns:
             List of values found at the attribute path
@@ -385,11 +533,11 @@ class DataContractValidator:
         current_path: List[str],
     ) -> List[Any]:
         """
-        Recursively traverse the data structure following the attritubte path
+        Recursively traverse the data structure following the attribute path
 
         Args:
             data: Current data node
-            parts: Remaining parts of the attritubte path
+            parts: Remaining parts of the attribute path
             current_path: Current traversed path for context
 
         Returns:
