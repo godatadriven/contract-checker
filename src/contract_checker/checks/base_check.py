@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 import yaml
 
@@ -330,7 +330,7 @@ class MaxItemsCheck(Check):
 class CheckRegistry:
     """Registry for all available check types"""
 
-    def __init__(self, schema: Dict[str, Any] = None) -> None:
+    def __init__(self, schema: Optional[Dict[str, Any]] = None) -> None:
         """
         Initialize registry
 
@@ -378,29 +378,58 @@ class DataContractValidator:
     def __init__(
         self,
         checks_file: str,
-        schema_file: str = None,
-        check_registry: CheckRegistry = None,
+        check_registry: Optional[CheckRegistry] = None,
     ) -> None:
         """
         Initialize validator with checks configuration
 
         Args:
             checks_file: Path to the checks YAML file
-            schema_file: Optional path to the schema JSON file
             check_registry: Optional custom CheckRegistry instance
         """
         with open(checks_file, "r") as f:
             self.checks_config = yaml.safe_load(f)
 
-        # Load schema if provided
-        self.schema = None
-        if schema_file:
-            schema_path = Path(schema_file)
-            if schema_path.exists():
-                with open(schema_file, "r") as f:
-                    self.schema = json.load(f)
+        self.registry = check_registry or CheckRegistry(schema=None)
 
-        self.registry = check_registry or CheckRegistry(schema=self.schema)
+    def _load_schema_for_contract(
+        self, data_contract: Contract
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Load the schema for a specific contract based on its version.
+
+        Args:
+            data_contract: Contract object with specification type and version
+
+        Returns:
+            Dictionary containing the schema, or None if schema file doesn't exist
+        """
+        schema_path = Path(
+            data_contract.schema_file_directory,
+            data_contract.contract_specification_type,
+            data_contract.contract_specification_version,
+            "schema.json",
+        )
+
+        if not schema_path.exists():
+            return None
+
+        try:
+            with open(schema_path, "r") as f:
+                loaded = json.load(f)
+
+            # Runtime validation: ensure schema is a dictionary
+            if not isinstance(loaded, dict):
+                raise ValueError(
+                    f"Schema file {schema_path} must \
+                        contain a JSON object (dictionary), "
+                    f"but got: {type(loaded).__name__}"
+                )
+
+            return cast(Dict[str, Any], loaded)
+
+        except Exception as e:
+            raise ValueError(f"Failed to load schema from {schema_path}: {e}")
 
     def run_checks(self, data_contract: Contract) -> ContractValidationReport:
         """
@@ -415,13 +444,17 @@ class DataContractValidator:
 
         results = []
 
+        # Load the schema for this specific contract
+        contract_schema = self._load_schema_for_contract(data_contract)
+
         for check_group in self.checks_config["data_contract_checks"]:
             attribute_path = check_group["attribute"]
             checks = check_group["checks"]
 
             # FIRST: Run schema existence check if schema is available
-            if self.schema and "schema_exists" in self.registry._checks:
-                schema_check = self.registry.get("schema_exists")
+            if contract_schema:
+                # Create a schema existence check with the contract-specific schema
+                schema_check = SchemaExistenceCheck(contract_schema)
                 schema_results = schema_check.execute(attribute_path, [], True)
 
                 # Add contract file to schema check results
