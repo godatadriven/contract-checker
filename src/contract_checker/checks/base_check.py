@@ -25,7 +25,7 @@ class ValidationResult:
 class ContractValidationReport:
     """Summary report for a single contract validation"""
 
-    contract_file: str
+    contract_file: Path
     total_checks: int
     passed_checks: int
     failed_checks: int
@@ -229,8 +229,10 @@ class PatternCheck(Check):
             passed = re.match(pattern, value_str) is not None
 
             if passed:
-                message = f"Attribute '{attribute_path}' value '{value_str}' matches \
-                    pattern '{pattern}'"
+                message = (
+                    f"Attribute '{attribute_path}' value '{value_str}' "
+                    f"matches pattern '{pattern}'"
+                )
             else:
                 message = (
                     f"Attribute '{attribute_path}' value '{value_str}' does not match "
