@@ -146,7 +146,7 @@ class AcceptedValuesCheck(Check):
         self, attribute_path: str, values: List[Any], accepted_values: List[str]
     ) -> List[ValidationResult]:
         results = []
-        for idx, value in enumerate(values):
+        for idx, value in enumerate(value_list):
             if value is None:
                 continue
 
