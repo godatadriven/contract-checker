@@ -12,6 +12,7 @@ from .registry import CheckRegistry
 from .reporting import ValidationReporter
 from .validator import DataContractValidator as CoreValidator
 from .validators import (
+    AcceptedValuesCheck,
     MaxItemsCheck,
     MinItemsCheck,
     PatternCheck,
@@ -64,6 +65,7 @@ class DataContractValidator(CoreValidator):
 
 
 __all__ = [
+    "AcceptedValuesCheck",
     "Check",
     "CheckRegistry",
     "ContractValidationReport",

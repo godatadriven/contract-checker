@@ -2,6 +2,7 @@
 from typing import Dict, List
 
 from .base import Check
+from .validators.accepted_values_check import AcceptedValuesCheck
 from .validators.items_check import MaxItemsCheck, MinItemsCheck
 from .validators.pattern_check import PatternCheck
 from .validators.required_check import RequiredCheck
@@ -19,6 +20,7 @@ class CheckRegistry:
         default_checks = [
             RequiredCheck(),
             PatternCheck(),
+            AcceptedValuesCheck(),
             MinItemsCheck(),
             MaxItemsCheck(),
         ]
