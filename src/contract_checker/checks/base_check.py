@@ -143,7 +143,7 @@ class AcceptedValuesCheck(Check):
         return "accepted_values"
 
     def execute(
-        self, attribute_path: str, values: List[Any], accepted_values: List[str]
+        self, attribute_path: str, value_list: List[Any], accepted_values: List[str]
     ) -> List[ValidationResult]:
         results = []
         for idx, value in enumerate(value_list):
