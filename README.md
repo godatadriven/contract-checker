@@ -12,7 +12,7 @@ checks/
 ├── validator.py             # Core validation logic - path traversal and validation orchestration
 ├── reporting.py             # Output formatting and reporting
 └── validators/              # Individual check implementations - each check type in its own file
-    ├── __init__.py         
+    ├── __init__.py
     ├── required_check.py    # Required field validation
     ├── pattern_check.py     # Regex pattern validation
     └── items_check.py       # Min/max items validation
@@ -36,7 +36,7 @@ Example validation rules:
     max: 120
   tags:
     min_items: 1
-    max_items: 5    
+    max_items: 5
 ```
 
 

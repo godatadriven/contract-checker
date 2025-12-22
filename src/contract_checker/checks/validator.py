@@ -1,4 +1,5 @@
 """Core data contract validation logic."""
+
 from typing import Any, Dict, List, Optional
 
 import yaml
