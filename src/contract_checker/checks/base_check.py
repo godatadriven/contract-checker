@@ -153,7 +153,7 @@ class AcceptedValuesCheck(Check):
             if isinstance(value, str):
                 value_list = [value]
             elif isinstance(value, list):
-                values = value
+                value_list = value
 
             for value in values:
                 value_str = str(value)
