@@ -1,4 +1,5 @@
 """Abstract base classes for validation checks."""
+
 from abc import ABC, abstractmethod
 from typing import Any, List
 

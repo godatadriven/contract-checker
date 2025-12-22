@@ -1,4 +1,5 @@
 """Validation result reporting and output formatting."""
+
 from typing import Any, Dict, List, Union
 
 from .models import ContractValidationReport, ValidationResult
