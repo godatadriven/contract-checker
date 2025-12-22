@@ -155,7 +155,7 @@ class AcceptedValuesCheck(Check):
             elif isinstance(value, list):
                 value_list = value
 
-            for value in values:
+            for value in value_list:
                 value_str = str(value)
                 passed = value_str in accepted_values
 
