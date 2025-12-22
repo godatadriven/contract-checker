@@ -136,7 +136,7 @@ class PatternCheck(Check):
 
 class AcceptedValuesCheck(Check):
     """Check if a value is in a list of accepted values.
-    This check can be applied to both a string value and a list of values."""
+    This check can be applied to both a string attribute as well as a list attribute."""
 
     @property
     def check_type(self) -> str:
