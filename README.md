@@ -19,7 +19,7 @@ checks/
 ```
 
 
-### How to use the Data Contract Checker
+## How to use the Data Contract Checker
 1. Define your validation rules in ```data-contract-checks.yml```. This YAML file should specify the validation rules for your data contracts, such as required fields, regex patterns, or item count constraints.
 2. Run the CLI based validator to check your data.
 3. Review the output for any issues.
@@ -40,7 +40,7 @@ Example validation rules:
 ```
 
 
-# How to run locally
+## How to run locally
 - Initialize venv
 - ```uv sync``` to synchronize dependencies from `uv.lock`
 - ```uv run python -m contract_checker.cli --help``` to see available commands
