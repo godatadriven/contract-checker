@@ -1,4 +1,5 @@
 """Validation check registry system."""
+
 from typing import Dict, List
 
 from .base import Check

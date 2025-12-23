@@ -1,4 +1,5 @@
 """Data models for validation results and reports."""
+
 from dataclasses import dataclass
 from typing import List
 

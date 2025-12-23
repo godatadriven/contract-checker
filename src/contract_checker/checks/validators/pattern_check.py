@@ -1,4 +1,5 @@
 """Pattern matching validation check."""
+
 import re
 from typing import Any, List
 

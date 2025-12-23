@@ -1,4 +1,5 @@
 """Accepted values validation check."""
+
 from typing import Any, List
 
 from ..base import Check

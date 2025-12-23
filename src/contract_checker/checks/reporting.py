@@ -1,4 +1,5 @@
 """Validation result reporting and output formatting."""
+
 from typing import Any, Dict, List, Union
 
 from rich.console import Console
@@ -36,11 +37,10 @@ class ValidationReporter:
             reports = [reports]
 
         self.console.print()  # spacing
-        
+
         # Print header
         self.console.print(
-            "[bold white]Data Contract Checker[/bold white]", 
-            justify="center"
+            "[bold white]Data Contract Checker[/bold white]", justify="center"
         )
         self.console.print()  # spacing after header
 
@@ -71,11 +71,11 @@ class ValidationReporter:
 
             # Extract just the filename from the path
             filename = f"{report.contract_file!s}".split("/")[-1]
-            
+
             # Add divider before each contract (except the first one)
             if i > 1:
                 self.console.print("\n" + " " * 80)
-            
+
             self.console.print(
                 f"\n[bold cyan]📄 Contract {i}: {filename} ~ "
                 f"Checks passed: [{report.passed_checks}/"
@@ -86,9 +86,7 @@ class ValidationReporter:
 
             # Create table for this contract's checks
             # No title needed, but excluding it caused error
-            title = (
-                " "
-            )
+            title = " "
             table = Table(
                 title=title,
                 show_header=True,
@@ -129,7 +127,7 @@ class ValidationReporter:
 
             if table.rows:
                 self.console.print(table)
-            
+
             else:
                 self.console.print(
                     "[dim]No checks to display with current verbosity settings[/dim]"
@@ -162,26 +160,26 @@ class ValidationReporter:
         for report in reports:
             filename = f"{report.contract_file!s}".split("/")[-1]
             failed_results = [r for r in report.results if not r.passed]
-            
+
             if failed_results:
                 failed_contracts += 1
                 total_failed_checks += len(failed_results)
-                
+
                 # Add a section separator for each contract with failures
                 if failed_contracts > 1:
                     failed_checks_table.add_section()
-                
+
                 # Add rows for each failed check
                 for i, result in enumerate(failed_results):
                     # Only show filename for the first failure of each contract
                     contract_name = filename if i == 0 else ""
-                    
+
                     # Add line break padding to message (except last row)
                     message_text = Text()
                     message_text.append(result.message)
                     if i < len(failed_results) - 1:  # Don't add spacing to last row
                         message_text.append("\n ")
-                    
+
                     failed_checks_table.add_row(
                         contract_name,
                         Text(result.check_type.upper(), style="bold red"),
