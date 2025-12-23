@@ -35,14 +35,14 @@ class ValidationReporter:
         if isinstance(reports, ContractValidationReport):
             reports = [reports]
 
-        self.console.print()  # Add spacing
+        self.console.print()  # spacing
         
         # Print header
         self.console.print(
             "[bold white]Data Contract Checker[/bold white]", 
             justify="center"
         )
-        self.console.print()  # Add spacing after header
+        self.console.print()  # spacing after header
 
         if summary_only:
             self._print_failed_checks_summary_table(reports)
@@ -53,7 +53,7 @@ class ValidationReporter:
             # Add big divider before summary table
             self.console.print("═" * 80)
 
-            # Print failed checks summary
+            # Print failed checks summary table
             self._print_failed_checks_summary_table(reports)
 
     def _print_individual_contracts(
@@ -85,6 +85,7 @@ class ValidationReporter:
                 self.console.print(status_text)
 
             # Create table for this contract's checks
+            # No title needed, but excluding it caused error
             title = (
                 " "
             )
@@ -93,6 +94,7 @@ class ValidationReporter:
                 show_header=True,
                 header_style="bold white",
                 border_style="white",
+                padding=(0, 1),  # Add vertical and horizontal padding
             )
 
             table.add_column("Status", style="bold", width=8)
@@ -101,25 +103,31 @@ class ValidationReporter:
             table.add_column("Message", style="white")
 
             # Add rows for each check result
-            for result in report.results:
-                if verbose or not result.passed:
-                    # Color code the status
-                    if result.passed:
-                        status = Text("✓ PASS", style="bold green")
-                    else:
-                        status = Text("✗ FAIL", style="bold red")
+            visible_results = [r for r in report.results if verbose or not r.passed]
+            for idx, result in enumerate(visible_results):
+                # Color code the status
+                if result.passed:
+                    status = Text("✓ PASS", style="bold green")
+                else:
+                    status = Text("✗ FAIL", style="bold red")
 
-                    # Color code the check type based on result
-                    check_type_style = "green" if result.passed else "red"
+                # Color code the check type based on result
+                check_type_style = "green" if result.passed else "red"
 
-                    table.add_row(
-                        status,
-                        Text(result.check_type.upper(), style=check_type_style),
-                        result.attribute,
-                        result.message,
-                    )
+                # Add line break padding to messag
+                message_text = Text()
+                message_text.append(result.message)
+                if idx < len(visible_results) - 1:  # Don't need spacing after last row
+                    message_text.append("\n ")
 
-            if table.rows:  # Only show table if there are rows to display
+                table.add_row(
+                    status,
+                    Text(result.check_type.upper(), style=check_type_style),
+                    result.attribute,
+                    message_text,
+                )
+
+            if table.rows:
                 self.console.print(table)
             
             else:
@@ -138,6 +146,7 @@ class ValidationReporter:
             show_header=True,
             header_style="bold white",
             border_style="white",
+            padding=(0, 1),  # Add vertical and horizontal padding
         )
 
         failed_checks_table.add_column("Contract File", style="cyan")
@@ -167,13 +176,19 @@ class ValidationReporter:
                     # Only show filename for the first failure of each contract
                     contract_name = filename if i == 0 else ""
                     
+                    # Add line break padding to message (except last row)
+                    message_text = Text()
+                    message_text.append(result.message)
+                    if i < len(failed_results) - 1:  # Don't add spacing to last row
+                        message_text.append("\n ")
+                    
                     failed_checks_table.add_row(
                         contract_name,
                         Text(result.check_type.upper(), style="bold red"),
                         result.attribute,
-                        result.message,
+                        message_text,
                     )
-        # Red dot symbol for final summarized results
+
         self.console.print(
             f"\n[bold cyan]🔴 Failed Checks Summary ~ "
             f"Contracts with failed checks: [{failed_contracts}/{total_contracts}]"
