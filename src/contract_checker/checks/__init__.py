@@ -47,14 +47,13 @@ class DataContractValidator(CoreValidator):
         reports: Union[ContractValidationReport, List[ContractValidationReport]],
         verbose: bool = True,
         summary_only: bool = False,
-        detailed_failures: bool = True,
     ) -> None:
         """
         Print validation results in a readable format
 
         Delegates to the ValidationReporter for consistent formatting.
         """
-        self.reporter.print_results(reports, verbose, summary_only, detailed_failures)
+        self.reporter.print_results(reports, verbose, summary_only)
 
     def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
         """

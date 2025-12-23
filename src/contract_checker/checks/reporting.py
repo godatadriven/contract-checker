@@ -2,178 +2,196 @@
 
 from typing import Any, Dict, List, Union
 
-from .models import ContractValidationReport, ValidationResult
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
+from .models import ContractValidationReport
 
 
 class ValidationReporter:
     """Handles formatting and printing of validation results"""
+
+    def __init__(self) -> None:
+        """Initialize the reporter with a rich console"""
+        self.console = Console()
 
     def print_results(
         self,
         reports: Union[ContractValidationReport, List[ContractValidationReport]],
         verbose: bool = True,
         summary_only: bool = False,
-        detailed_failures: bool = True,
     ) -> None:
         """
-        Print validation results in a readable format
+        Print validation results in a readable format with color coding and tables
 
         Args:
             reports: Single ContractValidationReport or list of reports
             verbose: If True, print all results; if False, only print failures
             summary_only: If True, only print summary without individual check details
-            detailed_failures: If True, print a detailed failure report at the end
         """
         # Handle single report
         if isinstance(reports, ContractValidationReport):
             reports = [reports]
 
-        # Overall statistics
-        total_contracts = len(reports)
-        successful_contracts = sum(1 for r in reports if r.success)
-        failed_contracts = total_contracts - successful_contracts
-        total_checks = sum(r.total_checks for r in reports)
-        total_passed = sum(r.passed_checks for r in reports)
+        self.console.print()  # spacing
 
-        print(f"\n{'=' * 80}")
-        print("VALIDATION SUMMARY")
-        print(f"{'=' * 80}")
-        print(f"Contracts: {successful_contracts}/{total_contracts} passed")
-        print(f"Checks: {total_passed}/{total_checks} passed")
-        print(f"{'=' * 80}\n")
+        # Print header
+        self.console.print(
+            "[bold white]Data Contract Checker[/bold white]", justify="center"
+        )
+        self.console.print()  # spacing after header
 
         if summary_only:
-            # Print per-contract summary
-            for report in reports:
-                status = "✓" if report.success else "✗"
-                print(
-                    f"{status} {report.contract_file}: "
-                    f"{report.passed_checks}/{report.total_checks} checks passed"
-                )
-            print()
+            self._print_failed_checks_summary_table(reports)
+        else:
+            # Print individual contract results
+            self._print_individual_contracts(reports, verbose)
 
-            # Print detailed failures even in summary mode if requested
-            if detailed_failures and failed_contracts > 0:
-                self._print_detailed_failures(reports)
+            # Add big divider before summary table
+            self.console.print("═" * 80)
 
-            return
+            # Print failed checks summary table
+            self._print_failed_checks_summary_table(reports)
 
-        # Detailed results per contract
-        for report in reports:
-            status_symbol = "✓" if report.success else "✗"
-            print(f"\n{status_symbol} Contract: {report.contract_file}")
-            print(
-                f"   Checks: {report.passed_checks} passed, "
-                f"{report.failed_checks} failed"
+    def _print_individual_contracts(
+        self, reports: List[ContractValidationReport], verbose: bool
+    ) -> None:
+        """Print detailed results for each contract in individual tables"""
+
+        for i, report in enumerate(reports, 1):
+            # Contract header
+            status_text = Text()
+            if report.success:
+                status_text.append("✓ PASSED", style="bold green")
+            else:
+                status_text.append("✗ FAILED", style="bold red")
+
+            # Extract just the filename from the path
+            filename = f"{report.contract_file!s}".split("/")[-1]
+
+            # Add divider before each contract (except the first one)
+            if i > 1:
+                self.console.print("\n" + " " * 80)
+
+            self.console.print(
+                f"\n[bold cyan]📄 Contract {i}: {filename} ~ "
+                f"Checks passed: [{report.passed_checks}/"
+                f"{report.total_checks}][/bold cyan]"
             )
-            print(f"   {'-' * 76}")
+            if report.success:
+                self.console.print(status_text)
 
-            for result in report.results:
-                if verbose or not result.passed:
-                    status = "  ✓" if result.passed else "  ✗"
-                    print(f"  {status} [{result.check_type}] {result.message}")
+            # Create table for this contract's checks
+            # No title needed, but excluding it caused error
+            title = " "
+            table = Table(
+                title=title,
+                show_header=True,
+                header_style="bold white",
+                border_style="white",
+                padding=(0, 1),  # Add vertical and horizontal padding
+            )
 
-            print()
+            table.add_column("Status", style="bold", width=8)
+            table.add_column("Check Type", style="white")
+            table.add_column("Attribute", style="white")
+            table.add_column("Message", style="white")
 
-        print(f"{'=' * 80}\n")
+            # Add rows for each check result
+            visible_results = [r for r in report.results if verbose or not r.passed]
+            for idx, result in enumerate(visible_results):
+                # Color code the status
+                if result.passed:
+                    status = Text("✓ PASS", style="bold green")
+                else:
+                    status = Text("✗ FAIL", style="bold red")
 
-        # Print detailed failure report
-        if detailed_failures and failed_contracts > 0:
-            self._print_detailed_failures(reports)
+                # Color code the check type based on result
+                check_type_style = "green" if result.passed else "red"
 
-    def _print_detailed_failures(self, reports: List[ContractValidationReport]) -> None:
-        """
-        Print a detailed report of all failures grouped by contract and check type
+                # Add line break padding to messag
+                message_text = Text()
+                message_text.append(result.message)
+                if idx < len(visible_results) - 1:  # Don't need spacing after last row
+                    message_text.append("\n ")
 
-        Args:
-            reports: List of ContractValidationReport objects
-        """
-        failed_reports = [r for r in reports if not r.success]
+                table.add_row(
+                    status,
+                    Text(result.check_type.upper(), style=check_type_style),
+                    result.attribute,
+                    message_text,
+                )
 
-        if not failed_reports:
-            return
+            if table.rows:
+                self.console.print(table)
 
-        print(f"\n{'=' * 80}")
-        print("DETAILED FAILURE REPORT")
-        print(f"{'=' * 80}\n")
+            else:
+                self.console.print(
+                    "[dim]No checks to display with current verbosity settings[/dim]"
+                )
 
-        for report in failed_reports:
+    def _print_failed_checks_summary_table(
+        self, reports: List[ContractValidationReport]
+    ) -> None:
+        """Print summary table showing all failed checks per contract"""
+
+        # Create failed checks summary table
+        failed_checks_table = Table(
+            title=" ",
+            show_header=True,
+            header_style="bold white",
+            border_style="white",
+            padding=(0, 1),  # Add vertical and horizontal padding
+        )
+
+        failed_checks_table.add_column("Contract File", style="cyan")
+        failed_checks_table.add_column("Check Type", style="yellow")
+        failed_checks_table.add_column("Attribute", style="white")
+        failed_checks_table.add_column("Failure Message", style="white")
+
+        # Track statistics
+        total_contracts = len(reports)
+        failed_contracts = 0
+        total_failed_checks = 0
+
+        for report in reports:
+            filename = f"{report.contract_file!s}".split("/")[-1]
             failed_results = [r for r in report.results if not r.passed]
 
-            if not failed_results:
-                continue
+            if failed_results:
+                failed_contracts += 1
+                total_failed_checks += len(failed_results)
 
-            print(f"Contract: {report.contract_file}")
-            print(f"Failed Checks: {len(failed_results)}")
-            print(f"{'-' * 80}")
+                # Add a section separator for each contract with failures
+                if failed_contracts > 1:
+                    failed_checks_table.add_section()
 
-            # Group failures by check type
-            failures_by_type: Dict[str, List[ValidationResult]] = {}
-            for result in failed_results:
-                if result.check_type not in failures_by_type:
-                    failures_by_type[result.check_type] = []
-                failures_by_type[result.check_type].append(result)
+                # Add rows for each failed check
+                for i, result in enumerate(failed_results):
+                    # Only show filename for the first failure of each contract
+                    contract_name = filename if i == 0 else ""
 
-            # Print grouped failures
-            for check_type, failures in failures_by_type.items():
-                print(f"\n  {check_type.upper()} FAILURES ({len(failures)}):")
-                for failure in failures:
-                    print(f"    ✗ Attribute: {failure.attribute}")
-                    print(f"      Issue: {failure.message}")
-                    print()
+                    # Add line break padding to message (except last row)
+                    message_text = Text()
+                    message_text.append(result.message)
+                    if i < len(failed_results) - 1:  # Don't add spacing to last row
+                        message_text.append("\n ")
 
-            print(f"{'=' * 80}\n")
+                    failed_checks_table.add_row(
+                        contract_name,
+                        Text(result.check_type.upper(), style="bold red"),
+                        result.attribute,
+                        message_text,
+                    )
 
-        # Summary of failure patterns
-        self._print_failure_patterns(failed_reports)
-
-    def _print_failure_patterns(
-        self, failed_reports: List[ContractValidationReport]
-    ) -> None:
-        """
-        Print a summary of common failure patterns across all failed contracts
-
-        Args:
-            failed_reports: List of failed ContractValidationReport objects
-        """
-        print("FAILURE PATTERNS SUMMARY")
-        print(f"{'-' * 80}")
-
-        # Collect all failures
-        all_failures = []
-        for report in failed_reports:
-            all_failures.extend([r for r in report.results if not r.passed])
-
-        # Group by check type
-        by_check_type: Dict[str, List[ValidationResult]] = {}
-        for failure in all_failures:
-            if failure.check_type not in by_check_type:
-                by_check_type[failure.check_type] = []
-            by_check_type[failure.check_type].append(failure)
-
-        print("\nFailures by Check Type:")
-        for check_type, failures in sorted(by_check_type.items()):
-            print(f"  • {check_type}: {len(failures)} failure(s)")
-
-        # Group by attribute
-        by_attribute: Dict[str, List[ValidationResult]] = {}
-        for failure in all_failures:
-            if failure.attribute not in by_attribute:
-                by_attribute[failure.attribute] = []
-            by_attribute[failure.attribute].append(failure)
-
-        print("\nMost Common Failing Attributes:")
-        sorted_attrs = sorted(
-            by_attribute.items(), key=lambda x: len(x[1]), reverse=True
+        self.console.print(
+            f"\n[bold cyan]🔴 Failed Checks Summary ~ "
+            f"Contracts with failed checks: [{failed_contracts}/{total_contracts}]"
+            f"[/bold cyan]"
         )
-        for attribute, failures in sorted_attrs[:5]:  # Top 5
-            contracts = set(f.contract_file for f in failures)
-            print(
-                f"  • {attribute}: {len(failures)} failure(s) across "
-                f"{len(contracts)} contract(s)"
-            )
 
-        print(f"\n{'=' * 80}\n")
+        self.console.print(failed_checks_table)
 
     def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
         """
