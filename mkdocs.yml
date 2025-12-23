@@ -1,0 +1,83 @@
+site_name: Data Contract Checker
+site_description: An open source Python package that is able to parse data contract standards and allows users to configure checks
+site_url: https://godatadriven.github.io/contract-checker/
+repo_url: https://github.com/godatadriven/contract-checker
+repo_name: godatadriven/contract-checker
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: usage.md
+    - GitHub Actions: ci.md
+  - Config File: config.md
+  - Checks: checks.md
+  - CLI: cli.md
+  - Contributing: contributing.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        # See: https://mkdocstrings.github.io/python/usage/
+        python:
+          options:
+            docstring_style: sphinx
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/godatadriven/contract-checker
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/contract-checker/
