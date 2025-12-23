@@ -21,7 +21,6 @@ class ValidationReporter:
         reports: Union[ContractValidationReport, List[ContractValidationReport]],
         verbose: bool = True,
         summary_only: bool = False,
-        detailed_failures: bool = True,
     ) -> None:
         """
         Print validation results in a readable format with color coding and tables
@@ -30,7 +29,6 @@ class ValidationReporter:
             reports: Single ContractValidationReport or list of reports
             verbose: If True, print all results; if False, only print failures
             summary_only: If True, only print summary without individual check details
-            detailed_failures: If True, print a detailed failure report at the end
         """
         # Handle single report
         if isinstance(reports, ContractValidationReport):
