@@ -1,4 +1,5 @@
 """List length validation checks."""
+
 from typing import Any, List
 
 from ..base import Check

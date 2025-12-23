@@ -4,6 +4,7 @@ Main validation module with backward compatibility.
 This module provides the main DataContractValidator class with integrated reporting.
 It maintains the same interface as the original monolithic implementation.
 """
+
 from typing import Any, Dict, List, Optional, Union
 
 from .base import Check
@@ -23,7 +24,7 @@ from .validators import (
 class DataContractValidator(CoreValidator):
     """
     Enhanced DataContractValidator with integrated reporting capabilities.
-    
+
     Maintains backward compatibility with the original implementation while
     providing the improved modular structure.
     """
@@ -50,7 +51,7 @@ class DataContractValidator(CoreValidator):
     ) -> None:
         """
         Print validation results in a readable format
-        
+
         Delegates to the ValidationReporter for consistent formatting.
         """
         self.reporter.print_results(reports, verbose, summary_only, detailed_failures)
@@ -58,7 +59,7 @@ class DataContractValidator(CoreValidator):
     def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
         """
         Get a summary dictionary of validation results
-        
+
         Delegates to the ValidationReporter for consistent formatting.
         """
         return self.reporter.get_summary(reports)
