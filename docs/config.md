@@ -1,0 +1,1 @@
+This page contains information about configuring Data Contract Checker in ```yaml``` for your projects.
