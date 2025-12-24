@@ -45,6 +45,12 @@ def main(
             help="Outputs the version of the contract-checker package.",
         ),
     ] = None,
+    custom_schema_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Optional custom path to contract schema files.",
+        ),
+    ] = None,
 ) -> None:
     """A CLI tool for checking data contracts."""
     setup_console_logger(verbosity)
@@ -54,6 +60,7 @@ def main(
     logging.debug(f"Configuration path: {config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
+    logging.debug(f"Custom schema path: {custom_schema_path}")
 
     checks_dict = parse_yml_to_dict(config_path)
 
@@ -61,6 +68,7 @@ def main(
     contracts = load_contracts(
         contract_path=contract_path,
         contract_specification=checks_dict.get("data_contract_specification"),
+        custom_schema_path=custom_schema_path,
     )
 
     validate_contracts(contracts, config_path)
