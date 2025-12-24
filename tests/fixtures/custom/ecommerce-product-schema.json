@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://example.com/ecommerce-product-contract-schema",
+  "title": "E-commerce Product Data Contract Schema",
+  "description": "A custom schema for validating e-commerce product data contracts",
+  "type": "object",
+  "required": [
+    "contract_id",
+    "version",
+    "product_info",
+    "data_sources",
+    "quality_requirements"
+  ],
+  "properties": {
+    "contract_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique identifier for the data contract"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the contract"
+    },
+    "product_info": {
+      "type": "object",
+      "required": ["name", "description", "owner"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Name of the product data set"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "description": "Detailed description of the product data"
+        },
+        "owner": {
+          "type": "object",
+          "required": ["team", "email"],
+          "properties": {
+            "team": {
+              "type": "string",
+              "description": "Team responsible for the data"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Contact email for the data owner"
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for categorizing the data"
+        }
+      }
+    },
+    "data_sources": {
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": {
+          "type": "object",
+          "required": ["type", "location", "format"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["database", "file", "api", "stream"],
+              "description": "Type of data source"
+            },
+            "location": {
+              "type": "string",
+              "description": "Location or connection string for the data source"
+            },
+            "format": {
+              "type": "string",
+              "enum": ["json", "parquet", "csv", "avro", "xml"],
+              "description": "Data format"
+            },
+            "update_frequency": {
+              "type": "string",
+              "enum": ["real-time", "hourly", "daily", "weekly", "monthly"],
+              "description": "How often the data is updated"
+            }
+          }
+        },
+        "backup": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["database", "file", "api", "stream"]
+            },
+            "location": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "schema_definition": {
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+                "description": "Field name"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["string", "integer", "float", "boolean", "date", "timestamp", "array", "object"],
+                "description": "Field data type"
+              },
+              "required": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether the field is required"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the field"
+              },
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "min_length": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "max_length": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "pattern": {
+                    "type": "string"
+                  },
+                  "allowed_values": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quality_requirements": {
+      "type": "object",
+      "required": ["completeness", "accuracy"],
+      "properties": {
+        "completeness": {
+          "type": "object",
+          "required": ["threshold"],
+          "properties": {
+            "threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Minimum percentage of complete records required"
+            },
+            "critical_fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Fields that must always be complete"
+            }
+          }
+        },
+        "accuracy": {
+          "type": "object",
+          "required": ["threshold"],
+          "properties": {
+            "threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Minimum percentage of accurate records required"
+            }
+          }
+        },
+        "freshness": {
+          "type": "object",
+          "properties": {
+            "max_age_hours": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum age of data in hours"
+            }
+          }
+        }
+      }
+    },
+    "sla": {
+      "type": "object",
+      "properties": {
+        "availability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Availability percentage commitment"
+        },
+        "response_time_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum response time in milliseconds"
+        }
+      }
+    }
+  }
+}
