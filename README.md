@@ -42,6 +42,8 @@ Example validation rules:
 
 ## How to run locally
 - Initialize venv
-- ```uv sync``` to synchronize dependencies from `uv.lock`
+- ```make install``` to synchronize dependencies from `uv.lock`
+- ```pre-commit install``` to initialise `pre-commit`
+- ```make test``` to run all tests
 - ```uv run python -m contract_checker.cli --help``` to see available commands
 - ```uv run python -m contract_checker.cli --verbose --contract-path tests/fixtures/dcs/1.2.0/``` to run with a sample contract using dcs standard
