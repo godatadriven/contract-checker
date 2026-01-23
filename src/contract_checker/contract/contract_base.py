@@ -19,7 +19,7 @@ class Contract(BaseModel):
     @model_validator(mode="after")
     def validate_version(self) -> Self:
         """Validate if the version of the provided contract is supported."""
-        
+
         # Skip validation for custom schemas
         if self.custom_schema_path is not None:
             return self

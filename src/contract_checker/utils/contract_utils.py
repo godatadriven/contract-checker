@@ -70,7 +70,7 @@ def load_contracts(
                 version = get_specification_version(
                     contract_content, contract_specification
                 )
-            
+
             # identify type of contract and load accordingly
             contract = Contract(
                 contract_path=contract_path,
