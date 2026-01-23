@@ -13,4 +13,3 @@ validate-examples:
 
 validate-custom-examples:
 	uv run contract-checker --contract-path tests/fixtures/custom --custom-schema-path tests/fixtures/custom/ecommerce-product-schema.json
-# 	uv run contract-checker --contract-path tests/fixtures/custom/invalid-ecommerce-contract.yaml --custom-schema-path tests/fixtures/custom/ecommerce-product-schema.json
