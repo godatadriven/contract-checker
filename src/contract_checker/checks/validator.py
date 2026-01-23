@@ -48,7 +48,7 @@ class DataContractValidator:
             schema_results = self._validate_against_custom_schema(data_contract)
             results.extend(schema_results)
         else:
-            # Run standard checks for supported standard contracts only if not using custom schema
+            # Run standard checks only if not using custom schema
             for check_group in self.checks_config["data_contract_checks"]:
                 attribute_path = check_group["attribute"]
                 checks = check_group["checks"]
