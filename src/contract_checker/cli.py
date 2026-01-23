@@ -69,7 +69,6 @@ def main(
     if custom_schema_path:
         logging.debug(f"Custom schema path: {custom_schema_path}")
         logging.debug(f"Custom configuration path: {custom_config_path}")
-        
 
     checks_dict = parse_yml_to_dict(config_path)
 
