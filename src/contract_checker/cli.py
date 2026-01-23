@@ -51,6 +51,12 @@ def main(
             help="Optional custom path to contract schema files.",
         ),
     ] = None,
+    custom_config_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Optional custom path to configuration file.",
+        ),
+    ] = Path("custom-checks-config.yml"),
 ) -> None:
     """A CLI tool for checking data contracts."""
     setup_console_logger(verbosity)
@@ -62,7 +68,8 @@ def main(
     logging.debug(f"Severity level: {severity}")
     if custom_schema_path:
         logging.debug(f"Custom schema path: {custom_schema_path}")
-        config_path = Path("custom-checks-config.yml")
+        logging.debug(f"Custom configuration path: {custom_config_path}")
+        
 
     checks_dict = parse_yml_to_dict(config_path)
 

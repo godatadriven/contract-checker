@@ -47,34 +47,35 @@ class DataContractValidator:
             # first do json validation
             schema_results = self._validate_against_custom_schema(data_contract)
             results.extend(schema_results)
-        # Run standard checks for DCS/ODCS contracts
-        for check_group in self.checks_config["data_contract_checks"]:
-            attribute_path = check_group["attribute"]
-            checks = check_group["checks"]
+        else:
+            # Run standard checks for supported standard contracts only if not using custom schema
+            for check_group in self.checks_config["data_contract_checks"]:
+                attribute_path = check_group["attribute"]
+                checks = check_group["checks"]
 
-            # Get the value(s) at the specified attribute path
-            values = self._get_attribute_values(
-                data_contract.contract_content, attribute_path
-            )
-
-            # Run all checks for this attribute
-            for check_config in checks:
-                check_type = next(iter(check_config.keys()))
-                check_value = check_config[check_type]
-
-                # Get the appropriate check handler from registry
-                check_handler = self.registry.get(check_type)
-
-                # Execute the check
-                check_results = check_handler.execute(
-                    attribute_path, values, check_value
+                # Get the value(s) at the specified attribute path
+                values = self._get_attribute_values(
+                    data_contract.contract_content, attribute_path
                 )
 
-                # Add contract file to each result
-                for result in check_results:
-                    result.contract_file = data_contract.contract_path
+                # Run all checks for this attribute
+                for check_config in checks:
+                    check_type = next(iter(check_config.keys()))
+                    check_value = check_config[check_type]
 
-                results.extend(check_results)
+                    # Get the appropriate check handler from registry
+                    check_handler = self.registry.get(check_type)
+
+                    # Execute the check
+                    check_results = check_handler.execute(
+                        attribute_path, values, check_value
+                    )
+
+                    # Add contract file to each result
+                    for result in check_results:
+                        result.contract_file = data_contract.contract_path
+
+                    results.extend(check_results)
 
         # Create report
         passed = sum(1 for r in results if r.passed)
@@ -108,7 +109,8 @@ class DataContractValidator:
                 schema = json.load(f)
 
             # Create a validator to get all errors
-            validator = jsonschema.Draft7Validator(schema)
+            validatorClass = jsonschema.validators.validator_for(schema)
+            validator = validatorClass(schema)
             errors = list(validator.iter_errors(data_contract.contract_content))
 
             if not errors:
