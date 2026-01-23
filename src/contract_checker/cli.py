@@ -48,7 +48,7 @@ def main(
     custom_schema_path: Annotated[
         Optional[Path],
         typer.Option(
-            help="Optional custom path to contract schema files.",
+            help="Path to a custom JSON Schema file for contract validation.",
         ),
     ] = None,
     custom_config_path: Annotated[
