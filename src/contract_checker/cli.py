@@ -60,7 +60,9 @@ def main(
     logging.debug(f"Configuration path: {config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
-    logging.debug(f"Custom schema path: {custom_schema_path}")
+    if custom_schema_path:
+        logging.debug(f"Custom schema path: {custom_schema_path}")
+        config_path = Path("custom-checks-config.yml")
 
     checks_dict = parse_yml_to_dict(config_path)
 
