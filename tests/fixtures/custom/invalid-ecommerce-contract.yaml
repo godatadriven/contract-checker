@@ -1,0 +1,26 @@
+contract_id: "invalid contract id with spaces"  # Invalid: contains spaces
+version: "1.2"  # Invalid: not semantic version (missing patch)
+product_info:
+  name: ""  # Invalid: empty name (minLength: 1)
+  description: "Too short"  # Invalid: less than 10 characters
+  owner:
+    team: "Data Team"
+    # Missing required email field
+  tags:
+    - "ecommerce"
+data_sources:
+  primary:
+    type: "unknown"  # Invalid: not in enum
+    location: "some-location"
+    format: "xml"
+    update_frequency: "never"  # Invalid: not in enum
+# Missing required schema_definition section
+quality_requirements:
+  completeness:
+    threshold: 150.0  # Invalid: exceeds maximum of 100
+    critical_fields: []
+  accuracy:
+    threshold: -5.0  # Invalid: below minimum of 0
+sla:
+  availability: 101.0  # Invalid: exceeds maximum of 100
+  response_time_ms: 0  # Invalid: below minimum of 1

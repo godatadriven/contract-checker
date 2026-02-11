@@ -1,7 +1,9 @@
 """Core data contract validation logic."""
 
+import json
 from typing import Any, Dict, List, Optional
 
+import jsonschema
 import yaml
 
 from contract_checker.contract.contract_base import Contract
@@ -38,36 +40,42 @@ class DataContractValidator:
         Returns:
             ContractValidationReport with results
         """
-
         results = []
 
-        for check_group in self.checks_config["data_contract_checks"]:
-            attribute_path = check_group["attribute"]
-            checks = check_group["checks"]
+        # If using custom schema, validate against JSON Schema
+        if data_contract.custom_schema_path:
+            # first do json validation
+            schema_results = self._validate_against_custom_schema(data_contract)
+            results.extend(schema_results)
+        else:
+            # Run standard checks only if not using custom schema
+            for check_group in self.checks_config["data_contract_checks"]:
+                attribute_path = check_group["attribute"]
+                checks = check_group["checks"]
 
-            # Get the value(s) at the specified attribute path
-            values = self._get_attribute_values(
-                data_contract.contract_content, attribute_path
-            )
-
-            # Run all checks for this attribute
-            for check_config in checks:
-                check_type = next(iter(check_config.keys()))
-                check_value = check_config[check_type]
-
-                # Get the appropriate check handler from registry
-                check_handler = self.registry.get(check_type)
-
-                # Execute the check
-                check_results = check_handler.execute(
-                    attribute_path, values, check_value
+                # Get the value(s) at the specified attribute path
+                values = self._get_attribute_values(
+                    data_contract.contract_content, attribute_path
                 )
 
-                # Add contract file to each result
-                for result in check_results:
-                    result.contract_file = data_contract.contract_path
+                # Run all checks for this attribute
+                for check_config in checks:
+                    check_type = next(iter(check_config.keys()))
+                    check_value = check_config[check_type]
 
-                results.extend(check_results)
+                    # Get the appropriate check handler from registry
+                    check_handler = self.registry.get(check_type)
+
+                    # Execute the check
+                    check_results = check_handler.execute(
+                        attribute_path, values, check_value
+                    )
+
+                    # Add contract file to each result
+                    for result in check_results:
+                        result.contract_file = data_contract.contract_path
+
+                    results.extend(check_results)
 
         # Create report
         passed = sum(1 for r in results if r.passed)
@@ -80,6 +88,94 @@ class DataContractValidator:
             failed_checks=failed,
             results=results,
         )
+
+    def _validate_against_custom_schema(
+        self, data_contract: Contract
+    ) -> List[ValidationResult]:
+        """
+        Validate contract against custom JSON Schema
+
+        Args:
+            data_contract: Contract object to validate
+
+        Returns:
+            List of ValidationResult objects
+        """
+        results = []
+
+        try:
+            # Load the custom schema
+            with open(data_contract.custom_schema_path, "r") as f:
+                schema = json.load(f)
+
+            # Create a validator to get all errors
+            validatorClass = jsonschema.validators.validator_for(schema)
+            validator = validatorClass(schema)
+            errors = list(validator.iter_errors(data_contract.contract_content))
+
+            if not errors:
+                # No validation errors - success
+                results.append(
+                    ValidationResult(
+                        contract_file=data_contract.contract_path,
+                        attribute="schema",
+                        check_type="json_schema",
+                        passed=True,
+                        message="Contract validates against custom schema",
+                    )
+                )
+            else:
+                # Create a ValidationResult for each error
+                for error in errors:
+                    # Build a readable attribute path
+                    if error.absolute_path:
+                        attribute_path = ".".join(str(p) for p in error.absolute_path)
+                    else:
+                        attribute_path = "root"
+
+                    results.append(
+                        ValidationResult(
+                            contract_file=data_contract.contract_path,
+                            attribute=attribute_path,
+                            check_type="json_schema",
+                            passed=False,
+                            message=f"Schema validation failed: {error.message}",
+                        )
+                    )
+
+        except FileNotFoundError:
+            results.append(
+                ValidationResult(
+                    contract_file=data_contract.contract_path,
+                    attribute="schema",
+                    check_type="json_schema",
+                    passed=False,
+                    message=f"Custom schema file not found: "
+                    f"{data_contract.custom_schema_path}",
+                )
+            )
+        except json.JSONDecodeError as e:
+            results.append(
+                ValidationResult(
+                    contract_file=data_contract.contract_path,
+                    attribute="schema",
+                    check_type="json_schema",
+                    passed=False,
+                    message=f"Invalid JSON in custom schema file: {e}",
+                )
+            )
+        except Exception as e:
+            results.append(
+                ValidationResult(
+                    contract_file=data_contract.contract_path,
+                    attribute="schema",
+                    check_type="json_schema",
+                    passed=False,
+                    message=f"Schema validation error: {e}",
+                )
+            )
+
+        return results
 
     def validate(
         self, data_contracts: List[Contract]
