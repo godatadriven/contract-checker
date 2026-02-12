@@ -9,18 +9,17 @@ from ..models import ValidationResult
 class AcceptedValuesCheck(Check):
     """Check if attribute values are within a list of accepted values.
 
-    This validator ensures that attribute values match one of a predefined set of
-    acceptable values. It supports both single string attributes and list attributes,
-    making it versatile for various validation scenarios.
+    Both string and list attributes are supported.
 
-    When the attribute contains a list, each item in the list is validated
-    individually against the accepted values.
+    - For string attributes, the value is checked directly against the accepted values.
+    - For list attributes, each item in the list is checked against the accepted values,
+    and a validation result is generated for each item.
 
-    :cvar check_type: The identifier for this check type (``"accepted_values"``).
+    The identifier for this check type (``"accepted_values"``).
 
     Example configuration in ``data-contract-checks.yml``:
 
-    .. code-block:: yaml
+    ```yaml
 
         data_contract_checks:
           # Single value - ensure version is accepted
@@ -43,6 +42,7 @@ class AcceptedValuesCheck(Check):
                   - s3
                   - gcs
                   - azure_blob
+    ```
     """
 
     @property

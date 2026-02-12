@@ -10,25 +10,17 @@ from ..models import ValidationResult
 class PatternCheck(Check):
     """Check if attribute values match a regular expression pattern.
 
-    This validator ensures that attribute values conform to a specified regex pattern.
-    It is useful for enforcing naming conventions, format requirements, or other
-    string-based constraints on data contract attributes.
-
-    The pattern matching uses Python's :func:`re.match`, which matches from the
-    beginning of the string. Use ``.*`` prefix if you need to match anywhere in
-    the string.
-
-    :cvar check_type: The identifier for this check type (``"pattern"``).
+    The identifier for this check type is (``"pattern"``).
 
     Example configuration in ``data-contract-checks.yml``:
 
-    .. code-block:: yaml
+    ``` yaml
 
         data_contract_checks:
-          # Ensure title starts with "Orders"
+          # Ensure title starts with "Contract"
           - attribute: info.title
             checks:
-              - pattern: ^Orders
+              - pattern: ^Contract
 
           # Ensure version follows semantic versioning
           - attribute: info.version
@@ -39,6 +31,7 @@ class PatternCheck(Check):
           - attribute: models.*.fields.*.name
             checks:
               - pattern: ^[a-z][a-z0-9_]*$
+    ```
     """
 
     @property

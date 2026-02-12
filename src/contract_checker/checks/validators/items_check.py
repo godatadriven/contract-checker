@@ -9,15 +9,11 @@ from ..models import ValidationResult
 class MinItemsCheck(Check):
     """Check if a list attribute has at least a minimum number of items.
 
-    This validator ensures that list-type attributes contain at least the specified
-    number of items. It is useful for enforcing completeness requirements, such as
-    ensuring that a model has at least one field or that examples are provided.
-
-    :cvar check_type: The identifier for this check type (``"min_items"``).
+    The identifier for this check type (``"min_items"``).
 
     Example configuration in ``data-contract-checks.yml``:
 
-    .. code-block:: yaml
+    ``` yaml
 
         data_contract_checks:
           # Ensure each model has at least one field
@@ -29,6 +25,7 @@ class MinItemsCheck(Check):
           - attribute: models.*.fields.*.examples
             checks:
               - min_items: 3
+    ```
     """
 
     @property
@@ -88,11 +85,7 @@ class MinItemsCheck(Check):
 class MaxItemsCheck(Check):
     """Check if a list attribute does not exceed a maximum number of items.
 
-    This validator ensures that list-type attributes do not contain more than the
-    specified number of items. It can be used to enforce limits on collection sizes
-    within data contracts.
-
-    :cvar check_type: The identifier for this check type (``"max_items"``).
+    The identifier for this check type (``"max_items"``).
 
     Example configuration in ``data-contract-checks.yml``:
 

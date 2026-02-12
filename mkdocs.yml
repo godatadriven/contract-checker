@@ -49,12 +49,24 @@ plugins:
       handlers:
         # See: https://mkdocstrings.github.io/python/usage/
         python:
+          paths:
+            - src/contract_checker/checks/validators
           options:
             docstring_style: sphinx
+            filters: ["Check"]
+            group_by_category: true
+            heading_level: 1
+            inherited_members: true
+            members_order: source
+            show_bases: false
+            show_docstring_classes: true
+            show_docstring_raises: false
+            show_if_no_docstring: true
             show_source: true
-            show_root_heading: true
-            show_root_toc_entry: true
-            separate_signature: true
+            show_signature: false
+            show_submodules: true
+            show_root_heading: false
+            summary: true
 
 markdown_extensions:
   - admonition

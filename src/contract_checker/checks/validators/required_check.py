@@ -9,15 +9,11 @@ from ..models import ValidationResult
 class RequiredCheck(Check):
     """Check if a required field exists and is not null.
 
-    This validator ensures that a specified attribute exists in the data contract
-    and contains a non-null value. It is one of the most fundamental checks for
-    ensuring data contract completeness.
-
-    :cvar check_type: The identifier for this check type (``"required"``).
+    The identifier for this check type is (``"required"``).
 
     Example configuration in ``data-contract-checks.yml``:
 
-    .. code-block:: yaml
+    ``` yaml
 
         data_contract_checks:
           - attribute: info.title
@@ -27,6 +23,7 @@ class RequiredCheck(Check):
           - attribute: models.*.fields.*.description
             checks:
               - required: true
+    ```
     """
 
     @property
