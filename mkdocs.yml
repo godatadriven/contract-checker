@@ -45,6 +45,7 @@ nav:
 
 plugins:
   - search
+  - mkdocs-typer2
   - mkdocstrings:
       handlers:
         # See: https://mkdocstrings.github.io/python/usage/
