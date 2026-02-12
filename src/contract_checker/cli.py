@@ -11,11 +11,21 @@ from contract_checker.utils.contract_utils import load_contracts
 from contract_checker.utils.utils import parse_yml_to_dict
 from contract_checker.version import version
 
-app = typer.Typer()
+app = typer.Typer(
+    name="contract-checker",
+    help="A CLI tool for validating data contracts against defined schemas and rules.",
+)
 
 
 def version_callback(value: bool) -> None:
-    """A CLI tool for checking data contracts."""
+    """Handle the --version flag to display version information.
+
+    Args:
+        value: If True, print the version and exit the application.
+
+    Raises:
+        typer.Exit: Always raised when value is True to terminate the CLI.
+    """
     if value:
         print(f"{version()}")
         raise typer.Exit()
@@ -58,7 +68,24 @@ def main(
         ),
     ] = Path("custom-checks-config.yml"),
 ) -> None:
-    """A CLI tool for checking data contracts."""
+    """Main entry point for the contract-checker CLI.
+
+    Loads data contracts from the specified path, validates them against the
+    configured checks, and reports all cases where the checked attributes in the
+    data contracts do not meet the specified criteria.
+
+    Args:
+        config_path: Path to the YAML file containing data contract check definitions.
+        severity: Severity level for validation issues ('error' or 'warn').
+        verbosity: Enable verbose/debug output when True.
+        contract_path: Directory or file path containing data contract definitions.
+        version: Display version information and exit.
+        custom_schema_path: Optional path to a custom JSON Schema for validation.
+        custom_config_path: Optional path to custom configuration file.
+
+    Raises:
+        typer.Exit: Always raised upon completion to properly terminate the CLI.
+    """
     setup_console_logger(verbosity)
     if verbosity:
         logging.debug("Verbose mode is enabled.")
