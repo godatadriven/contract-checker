@@ -7,16 +7,64 @@ from ..models import ValidationResult
 
 
 class AcceptedValuesCheck(Check):
-    """Check if a value is in a list of accepted values.
-    This check can be applied to both a string attribute as well as a list attribute."""
+    """Check if attribute values are within a list of accepted values.
+
+    This validator ensures that attribute values match one of a predefined set of
+    acceptable values. It supports both single string attributes and list attributes,
+    making it versatile for various validation scenarios.
+
+    When the attribute contains a list, each item in the list is validated
+    individually against the accepted values.
+
+    :cvar check_type: The identifier for this check type (``"accepted_values"``).
+
+    Example configuration in ``data-contract-checks.yml``:
+
+    .. code-block:: yaml
+
+        data_contract_checks:
+          # Single value - ensure version is accepted
+          - attribute: info.version
+            checks:
+              - accepted_values: 1.0.0
+
+          # Multiple accepted values for tags (list attribute)
+          - attribute: tags
+            checks:
+              - accepted_values:
+                  - production
+                  - staging
+                  - development
+
+          # Ensure server types are valid
+          - attribute: servers.type
+            checks:
+              - accepted_values:
+                  - s3
+                  - gcs
+                  - azure_blob
+    """
 
     @property
     def check_type(self) -> str:
+        """Return the check type identifier.
+
+        :return: The string ``"accepted_values"``.
+        """
         return "accepted_values"
 
     def execute(
         self, attribute_path: str, value_list: List[Any], accepted_values: List[str]
     ) -> List[ValidationResult]:
+        """Execute the accepted values validation.
+
+        :param attribute_path: The dot-notation path to the attribute being checked.
+        :param value_list: List of values found at the attribute path. Each value
+            can be a string or a list of strings.
+        :param accepted_values: The list of values that are considered valid.
+        :return: A list of :class:`ValidationResult` objects. When the attribute
+            contains a list, a result is generated for each item in that list.
+        """
         results = []
         for idx, value in enumerate(value_list):
             if value is None:

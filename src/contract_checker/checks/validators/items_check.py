@@ -7,15 +7,50 @@ from ..models import ValidationResult
 
 
 class MinItemsCheck(Check):
-    """Check if list has minimum number of items"""
+    """Check if a list attribute has at least a minimum number of items.
+
+    This validator ensures that list-type attributes contain at least the specified
+    number of items. It is useful for enforcing completeness requirements, such as
+    ensuring that a model has at least one field or that examples are provided.
+
+    :cvar check_type: The identifier for this check type (``"min_items"``).
+
+    Example configuration in ``data-contract-checks.yml``:
+
+    .. code-block:: yaml
+
+        data_contract_checks:
+          # Ensure each model has at least one field
+          - attribute: models.*.fields
+            checks:
+              - min_items: 1
+
+          # Ensure at least 3 examples are provided
+          - attribute: models.*.fields.*.examples
+            checks:
+              - min_items: 3
+    """
 
     @property
     def check_type(self) -> str:
+        """Return the check type identifier.
+
+        :return: The string ``"min_items"``.
+        """
         return "min_items"
 
     def execute(
         self, attribute_path: str, values: List[Any], min_count: int
     ) -> List[ValidationResult]:
+        """Execute the minimum items validation.
+
+        :param attribute_path: The dot-notation path to the attribute being checked.
+        :param values: List of values found at the attribute path. Each value should
+            be a list to be validated.
+        :param min_count: The minimum number of items required in the list.
+        :return: A list containing a single :class:`ValidationResult` indicating
+            whether all lists meet the minimum items requirement.
+        """
         if not values:
             return [
                 ValidationResult(
@@ -51,15 +86,50 @@ class MinItemsCheck(Check):
 
 
 class MaxItemsCheck(Check):
-    """Check if list does not exceed maximum number of items"""
+    """Check if a list attribute does not exceed a maximum number of items.
+
+    This validator ensures that list-type attributes do not contain more than the
+    specified number of items. It can be used to enforce limits on collection sizes
+    within data contracts.
+
+    :cvar check_type: The identifier for this check type (``"max_items"``).
+
+    Example configuration in ``data-contract-checks.yml``:
+
+    .. code-block:: yaml
+
+        data_contract_checks:
+          # Limit tags to maximum 5 items
+          - attribute: tags
+            checks:
+              - max_items: 5
+
+          # Limit examples to reasonable number
+          - attribute: models.*.fields.*.examples
+            checks:
+              - max_items: 10
+    """
 
     @property
     def check_type(self) -> str:
+        """Return the check type identifier.
+
+        :return: The string ``"max_items"``.
+        """
         return "max_items"
 
     def execute(
         self, attribute_path: str, values: List[Any], max_count: int
     ) -> List[ValidationResult]:
+        """Execute the maximum items validation.
+
+        :param attribute_path: The dot-notation path to the attribute being checked.
+        :param values: List of values found at the attribute path. Each value should
+            be a list to be validated.
+        :param max_count: The maximum number of items allowed in the list.
+        :return: A list containing a single :class:`ValidationResult` indicating
+            whether all lists are within the maximum items limit.
+        """
         if not values:
             return [
                 ValidationResult(
