@@ -7,7 +7,7 @@ authors = [
     {name = "Thom van Engelenburg, Sonu Jacob"},
 ]
 dependencies = [
-    "numpy==1.26.4",
+    "numpy==2.2.6",
     "ruff==0.15.1",
     "mypy==1.19.1",
     "pre-commit >=3,<5",
