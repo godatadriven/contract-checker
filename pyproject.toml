@@ -8,7 +8,7 @@ authors = [
 ]
 dependencies = [
     "numpy==1.26.4",
-    "ruff==0.14.0",
+    "ruff==0.15.1",
     "mypy==1.17.0",
     "pre-commit >=3,<5",
     "typer>=0.20.0",
@@ -20,7 +20,7 @@ dependencies = [
 
 [dependency-groups]
 lint = [
-    "ruff==0.14.0",
+    "ruff==0.15.1",
     "pre-commit >=3,<5"
 
 ]
