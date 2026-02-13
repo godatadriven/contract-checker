@@ -31,5 +31,5 @@ jobs:
 
       - name: Run contract-checker
         run: |
-          contract-checker --contract-path path/to/your/datacontract.yaml
+          contract-checker --contract-path path/to/your/datacontracts.yaml
 ```
