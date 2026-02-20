@@ -35,7 +35,29 @@ data_contract_checks:
   - attribute: info.title
     checks:
       - required: true
-      - pattern: ^fct_|^dim_
+      - pattern: ^Orders
+
+  - attribute: info.version
+    checks:
+      - accepted_values: 1.0.0
+
+  - attribute: tags
+    checks:
+      - accepted_values:
+        - example
+        - test
+
+  - attribute: servers.type
+    checks:
+      - accepted_values:
+          - s3
+          - gcs
+          - azure_blob
+
+  - attribute: examples.data.location
+    checks:
+      - accepted_values:
+          - table
 
   - attribute: info.version
     checks:

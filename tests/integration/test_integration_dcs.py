@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from contract_checker.checks.base_check import DataContractValidator
+
 from contract_checker.utils.contract_utils import load_contracts
 
 

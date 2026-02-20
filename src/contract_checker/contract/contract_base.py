@@ -11,6 +11,7 @@ class Contract(BaseModel):
     contract_content: Optional[dict]
     contract_specification_type: str
     contract_specification_version: str
+    custom_schema_path: Optional[Path] = None
     schema_file_directory: ClassVar[Path] = Path(
         "src/contract_checker/contract_schemas"
     )
@@ -18,6 +19,10 @@ class Contract(BaseModel):
     @model_validator(mode="after")
     def validate_version(self) -> Self:
         """Validate if the version of the provided contract is supported."""
+
+        # Skip validation for custom schemas
+        if self.custom_schema_path is not None:
+            return self
 
         if (
             os.path.exists(

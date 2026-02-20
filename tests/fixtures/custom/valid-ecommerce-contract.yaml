@@ -1,0 +1,89 @@
+contract_id: "ecommerce-product-catalog"
+version: "1.2.0"
+product_info:
+  name: "Product Catalog Data"
+  description: "Comprehensive product catalog containing product information, pricing, inventory, and metadata for the e-commerce platform."
+  owner:
+    team: "Data Platform Team"
+    email: "data-platform@company.com"
+  tags:
+    - "ecommerce"
+    - "products"
+    - "catalog"
+    - "inventory"
+data_sources:
+  primary:
+    type: "database"
+    location: "postgresql://prod-db.company.com:5432/ecommerce"
+    format: "json"
+    update_frequency: "real-time"
+  backup:
+    type: "file"
+    location: "s3://data-lake/products/backup/"
+schema_definition:
+  fields:
+    - name: "product_id"
+      type: "string"
+      required: true
+      description: "Unique identifier for each product"
+      constraints:
+        pattern: "^PROD-[0-9]{6}$"
+    - name: "product_name"
+      type: "string"
+      required: true
+      description: "Display name of the product"
+      constraints:
+        min_length: 1
+        max_length: 200
+    - name: "category"
+      type: "string"
+      required: true
+      description: "Product category classification"
+      constraints:
+        allowed_values: ["Electronics", "Clothing", "Home & Garden", "Books", "Sports", "Toys"]
+    - name: "price"
+      type: "float"
+      required: true
+      description: "Current selling price in USD"
+    - name: "stock_quantity"
+      type: "integer"
+      required: true
+      description: "Available inventory count"
+    - name: "description"
+      type: "string"
+      required: false
+      description: "Detailed product description"
+      constraints:
+        max_length: 2000
+    - name: "brand"
+      type: "string"
+      required: false
+      description: "Product brand or manufacturer"
+    - name: "created_at"
+      type: "timestamp"
+      required: true
+      description: "Product creation timestamp"
+    - name: "updated_at"
+      type: "timestamp"
+      required: true
+      description: "Last modification timestamp"
+    - name: "is_active"
+      type: "boolean"
+      required: true
+      description: "Whether the product is currently available for sale"
+quality_requirements:
+  completeness:
+    threshold: 95.0
+    critical_fields:
+      - "product_id"
+      - "product_name"
+      - "category"
+      - "price"
+      - "stock_quantity"
+  accuracy:
+    threshold: 98.0
+  freshness:
+    max_age_hours: 24
+sla:
+  availability: 99.9
+  response_time_ms: 500
