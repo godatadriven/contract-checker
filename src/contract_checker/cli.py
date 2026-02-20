@@ -45,6 +45,18 @@ def main(
             help="Outputs the version of the contract-checker package.",
         ),
     ] = None,
+    custom_schema_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to a custom JSON Schema file for contract validation.",
+        ),
+    ] = None,
+    custom_config_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Optional custom path to configuration file.",
+        ),
+    ] = Path("custom-checks-config.yml"),
 ) -> None:
     """A CLI tool for checking data contracts."""
     setup_console_logger(verbosity)
@@ -54,13 +66,17 @@ def main(
     logging.debug(f"Configuration path: {config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
+    if custom_schema_path:
+        logging.debug(f"Custom schema path: {custom_schema_path}")
+        logging.debug(f"Custom configuration path: {custom_config_path}")
 
     checks_dict = parse_yml_to_dict(config_path)
 
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
         contract_path=contract_path,
-        contract_specification_type=checks_dict.get("data_contract_specification"),
+        contract_specification=checks_dict.get("data_contract_specification"),
+        custom_schema_path=custom_schema_path,
     )
 
     contract_path = Path("tests/fixtures/dcs/0.9.3/covid_cases.yaml")
