@@ -36,6 +36,4 @@ def is_dir_or_yaml(path: Path) -> str:
     elif path.is_file() and path.suffix in [".yaml", ".yml"]:
         return "yaml_file"
     else:
-        raise ValueError(
-            'Provided path is neither a directory nor a file with ".yaml" extension.'
-        )
+        raise ValueError('Provided path is neither a directory nor a file with ".yaml" extension.')

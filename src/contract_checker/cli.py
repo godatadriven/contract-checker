@@ -23,19 +23,17 @@ def version_callback(value: bool) -> None:
 
 @app.callback(invoke_without_command=True)
 def main(
-    config_path: Annotated[
-        Path, typer.Argument(help="The location of the data contract check file.")
-    ] = Path("data-contract-checks.yml"),
+    config_path: Annotated[Path, typer.Argument(help="The location of the data contract check file.")] = Path(
+        "data-contract-checks.yml"
+    ),
     severity: Annotated[
         str,
         typer.Option(help="The severity level of the checks. Can be 'error' or 'warn'"),
     ] = "error",
-    verbosity: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Enables verbose output.")
-    ] = False,
-    contract_path: Annotated[
-        Optional[Path], typer.Option(help="The location of the data contract file.")
-    ] = Path("tests/fixtures/dcs/"),
+    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
+    contract_path: Annotated[Optional[Path], typer.Option(help="The location of the data contract file.")] = Path(
+        "tests/fixtures/dcs/"
+    ),
     version: Annotated[
         Optional[bool],
         typer.Option(
@@ -70,6 +68,9 @@ def main(
         logging.debug(f"Custom schema path: {custom_schema_path}")
         logging.debug(f"Custom configuration path: {custom_config_path}")
 
+    if not config_path.exists():
+        logging.error(f"Configuration file not found: {config_path}")
+        raise typer.Exit(code=1)
     checks_dict = parse_yml_to_dict(config_path)
 
     # Load the contract -> internally identify type of contract -> validate contract
@@ -79,7 +80,6 @@ def main(
         custom_schema_path=custom_schema_path,
     )
 
-    contract_path = Path("tests/fixtures/dcs/0.9.3/covid_cases.yaml")
     validate_contracts(contracts, config_path)
 
     raise typer.Exit()

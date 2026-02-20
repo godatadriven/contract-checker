@@ -20,9 +20,7 @@ def get_specification_version(contract_content: dict, contract_standard: str) ->
         raise ValueError("Specification field not found in data contract.")
 
 
-def parse_specification_from_contract(
-    contract_content: dict, checks_dict: dict
-) -> tuple[str, str]:
+def parse_specification_from_contract(contract_content: dict, checks_dict: dict) -> tuple[str, str]:
     """Check if the contract matches the expected version."""
     if not contract_content:
         raise ValueError("Contract content is not loaded.")
@@ -59,6 +57,8 @@ def load_contracts(
         contract_paths = list(contract_path.rglob("*.yaml"))
     contracts = []
     for contract_path in contract_paths:
+        if not contract_path.exists():
+            raise FileNotFoundError(f"Contract file not found: {contract_path}")
         contract_content = parse_yml_to_dict(file_path=Path(contract_path))
         if contract_content:
             # Determine if using custom schema
@@ -67,9 +67,7 @@ def load_contracts(
                 version = "custom"
             else:
                 specification = contract_specification
-                version = get_specification_version(
-                    contract_content, contract_specification
-                )
+                version = get_specification_version(contract_content, contract_specification)
 
             # identify type of contract and load accordingly
             contract = Contract(
