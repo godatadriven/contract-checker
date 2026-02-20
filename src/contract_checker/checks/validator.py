@@ -129,7 +129,11 @@ class DataContractValidator:
                     # Build a readable attribute path
                     if error.absolute_path:
                         attribute_path = ".".join(str(p) for p in error.absolute_path)
-                    elif hasattr(error, "json_path") and error.json_path and error.json_path != "$":
+                    elif (
+                        hasattr(error, "json_path")
+                        and error.json_path
+                        and error.json_path != "$"
+                    ):
                         attribute_path = error.json_path
                     else:
                         attribute_path = "root"
