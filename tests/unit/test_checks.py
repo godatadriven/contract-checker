@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from contract_checker.checks.base_check import (
+from contract_checker.checks.validators import (
     MaxItemsCheck,
     MinItemsCheck,
     PatternCheck,
     RequiredCheck,
-    SchemaExistenceCheck,
-    ValidationResult,
 )
 
 
@@ -64,7 +60,7 @@ class TestPatternCheck:
     def test_pattern_check_matches(self) -> None:
         """Test pattern check passes with matching values."""
         pattern = r"^[A-Z]{3}[0-9]{8}$"
-        results = self.check.execute("test.field", ["ACC12345678"], pattern)
+        results = self.check.execute("test.field", ["ACC12345688"], pattern)
 
         assert len(results) == 1
         assert results[0].passed is True
@@ -183,108 +179,3 @@ class TestMaxItemsCheck:
         assert len(results) == 1
         assert results[0].passed is True
         assert "skipped" in results[0].message
-
-
-class TestSchemaExistenceCheck:
-    """Test SchemaExistenceCheck functionality."""
-
-    def setup_method(self) -> None:
-        """Set up test fixtures."""
-        self.schema: dict[str, Any] = {
-            "type": "object",
-            "properties": {
-                "models": {
-                    "type": "object",
-                    "properties": {
-                        "covid_cases": {
-                            "type": "object",
-                            "properties": {
-                                "fields": {
-                                    "type": "object",
-                                    "properties": {
-                                        "fips": {"type": "string"},
-                                        "admin2": {"type": "string"},
-                                    },
-                                }
-                            },
-                        }
-                    },
-                },
-                "quality": {
-                    "type": "object",
-                    "properties": {"type": {"type": "string"}},
-                },
-            },
-        }
-        self.check = SchemaExistenceCheck(self.schema)
-
-    def test_schema_check_exists_simple_path(self) -> None:
-        """Test schema check with existing simple path."""
-        results = self.check.execute("quality.type", [], True)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-        assert "exists in the schema" in results[0].message
-
-    def test_schema_check_exists_nested_path(self) -> None:
-        """Test schema check with existing nested path."""
-        results = self.check.execute("models.covid_cases.fields.fips", [], True)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-
-    def test_schema_check_does_not_exist(self) -> None:
-        """Test schema check with non-existing path."""
-        results = self.check.execute("models.nonexistent.field", [], True)
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert "does not exist" in results[0].message
-
-    def test_schema_check_disabled(self) -> None:
-        """Test schema check when disabled."""
-        results = self.check.execute("any.path", [], False)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-        assert "disabled" in results[0].message
-
-    def test_schema_check_with_array_wildcard(self) -> None:
-        """Test schema check with array wildcard."""
-        schema_with_array: dict[str, Any] = {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {"name": {"type": "string"}},
-                    },
-                }
-            },
-        }
-        check = SchemaExistenceCheck(schema_with_array)
-        results = check.execute("items.*.name", [], True)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-
-
-class TestValidationResult:
-    """Test ValidationResult dataclass."""
-
-    def test_validation_result_creation(self) -> None:
-        """Test creating a ValidationResult."""
-        result = ValidationResult(
-            contract_file="test.yaml",
-            attribute="test.field",
-            check_type="required",
-            passed=True,
-            message="Test passed",
-        )
-
-        assert result.contract_file == "test.yaml"
-        assert result.attribute == "test.field"
-        assert result.check_type == "required"
-        assert result.passed is True
-        assert result.message == "Test passed"

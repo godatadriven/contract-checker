@@ -13,9 +13,7 @@ class RequiredCheck(Check):
     def check_type(self) -> str:
         return "required"
 
-    def execute(
-        self, attribute_path: str, values: List[Any], check_value: bool
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
         if check_value:
             passed = len(values) > 0 and all(v is not None for v in values)
             message = (

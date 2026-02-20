@@ -8,7 +8,7 @@ It maintains the same interface as the original monolithic implementation.
 from typing import Any, Dict, List, Optional, Union
 
 from .base import Check
-from .models import ContractValidationReport, ValidationResult
+from .models import ContractValidationReport
 from .registry import CheckRegistry
 from .reporting import ValidationReporter
 from .validator import DataContractValidator as CoreValidator
@@ -30,7 +30,9 @@ class DataContractValidator(CoreValidator):
     """
 
     def __init__(
-        self, checks_file: str, check_registry: Optional[CheckRegistry] = None
+        self,
+        checks_file: str,
+        check_registry: Optional[CheckRegistry] = None,
     ) -> None:
         """
         Initialize validator with checks configuration and reporter
@@ -74,5 +76,4 @@ __all__ = [
     "MinItemsCheck",
     "PatternCheck",
     "RequiredCheck",
-    "ValidationResult",
 ]
