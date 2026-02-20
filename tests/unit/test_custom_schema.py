@@ -1,6 +1,5 @@
 """Tests for the custom schema validation feature."""
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -15,20 +14,28 @@ class TestCustomSchemaValidation:
     """Unit tests for DataContractValidator._validate_against_custom_schema()."""
 
     @pytest.fixture
-    def valid_contract(self, custom_fixtures_path: Path, custom_schema_path: Path) -> Contract:
+    def valid_contract(
+        self, custom_fixtures_path: Path, custom_schema_path: Path
+    ) -> Contract:
         return Contract(
             contract_path=custom_fixtures_path / "valid-ecommerce-contract.yaml",
-            contract_content=_load_yaml(custom_fixtures_path / "valid-ecommerce-contract.yaml"),
+            contract_content=_load_yaml(
+                custom_fixtures_path / "valid-ecommerce-contract.yaml"
+            ),
             contract_specification="custom",
             contract_specification_version="custom",
             custom_schema_path=custom_schema_path,
         )
 
     @pytest.fixture
-    def invalid_contract(self, custom_fixtures_path: Path, custom_schema_path: Path) -> Contract:
+    def invalid_contract(
+        self, custom_fixtures_path: Path, custom_schema_path: Path
+    ) -> Contract:
         return Contract(
             contract_path=custom_fixtures_path / "invalid-ecommerce-contract.yaml",
-            contract_content=_load_yaml(custom_fixtures_path / "invalid-ecommerce-contract.yaml"),
+            contract_content=_load_yaml(
+                custom_fixtures_path / "invalid-ecommerce-contract.yaml"
+            ),
             contract_specification="custom",
             contract_specification_version="custom",
             custom_schema_path=custom_schema_path,
@@ -38,13 +45,17 @@ class TestCustomSchemaValidation:
     def validator(self, custom_checks_config_path: Path) -> DataContractValidator:
         return DataContractValidator(str(custom_checks_config_path))
 
-    def test_valid_contract_passes(self, validator: DataContractValidator, valid_contract: Contract) -> None:
+    def test_valid_contract_passes(
+        self, validator: DataContractValidator, valid_contract: Contract
+    ) -> None:
         results = validator._validate_against_custom_schema(valid_contract)
         assert len(results) == 1
         assert results[0].passed is True
         assert "validates against" in results[0].message
 
-    def test_invalid_contract_fails(self, validator: DataContractValidator, invalid_contract: Contract) -> None:
+    def test_invalid_contract_fails(
+        self, validator: DataContractValidator, invalid_contract: Contract
+    ) -> None:
         results = validator._validate_against_custom_schema(invalid_contract)
         assert all(r.passed is False for r in results)
 
@@ -72,7 +83,12 @@ class TestCustomSchemaValidation:
         self, validator: DataContractValidator, invalid_contract: Contract
     ) -> None:
         results = validator._validate_against_custom_schema(invalid_contract)
-        assert any("unknown" in r.message or "is not valid" in r.message or "not one of" in r.message.lower() for r in results)
+        assert any(
+            "unknown" in r.message
+            or "is not valid" in r.message
+            or "not one of" in r.message.lower()
+            for r in results
+        )
 
     def test_nested_field_error_path(
         self, validator: DataContractValidator, invalid_contract: Contract
@@ -86,7 +102,9 @@ class TestCustomSchemaValidation:
     ) -> None:
         contract = Contract(
             contract_path=custom_fixtures_path / "valid-ecommerce-contract.yaml",
-            contract_content=_load_yaml(custom_fixtures_path / "valid-ecommerce-contract.yaml"),
+            contract_content=_load_yaml(
+                custom_fixtures_path / "valid-ecommerce-contract.yaml"
+            ),
             contract_specification="custom",
             contract_specification_version="custom",
             custom_schema_path=Path("/nonexistent/schema.json"),
@@ -106,7 +124,9 @@ class TestCustomSchemaValidation:
         try:
             contract = Contract(
                 contract_path=custom_fixtures_path / "valid-ecommerce-contract.yaml",
-                contract_content=_load_yaml(custom_fixtures_path / "valid-ecommerce-contract.yaml"),
+                contract_content=_load_yaml(
+                    custom_fixtures_path / "valid-ecommerce-contract.yaml"
+                ),
                 contract_specification="custom",
                 contract_specification_version="custom",
                 custom_schema_path=bad_schema_path,
@@ -188,7 +208,9 @@ class TestCustomSchemaReport:
         return DataContractValidator(str(custom_checks_config_path))
 
     @pytest.fixture
-    def valid_contracts(self, custom_fixtures_path: Path, custom_schema_path: Path) -> list:
+    def valid_contracts(
+        self, custom_fixtures_path: Path, custom_schema_path: Path
+    ) -> list:
         return load_contracts(
             contract_path=custom_fixtures_path / "valid-ecommerce-contract.yaml",
             contract_specification="custom",
@@ -196,7 +218,9 @@ class TestCustomSchemaReport:
         )
 
     @pytest.fixture
-    def invalid_contracts(self, custom_fixtures_path: Path, custom_schema_path: Path) -> list:
+    def invalid_contracts(
+        self, custom_fixtures_path: Path, custom_schema_path: Path
+    ) -> list:
         return load_contracts(
             contract_path=custom_fixtures_path / "invalid-ecommerce-contract.yaml",
             contract_specification="custom",
