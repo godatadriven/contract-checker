@@ -48,7 +48,7 @@ def load_contracts(
     contract_path: Path,
     contract_specification: str,
     custom_schema_path: Optional[Path] = None,
-) -> list[dict]:
+) -> list[Contract]:
     """Load all data contracts within a user-provided path."""
 
     path_type = is_dir_or_yaml(contract_path)

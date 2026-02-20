@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -210,21 +211,27 @@ class TestCustomSchemaReport:
     @pytest.fixture
     def valid_contracts(
         self, custom_fixtures_path: Path, custom_schema_path: Path
-    ) -> list:
-        return load_contracts(
-            contract_path=custom_fixtures_path / "valid-ecommerce-contract.yaml",
-            contract_specification="custom",
-            custom_schema_path=custom_schema_path,
+    ) -> list[Contract]:
+        return cast(
+            list[Contract],
+            load_contracts(
+                contract_path=custom_fixtures_path / "valid-ecommerce-contract.yaml",
+                contract_specification="custom",
+                custom_schema_path=custom_schema_path,
+            ),
         )
 
     @pytest.fixture
     def invalid_contracts(
         self, custom_fixtures_path: Path, custom_schema_path: Path
-    ) -> list:
-        return load_contracts(
-            contract_path=custom_fixtures_path / "invalid-ecommerce-contract.yaml",
-            contract_specification="custom",
-            custom_schema_path=custom_schema_path,
+    ) -> list[Contract]:
+        return cast(
+            list[Contract],
+            load_contracts(
+                contract_path=custom_fixtures_path / "invalid-ecommerce-contract.yaml",
+                contract_specification="custom",
+                custom_schema_path=custom_schema_path,
+            ),
         )
 
     def test_valid_contract_report_success(
@@ -267,9 +274,9 @@ class TestCustomSchemaReport:
         assert all(r.contract_file is not None for r in report.results)
 
 
-def _load_yaml(path: Path) -> dict:
+def _load_yaml(path: Path) -> dict[str, Any]:
     """Helper to load a YAML file into a dict."""
     import yaml
 
     with open(path, "r") as f:
-        return yaml.safe_load(f)
+        return cast(dict[str, Any], yaml.safe_load(f))
