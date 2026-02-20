@@ -35,7 +35,7 @@ def main(
     ] = False,
     contract_path: Annotated[
         Optional[Path], typer.Option(help="The location of the data contract file.")
-    ] = Path("tests/fixtures/dcs/"),
+    ] = None,
     version: Annotated[
         Optional[bool],
         typer.Option(
@@ -79,7 +79,8 @@ def main(
         custom_schema_path=custom_schema_path,
     )
 
-    validate_contracts(contracts, config_path)
+    active_config = custom_config_path if custom_schema_path else config_path
+    validate_contracts(contracts, active_config)
 
     raise typer.Exit()
 
