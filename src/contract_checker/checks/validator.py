@@ -126,17 +126,14 @@ class DataContractValidator:
             else:
                 # Create a ValidationResult for each error
                 for error in errors:
-                    # Build a readable attribute path
-                    if error.absolute_path:
-                        attribute_path = ".".join(str(p) for p in error.absolute_path)
-                    elif (
-                        hasattr(error, "json_path")
-                        and error.json_path
-                        and error.json_path != "$"
-                    ):
-                        attribute_path = error.json_path
-                    else:
-                        attribute_path = "root"
+                    # Build a readable attribute path from the instance path.
+                    # absolute_path is a deque of path components (always present);
+                    # empty means the error is at the document root level.
+                    attribute_path = (
+                        ".".join(str(p) for p in error.absolute_path)
+                        if error.absolute_path
+                        else "(document root)"
+                    )
 
                     results.append(
                         ValidationResult(
