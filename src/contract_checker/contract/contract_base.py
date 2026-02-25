@@ -12,7 +12,9 @@ class Contract(BaseModel):
     contract_specification: str
     contract_specification_version: str
     custom_schema_path: Optional[Path] = None
-    schema_file_directory: ClassVar[Path] = Path(__file__).parent / "contract_schemas"
+    schema_file_directory: ClassVar[Path] = (
+        Path(__file__).parent.parent / "contract_schemas"
+    )
 
     @model_validator(mode="after")
     def validate_version(self) -> Self:
