@@ -35,7 +35,7 @@ def main(
     ] = False,
     contract_path: Annotated[
         Optional[Path], typer.Option(help="The location of the data contract file.")
-    ] = None,
+    ] = Path("tests/fixtures/dcs/"),
     version: Annotated[
         Optional[bool],
         typer.Option(
@@ -57,6 +57,10 @@ def main(
             help="Optional custom path to configuration file.",
         ),
     ] = Path("custom-checks-config.yml"),
+    summary_only: Annotated[
+        bool,
+        typer.Option("--summary-only", help="Only print the failed checks summary."),
+    ] = False,
 ) -> None:
     """A CLI tool for checking data contracts."""
     setup_console_logger(verbosity)
@@ -80,7 +84,7 @@ def main(
     )
 
     active_config = custom_config_path if custom_schema_path else config_path
-    validate_contracts(contracts, active_config)
+    validate_contracts(contracts, active_config, summary_only=summary_only)
 
     raise typer.Exit()
 
