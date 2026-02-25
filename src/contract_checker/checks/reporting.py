@@ -1,6 +1,6 @@
 """Validation result reporting and output formatting."""
 
-from typing import Any, Dict, List, Union
+from typing import List, Union
 
 from rich.console import Console
 from rich.table import Table
@@ -192,31 +192,3 @@ class ValidationReporter:
         )
 
         self.console.print(failed_checks_table)
-
-    def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
-        """
-        Get a summary dictionary of validation results
-
-        Args:
-            reports: List of ContractValidationReport objects
-
-        Returns:
-            Dictionary with summary statistics
-        """
-        return {
-            "total_contracts": len(reports),
-            "passed_contracts": sum(1 for r in reports if r.success),
-            "failed_contracts": sum(1 for r in reports if not r.success),
-            "total_checks": sum(r.total_checks for r in reports),
-            "passed_checks": sum(r.passed_checks for r in reports),
-            "failed_checks": sum(r.failed_checks for r in reports),
-            "contracts": [
-                {
-                    "file": r.contract_file,
-                    "success": r.success,
-                    "passed": r.passed_checks,
-                    "failed": r.failed_checks,
-                }
-                for r in reports
-            ],
-        }
