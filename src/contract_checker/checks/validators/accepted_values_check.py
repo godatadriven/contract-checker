@@ -15,36 +15,55 @@ class AcceptedValuesCheck(Check):
         return "accepted_values"
 
     def execute(
-        self, attribute_path: str, value_list: List[Any], accepted_values: List[str]
+        self,
+        attribute_path: str,
+        path_value_pairs: List[tuple[str, Any]],
+        accepted_values: List[str],
     ) -> List[ValidationResult]:
         results = []
-        for idx, value in enumerate(value_list):
+        for actual_path, value in path_value_pairs:
             if value is None:
+                results.append(
+                    ValidationResult(
+                        "",
+                        actual_path or attribute_path,
+                        self.check_type,
+                        False,
+                        f"Attribute '{actual_path or attribute_path}' is missing, "
+                        f"expected one of: '{accepted_values}'",
+                    )
+                )
                 continue
 
             if isinstance(value, str):
-                value_list = [value]
+                check_values = [value]
             elif isinstance(value, list):
-                value_list = value
+                check_values = value
+            else:
+                check_values = [value]
 
-            for value in value_list:
-                value_str = str(value)
+            for val in check_values:
+                value_str = str(val)
                 passed = value_str in accepted_values
 
                 if passed:
                     message = (
-                        f"Attribute '{attribute_path}' value '{value_str}' "
+                        f"Attribute '{actual_path or attribute_path}' value '{value_str}' "
                         "is in the list of accepted values"
                     )
                 else:
                     message = (
-                        f"Attribute '{attribute_path}' value '{value_str}' "
+                        f"Attribute '{actual_path or attribute_path}' value '{value_str}' "
                         f"is not in the list of accepted values: '{accepted_values}'"
                     )
 
                 results.append(
                     ValidationResult(
-                        "", attribute_path, self.check_type, passed, message
+                        "",
+                        actual_path or attribute_path,
+                        self.check_type,
+                        passed,
+                        message,
                     )
                 )
 

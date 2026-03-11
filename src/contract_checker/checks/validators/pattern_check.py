@@ -15,19 +15,19 @@ class PatternCheck(Check):
         return "pattern"
 
     def execute(
-        self, attribute_path: str, values: List[Any], pattern: str
+        self, attribute_path: str, path_value_pairs: List[tuple[str, Any]], pattern: str
     ) -> List[ValidationResult]:
         results = []
 
-        for idx, value in enumerate(values):
+        for actual_path, value in path_value_pairs:
             if value is None:
                 results.append(
                     ValidationResult(
                         "",
-                        attribute_path,
+                        actual_path or attribute_path,
                         self.check_type,
                         False,
-                        f"Attribute '{attribute_path}' is null, cannot match "
+                        f"Attribute '{actual_path or attribute_path}' is missing, cannot match "
                         f"pattern '{pattern}'",
                     )
                 )
@@ -37,16 +37,18 @@ class PatternCheck(Check):
             passed = re.match(pattern, value_str) is not None
 
             if passed:
-                message = f"Attribute '{attribute_path}' value '{value_str}' matches "
+                message = f"Attribute '{actual_path or attribute_path}' value '{value_str}' matches "
                 f"pattern '{pattern}'"
             else:
                 message = (
-                    f"Attribute '{attribute_path}' value '{value_str}' does not match "
+                    f"Attribute '{actual_path or attribute_path}' value '{value_str}' does not match "
                     f"pattern '{pattern}'"
                 )
 
             results.append(
-                ValidationResult("", attribute_path, self.check_type, passed, message)
+                ValidationResult(
+                    "", actual_path or attribute_path, self.check_type, passed, message
+                )
             )
 
         return results
