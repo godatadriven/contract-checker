@@ -13,15 +13,16 @@ class Check(ABC):
     def execute(
         self,
         field_path: str,
-        values: List[Any],
+        path_value_pairs: List[tuple[str, Any]],
         check_value: Any,  # noqa: ANN401
     ) -> List[ValidationResult]:
         """
         Execute the check
 
         Args:
-            field_path: The field path being checked
-            values: List of values to check
+            field_path: The field path pattern being checked (may contain wildcards)
+            path_value_pairs: List of (actual_path, value) tuples where actual_path
+                is the concrete path with wildcards resolved
             check_value: The check configuration value
 
         Returns:

@@ -14,17 +14,53 @@ class RequiredCheck(Check):
         return "required"
 
     def execute(
-        self, attribute_path: str, values: List[Any], check_value: bool
+        self,
+        attribute_path: str,
+        path_value_pairs: List[tuple[str, Any]],
+        check_value: bool,
     ) -> List[ValidationResult]:
-        if check_value:
-            passed = len(values) > 0 and all(v is not None for v in values)
-            message = (
-                f"Attribute '{attribute_path}' is present"
-                if passed
-                else f"Required attribute '{attribute_path}' is missing or null"
-            )
-        else:
-            passed = True
-            message = f"Attribute '{attribute_path}' is optional"
+        if not check_value:
+            return [
+                ValidationResult(
+                    "",
+                    attribute_path,
+                    self.check_type,
+                    True,
+                    f"Attribute '{attribute_path}' is optional",
+                )
+            ]
 
-        return [ValidationResult("", attribute_path, self.check_type, passed, message)]
+        if not path_value_pairs:
+            return [
+                ValidationResult(
+                    "",
+                    attribute_path,
+                    self.check_type,
+                    False,
+                    f"Required attribute '{attribute_path}' is missing",
+                )
+            ]
+
+        results = []
+        for actual_path, value in path_value_pairs:
+            if value is None:
+                results.append(
+                    ValidationResult(
+                        "",
+                        actual_path,
+                        self.check_type,
+                        False,
+                        f"Required attribute '{actual_path}' is missing",
+                    )
+                )
+            else:
+                results.append(
+                    ValidationResult(
+                        "",
+                        actual_path,
+                        self.check_type,
+                        True,
+                        f"Attribute '{actual_path}' is present",
+                    )
+                )
+        return results

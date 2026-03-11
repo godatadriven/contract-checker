@@ -54,7 +54,8 @@ class DataContractValidator:
                 checks = check_group["checks"]
 
                 # Get the value(s) at the specified attribute path
-                values = self._get_attribute_values(
+                # Returns list of (actual_path, value) tuples
+                path_value_pairs = self._get_attribute_values(
                     data_contract.contract_content, attribute_path
                 )
 
@@ -68,7 +69,7 @@ class DataContractValidator:
 
                     # Execute the check
                     check_results = check_handler.execute(
-                        attribute_path, values, check_value
+                        attribute_path, path_value_pairs, check_value
                     )
 
                     # Add contract file to each result
@@ -226,7 +227,8 @@ class DataContractValidator:
                 Supports wildcard '*' to match all items (e.g., 'models.*.fields')
 
         Returns:
-            List of values found at the attribute path
+            List of tuples (actual_path, value) where actual_path is the concrete path
+            with wildcards resolved (e.g., 'models.my_model.fields.my_field.examples')
         """
         parts = attribute_path.split(".")
         return self._traverse_path(data, parts, [])
@@ -236,7 +238,7 @@ class DataContractValidator:
         data: Any,  # noqa: ANN401
         parts: List[str],
         current_path: List[str],
-    ) -> List[Any]:
+    ) -> List[tuple[str, Any]]:
         """
         Recursively traverse the data structure following the field path
 
@@ -246,10 +248,12 @@ class DataContractValidator:
             current_path: Current traversed path for context
 
         Returns:
-            List of values found
+            List of tuples (actual_path, value) where actual_path is the concrete
+            dot-separated path string
         """
         if not parts:
-            return [data] if data is not None else []
+            path_str = ".".join(current_path) if current_path else ""
+            return [(path_str, data)] if data is not None else []
 
         current_part = parts[0]
         remaining_parts = parts[1:]
@@ -259,10 +263,24 @@ class DataContractValidator:
 
         # Handle dictionary
         if isinstance(data, dict):
-            if current_part in data:
+            if current_part == "*":
+                results = []
+                for key in data:
+                    results.extend(
+                        self._traverse_path(
+                            data[key], remaining_parts, [*current_path, key]
+                        )
+                    )
+                return results
+            elif current_part in data:
                 return self._traverse_path(
                     data[current_part], remaining_parts, [*current_path, current_part]
                 )
+            elif not remaining_parts:
+                # Last component is missing — return path with None so checks can
+                # report the specific missing path instead of the wildcard pattern
+                path_str = ".".join([*current_path, current_part])
+                return [(path_str, None)]
             else:
                 return []
 
