@@ -49,6 +49,10 @@ def load_contracts(
 ) -> list[dict]:
     """Load all data contracts within a user-provided path."""
 
+    # Check if the contract_path exists before proceeding
+    if not contract_path.exists():
+        raise FileNotFoundError(f"Provided contract path does not exist: {contract_path}")
+
     path_type = is_dir_or_yaml(contract_path)
     if path_type == "yaml_file":
         contract_paths = [contract_path]
@@ -57,8 +61,6 @@ def load_contracts(
         contract_paths = list(contract_path.rglob("*.yaml"))
     contracts = []
     for contract_path in contract_paths:
-        if not contract_path.exists():
-            raise FileNotFoundError(f"Contract file not found: {contract_path}")
         contract_content = parse_yml_to_dict(file_path=Path(contract_path))
         if contract_content:
             # Determine if using custom schema

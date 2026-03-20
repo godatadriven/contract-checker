@@ -34,9 +34,9 @@ class PatternCheck(Check):
             passed = re.match(pattern, value_str) is not None
 
             if passed:
-                message = f"Attribute '{attribute_path}' value '{value_str}' matches pattern {pattern}"
+                message = f"Attribute '{attribute_path}' value '{value_str}' matches pattern '{pattern}'"
             else:
-                message = f"Attribute '{attribute_path}' value '{value_str}' does not match pattern {pattern}"
+                message = f"Attribute '{attribute_path}' value '{value_str}' does not match pattern '{pattern}'"
 
             results.append(ValidationResult("", attribute_path, self.check_type, passed, message))
 
