@@ -25,7 +25,6 @@ def temp_dir() -> Generator[Path, None, None]:
 def fixtures_root_path() -> Path:
     """Return the root fixtures directory."""
     fixtures_path = Path(__file__).parent / "fixtures"
-    print(f"THE PATH IS {fixtures_path}")
     return fixtures_path
 
 
