@@ -59,6 +59,12 @@ data_contract_checks:
       - accepted_values:
           - table
 
+  - attribute: info.version
+    checks:
+      - required: true
+      - pattern: ^\d+\.\d+\.\d+$
+
+
 # # Model checks
 #   - attribute: models.fields
 #     checks:

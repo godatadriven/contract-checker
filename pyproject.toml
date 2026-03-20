@@ -79,8 +79,8 @@ exclude = [
     "venv",
 ]
 
-# Same as Black.
-line-length = 88
+
+line-length = 120
 indent-width = 4
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
