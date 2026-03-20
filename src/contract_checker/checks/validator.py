@@ -16,9 +16,7 @@ from .reporting import ValidationReporter
 class DataContractValidator:
     """Validates data contract YAML files against defined checks"""
 
-    def __init__(
-        self, checks_file: str, check_registry: Optional[CheckRegistry] = None
-    ) -> None:
+    def __init__(self, checks_file: str, check_registry: Optional[CheckRegistry] = None) -> None:
         """
         Initialize validator with checks configuration and reporter
 
@@ -57,9 +55,7 @@ class DataContractValidator:
                 checks = check_group["checks"]
 
                 # Get the value(s) at the specified attribute path
-                values = self._get_attribute_values(
-                    data_contract.contract_content, attribute_path
-                )
+                values = self._get_attribute_values(data_contract.contract_content, attribute_path)
 
                 # Run all checks for this attribute
                 for check_config in checks:
@@ -70,9 +66,7 @@ class DataContractValidator:
                     check_handler = self.registry.get(check_type)
 
                     # Execute the check
-                    check_results = check_handler.execute(
-                        attribute_path, values, check_value
-                    )
+                    check_results = check_handler.execute(attribute_path, values, check_value)
 
                     # Add contract file to each result
                     for result in check_results:
@@ -92,9 +86,7 @@ class DataContractValidator:
             results=results,
         )
 
-    def _validate_against_custom_schema(
-        self, data_contract: Contract
-    ) -> List[ValidationResult]:
+    def _validate_against_custom_schema(self, data_contract: Contract) -> List[ValidationResult]:
         """
         Validate contract against custom JSON Schema
 
@@ -153,8 +145,7 @@ class DataContractValidator:
                     attribute="schema",
                     check_type="json_schema",
                     passed=False,
-                    message=f"Custom schema file not found: "
-                    f"{data_contract.custom_schema_path}",
+                    message=f"Custom schema file not found: {data_contract.custom_schema_path}",
                 )
             )
         except json.JSONDecodeError as e:
@@ -180,9 +171,7 @@ class DataContractValidator:
 
         return results
 
-    def validate(
-        self, data_contracts: List[Contract]
-    ) -> List[ContractValidationReport]:
+    def validate(self, data_contracts: List[Contract]) -> List[ContractValidationReport]:
         """
         Validate multiple data contract YAML files
 
@@ -284,9 +273,7 @@ class DataContractValidator:
         # Handle dictionary
         if isinstance(data, dict):
             if current_part in data:
-                return self._traverse_path(
-                    data[current_part], remaining_parts, [*current_path, current_part]
-                )
+                return self._traverse_path(data[current_part], remaining_parts, [*current_path, current_part])
             else:
                 return []
 

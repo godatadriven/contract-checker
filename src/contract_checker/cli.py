@@ -23,19 +23,17 @@ def version_callback(value: bool) -> None:
 
 @app.callback(invoke_without_command=True)
 def main(
-    checks_config_path: Annotated[
-        Path, typer.Argument(help="The location of the data contract check file.")
-    ] = Path("data-contract-checks.yml"),
+    checks_config_path: Annotated[Path, typer.Argument(help="The location of the data contract check file.")] = Path(
+        "data-contract-checks.yml"
+    ),
     severity: Annotated[
         str,
         typer.Option(help="The severity level of the checks. Can be 'error' or 'warn'"),
     ] = "error",
-    verbosity: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Enables verbose output.")
-    ] = False,
-    contract_path: Annotated[
-        Optional[Path], typer.Option(help="The location of the data contract file.")
-    ] = Path("tests/fixtures/dcs/"),
+    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
+    contract_path: Annotated[Optional[Path], typer.Option(help="The location of the data contract file.")] = Path(
+        "tests/fixtures/dcs/"
+    ),
     version: Annotated[
         Optional[bool],
         typer.Option(
