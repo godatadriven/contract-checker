@@ -56,7 +56,7 @@ def main(
         typer.Option(
             help="Optional custom path to configuration file.",
         ),
-    ] = Path("custom-checks-config.yml"),
+    ] = None,
     summary_only: Annotated[
         bool,
         typer.Option("--summary-only", help="Only print the failed checks summary."),
@@ -74,16 +74,21 @@ def main(
         logging.debug(f"Custom schema path: {custom_schema_path}")
         logging.debug(f"Custom configuration path: {custom_config_path}")
 
-    checks_dict = parse_yml_to_dict(config_path)
+    if custom_schema_path:
+        active_config = custom_config_path or Path("custom-checks-config.yml")
+        contract_specification = "custom"
+    else:
+        checks_dict = parse_yml_to_dict(config_path)
+        active_config = config_path
+        contract_specification = checks_dict.get("data_contract_specification")
 
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
         contract_path=contract_path,
-        contract_specification=checks_dict.get("data_contract_specification"),
+        contract_specification=contract_specification,
         custom_schema_path=custom_schema_path,
     )
 
-    active_config = custom_config_path if custom_schema_path else config_path
     validate_contracts(contracts, active_config, summary_only=summary_only)
 
     raise typer.Exit()
