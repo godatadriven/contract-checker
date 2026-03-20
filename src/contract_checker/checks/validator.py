@@ -1,7 +1,7 @@
-"""Core data contract validation logic."""
+"""Core data contract validation logic with integrated reporting."""
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import jsonschema
 import yaml
@@ -10,6 +10,7 @@ from contract_checker.contract.contract_base import Contract
 
 from .models import ContractValidationReport, ValidationResult
 from .registry import CheckRegistry
+from .reporting import ValidationReporter
 
 
 class DataContractValidator:
@@ -17,7 +18,7 @@ class DataContractValidator:
 
     def __init__(self, checks_file: str, check_registry: Optional[CheckRegistry] = None) -> None:
         """
-        Initialize validator with checks configuration
+        Initialize validator with checks configuration and reporter
 
         Args:
             checks_file: Path to the checks YAML file
@@ -27,6 +28,8 @@ class DataContractValidator:
             self.checks_config = yaml.safe_load(f)
 
         self.registry = check_registry or CheckRegistry()
+        # Initialize the reporter for output formatting and summary generation
+        self.reporter = ValidationReporter()
 
     def run_checks(self, data_contract: Contract) -> ContractValidationReport:
         """
@@ -204,6 +207,27 @@ class DataContractValidator:
                 )
 
         return reports
+
+    def print_results(
+        self,
+        reports: Union[ContractValidationReport, List[ContractValidationReport]],
+        verbose: bool = True,
+        summary_only: bool = False,
+    ) -> None:
+        """
+        Print validation results in a readable format
+
+        Delegates to the ValidationReporter for consistent formatting.
+        """
+        self.reporter.print_results(reports, verbose, summary_only)
+
+    def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
+        """
+        Get a summary dictionary of validation results
+
+        Delegates to the ValidationReporter for consistent formatting.
+        """
+        return self.reporter.get_summary(reports)
 
     def _get_attribute_values(self, data: Dict, attribute_path: str) -> List[Any]:
         """
