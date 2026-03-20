@@ -65,10 +65,10 @@ data_contract_checks:
 #       - required: true
 #       - min_items: 1
 
-# # Model field checks
-#   - attribute: models.*.fields.*.unique
-#     checks:
-#       - required: true
+# Model field checks
+  - attribute: models.*.fields.*.unique
+    checks:
+      - required: true
 
 #   - attribute: models.*.fields.*.examples
 #     checks:
