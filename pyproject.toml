@@ -18,7 +18,6 @@ dependencies = [
 lint = [
     "ruff==0.15.11",
     "mypy==1.20.1",
-    "pre-commit >=3,<5",
 ]
 
 docs = [
@@ -30,6 +29,7 @@ docs = [
 
 dev = [
     "pytest>=8.4.2",
+    "pre-commit >=3,<5",
 ]
 
 [project.scripts]
