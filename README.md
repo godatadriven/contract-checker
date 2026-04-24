@@ -114,11 +114,4 @@ The full configuration schema — including path filtering, severity overrides, 
 
 ## Contributing
 
-Contributions are welcome! See the [contributing guide](https://godatadriven.github.io/contract-checker/contributing) for how to set up the project locally and open a pull request.
-
-```bash
-# Local setup
-make install          # sync dependencies from uv.lock
-pre-commit install    # install pre-commit hooks
-make test             # run the test suite
-```
+Bug reports, feature requests, and pull requests are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to add a new check type, and the PR process.
