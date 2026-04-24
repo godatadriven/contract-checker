@@ -55,8 +55,7 @@ class MinItemsCheck(Check):
                     attribute_path,
                     self.check_type,
                     False,
-                    f"Attribute '{attribute_path}' is missing, expected at least "
-                    f"{min_count} items",
+                    f"Attribute '{attribute_path}' is missing, expected at least {min_count} items",
                 )
             ]
 
@@ -130,8 +129,7 @@ class MaxItemsCheck(Check):
                     attribute_path,
                     self.check_type,
                     True,
-                    f"Attribute '{attribute_path}' is missing "
-                    f"(max_items check skipped)",
+                    f"Attribute '{attribute_path}' is missing (max_items check skipped)",
                 )
             ]
 

@@ -59,18 +59,24 @@ data_contract_checks:
       - accepted_values:
           - table
 
+  - attribute: info.version
+    checks:
+      - required: true
+      - pattern: ^\d+\.\d+\.\d+$
+
+
 # # Model checks
 #   - attribute: models.fields
 #     checks:
 #       - required: true
 #       - min_items: 1
 
-# # Model field checks
-#   - attribute: models.*.fields.*.unique
-#     checks:
-#       - required: true
+# Model field checks
+  - attribute: models.*.fields.*.unique
+    checks:
+      - required: true
 
-#   - attribute: models.*.fields.*.examples
-#     checks:
-#       - required: true
-#       - min_items: 3
+  - attribute: models.*.fields.*.examples
+    checks:
+      - required: true
+      - min_items: 2

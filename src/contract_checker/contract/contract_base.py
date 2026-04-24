@@ -12,9 +12,7 @@ class Contract(BaseModel):
     contract_specification: str
     contract_specification_version: str
     custom_schema_path: Optional[Path] = None
-    schema_file_directory: ClassVar[Path] = Path(
-        "src/contract_checker/contract_schemas"
-    )
+    schema_file_directory: ClassVar[Path] = Path("src/contract_checker/contract_schemas")
 
     @model_validator(mode="after")
     def validate_version(self) -> Self:
@@ -35,7 +33,5 @@ class Contract(BaseModel):
             )
             is False
         ):
-            raise ValueError(
-                f"Contract version {self.contract_specification} is not supported."
-            )
+            raise ValueError(f"Contract version {self.contract_specification} is not supported.")
         return self

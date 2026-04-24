@@ -1,29 +1,27 @@
-import unittest
-from typing import Any, Dict
+"""Unit tests for the CLI entry point."""
+
+from __future__ import annotations
+
+from typer.testing import CliRunner
+
+from contract_checker.cli import app
+from contract_checker.version import version
 
 
-class TestCheck(unittest.TestCase):
-    def set_up_contract(self) -> None:
-        self.base_contract: Dict[str, Any] = {}
+class TestCli:
+    """Test the Typer CLI application."""
 
-        self.contract_with_required_field_missing: Dict[str, Any] = {}
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
 
-        self.contract_with_field_to_exclude: Dict[str, Any] = {}
+    def test_version_flag(self) -> None:
+        """Test that --version exits 0 and prints the version string."""
+        result = self.runner.invoke(app, ["--version"])
+        assert result.exit_code == 0
+        assert version() in result.output
 
-        self.contract_with_pattern_mismatch: Dict[str, Any] = {}
-
-        self.contract_with_minimum_number_of_items: Dict[str, Any] = {}
-
-        self.contract_with_less_than_minimum_items: Dict[str, Any] = {}
-
-    def test_if_required_field_present(self) -> None:
-        pass
-
-    def test_if_field_excluded(self) -> None:
-        pass
-
-    def test_if_pattern_matched(self) -> None:
-        pass
-
-    def test_if_minimum_number_of_items(self) -> None:
-        pass
+    def test_missing_checks_config(self) -> None:
+        """Test that a non-existent checks config path causes a non-zero exit."""
+        result = self.runner.invoke(app, ["nonexistent-checks.yml"])
+        assert result.exit_code != 0
