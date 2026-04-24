@@ -53,9 +53,7 @@ class AcceptedValuesCheck(Check):
         """
         return "accepted_values"
 
-    def execute(
-        self, attribute_path: str, value_list: List[Any], accepted_values: List[str]
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, value_list: List[Any], accepted_values: List[str]) -> List[ValidationResult]:
         """Execute the accepted values validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked.
