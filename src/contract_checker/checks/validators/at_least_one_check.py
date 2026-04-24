@@ -33,6 +33,12 @@ class AtLeastOneCheck(Check):
           - at_least_one:
               primaryKey: true
     ```
+
+    **Per-expansion semantics.** When the attribute path contains a wildcard
+    (e.g. ``models.*.fields``), the check runs once per expanded concrete path
+    — once per model in the examples above. Each expansion must independently
+    satisfy the condition; results are *not* aggregated across matches. Use a
+    non-wildcarded path if you want a single pooled verdict instead.
     """
 
     @property
