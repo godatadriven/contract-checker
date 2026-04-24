@@ -68,11 +68,13 @@ class <ClassName>(Check):
         values: List[Any],
         check_value: Any,  # noqa: ANN401
     ) -> List[ValidationResult]:
-        # TODO: implement validation logic
-        passed = True
-        message = f"Attribute '{attribute_path}' passed <check_name> check"
-        return [ValidationResult("", attribute_path, self.check_type, passed, message)]
+        # TODO: implement validation logic. Remove this raise once implemented.
+        raise NotImplementedError(
+            f"{self.check_type} check is not implemented yet"
+        )
 ```
+
+The scaffolded `execute` raises `NotImplementedError` intentionally — a freshly scaffolded check should fail loudly in tests until it's implemented, rather than silently pass.
 
 4. Edit `src/contract_checker/checks/validators/__init__.py`:
    - Add `from .<file_stem> import <ClassName>` in alphabetical order with the existing imports
