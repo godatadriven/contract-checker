@@ -11,7 +11,8 @@ class AtLeastOneCheck(Check):
 
     Use this check when a constraint must hold for *some* (not all) items.
     Point the ``attribute`` path at the **collection**, not a leaf field, and
-    pass a single-key dict as ``check_value`` to match a nested attribute.
+    provide a single ``attr: val`` pair under ``at_least_one`` as a YAML block
+    mapping to match a nested attribute.
 
     Example — at least one field per model must have ``unique: true``:
 
@@ -19,7 +20,8 @@ class AtLeastOneCheck(Check):
     data_contract_checks:
       - attribute: models.*.fields
         checks:
-          - at_least_one: {unique: true}
+          - at_least_one:
+              unique: true
     ```
 
     Example — at least one field must be a primary key:
@@ -28,7 +30,8 @@ class AtLeastOneCheck(Check):
     data_contract_checks:
       - attribute: models.*.fields
         checks:
-          - at_least_one: {primaryKey: true}
+          - at_least_one:
+              primaryKey: true
     ```
     """
 
@@ -47,9 +50,10 @@ class AtLeastOneCheck(Check):
         :param attribute_path: The dot-notation path to the collection being checked.
         :param values: List of values found at the attribute path. Typically a list
             containing one dict (a mapping of named items, e.g. fields in a model).
-        :param check_value: Either a single-key dict ``{attr: val}`` — meaning at
-            least one child object must have ``attr == val`` — or a scalar, meaning
-            at least one element in ``values`` must equal the scalar.
+        :param check_value: Either a mapping with a single ``attr: val`` entry
+            — meaning at least one child object must have ``attr == val`` — or a
+            scalar, meaning at least one element in ``values`` must equal the
+            scalar.
         :return: A list containing a single :class:`ValidationResult`.
         """
         if not values:
