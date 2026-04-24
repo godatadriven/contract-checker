@@ -20,9 +20,9 @@ class TestCheckRegistry:
         self.registry = CheckRegistry()
 
     def test_default_registry_has_all_checks(self) -> None:
-        """Test that the registry contains all 5 default check types on init."""
+        """Test that the registry contains all default check types on init."""
         available = self.registry.list_available()
-        expected = {"required", "pattern", "accepted_values", "min_items", "max_items"}
+        expected = {"required", "pattern", "accepted_values", "min_items", "max_items", "at_least_one"}
         assert set(available) == expected
 
     def test_get_known_check_type(self) -> None:
