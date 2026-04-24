@@ -268,16 +268,58 @@ class TestAtLeastOneCheck:
         assert results[0].passed is False
         assert "missing" in results[0].message
 
-    def test_scalar_check_passes(self) -> None:
-        """Test scalar check passes when at least one value matches."""
-        results = self.check.execute("test.field", [False, True], True)
+    def test_multi_key_check_value_rejected(self) -> None:
+        """Multi-key check_value must fail with a clear message, not silently ignore extras."""
+        fields = {"order_id": {"unique": True, "type": "text"}}
+        results = self.check.execute("models.orders.fields", [fields], {"unique": True, "primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "single-key" in results[0].message
+
+    def test_empty_dict_check_value_rejected(self) -> None:
+        """Empty dict check_value must fail, not raise StopIteration."""
+        fields = {"order_id": {"unique": True}}
+        results = self.check.execute("models.orders.fields", [fields], {})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "single-key" in results[0].message
+
+    def test_non_dict_check_value_rejected(self) -> None:
+        """Scalar / list / None check_value must fail with a clear message."""
+        for bad_value in [True, "unique", ["unique"], None]:
+            results = self.check.execute("models.orders.fields", [{"x": {}}], bad_value)
+
+            assert len(results) == 1
+            assert results[0].passed is False
+            assert "single-key" in results[0].message
+
+    def test_non_dict_items_in_collection(self) -> None:
+        """Collection entries that are not dicts must not crash; they don't match."""
+        fields = {"order_id": "not_a_dict", "name": {"unique": True}}
+        results = self.check.execute("models.orders.fields", [fields], {"unique": True})
 
         assert len(results) == 1
         assert results[0].passed is True
 
-    def test_scalar_check_fails(self) -> None:
-        """Test scalar check fails when no value matches."""
-        results = self.check.execute("test.field", [False, False], True)
+        fields_none_match = {"order_id": "str", "name": 42}
+        results = self.check.execute("models.orders.fields", [fields_none_match], {"unique": True})
 
         assert len(results) == 1
         assert results[0].passed is False
+
+    def test_per_expansion_independence(self) -> None:
+        """Each wildcard-expanded path gets its own verdict; results are not pooled.
+
+        Simulates how the runner invokes the check once per expanded model.
+        One passing and one failing collection must produce independent verdicts.
+        """
+        model_a_fields = {"id": {"unique": True}}
+        model_b_fields = {"id": {"unique": False}}
+
+        pass_results = self.check.execute("models.a.fields", [model_a_fields], {"unique": True})
+        fail_results = self.check.execute("models.b.fields", [model_b_fields], {"unique": True})
+
+        assert pass_results[0].passed is True
+        assert fail_results[0].passed is False

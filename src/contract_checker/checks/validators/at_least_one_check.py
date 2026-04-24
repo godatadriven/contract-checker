@@ -56,10 +56,10 @@ class AtLeastOneCheck(Check):
         :param attribute_path: The dot-notation path to the collection being checked.
         :param values: List of values found at the attribute path. Typically a list
             containing one dict (a mapping of named items, e.g. fields in a model).
-        :param check_value: Either a mapping with a single ``attr: val`` entry
-            — meaning at least one child object must have ``attr == val`` — or a
-            scalar, meaning at least one element in ``values`` must equal the
-            scalar.
+        :param check_value: A mapping with exactly one ``attr: val`` entry — at
+            least one child object in the collection must have ``attr == val``.
+            Multi-key mappings, empty mappings, and non-mapping values are
+            rejected with a failing result.
         :return: A list containing a single :class:`ValidationResult`.
         """
         if not values:
@@ -73,29 +73,32 @@ class AtLeastOneCheck(Check):
                 )
             ]
 
-        if isinstance(check_value, dict):
-            required_attr, required_val = next(iter(check_value.items()))
-            found = False
-            for value in values:
-                if isinstance(value, dict):
-                    for item in value.values():
-                        if isinstance(item, dict) and item.get(required_attr) == required_val:
-                            found = True
-                            break
-                if found:
-                    break
-
-            if found:
-                message = (
-                    f"Attribute '{attribute_path}' contains at least one item with '{required_attr}: {required_val}'"
+        if not isinstance(check_value, dict) or len(check_value) != 1:
+            return [
+                ValidationResult(
+                    "",
+                    attribute_path,
+                    self.check_type,
+                    False,
+                    f"Attribute '{attribute_path}' at_least_one check requires a "
+                    f"single-key mapping (e.g. {{unique: true}}); got: {check_value!r}",
                 )
-            else:
-                message = f"Attribute '{attribute_path}' has no items with '{required_attr}: {required_val}'"
-        else:
-            found = any(v == check_value for v in values if v is not None)
+            ]
+
+        required_attr, required_val = next(iter(check_value.items()))
+        found = False
+        for value in values:
+            if isinstance(value, dict):
+                for item in value.values():
+                    if isinstance(item, dict) and item.get(required_attr) == required_val:
+                        found = True
+                        break
             if found:
-                message = f"Attribute '{attribute_path}' contains at least one value equal to '{check_value}'"
-            else:
-                message = f"Attribute '{attribute_path}' has no values equal to '{check_value}'"
+                break
+
+        if found:
+            message = f"Attribute '{attribute_path}' contains at least one item with '{required_attr}: {required_val}'"
+        else:
+            message = f"Attribute '{attribute_path}' has no items with '{required_attr}: {required_val}'"
 
         return [ValidationResult("", attribute_path, self.check_type, found, message)]
