@@ -24,3 +24,5 @@ data_contract_checks:
 ```
 
 > **Why point at the collection?** Wildcard paths like `models.*.fields.*.unique` are expanded and checked *per field*. Stopping one level up at `models.*.fields` passes the entire fields dict to the check, so it can inspect all fields together.
+
+> **Per-model, not aggregated.** When the attribute path contains a wildcard (e.g. `models.*.fields`), the check runs **once per expanded path** — once for each model in this example. Each model must independently satisfy the condition; results are **not** pooled across models. If two of three models have a `unique: true` field and one does not, you'll get two pass results and one fail, not a single combined verdict. To require that at least one unique field exists *somewhere* across all models, point `attribute` at a non-wildcarded path instead.
