@@ -7,12 +7,8 @@ authors = [
     {name = "Thom van Engelenburg, Sonu Jacob"},
 ]
 dependencies = [
-    "numpy==2.2.6",
-    "ruff==0.15.1",
-    "mypy==1.19.1",
-    "pre-commit >=3,<5",
     "typer>=0.20.0",
-    "pydantic>=2.12",
+    "pydantic>=2.13.2",
     "pyyaml>=6",
     "types-PyYAML",
     "jsonschema>=4.0",
@@ -20,28 +16,27 @@ dependencies = [
 
 [dependency-groups]
 lint = [
-    "ruff==0.15.1",
-    "pre-commit >=3,<5"
-
+    "ruff==0.15.11",
+    "mypy==1.20.1",
 ]
 
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.4.0",
-    "mkdocs-typer2>=0.2.0",
-    "mkdocstrings[python]>=0.24.0",
+    "mkdocstrings[python]>=1.0.4",
     "pymdown-extensions>=10.0.0",
 ]
 
 dev = [
     "pytest>=8.4.2",
+    "pre-commit >=3,<5",
 ]
 
 [project.scripts]
 contract-checker = "contract_checker.cli:app"
 
 [build-system]
-requires = ["setuptools==82.0.0"]
+requires = ["setuptools==82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.mypy]
@@ -80,8 +75,8 @@ exclude = [
     "venv",
 ]
 
-# Same as Black.
-line-length = 88
+
+line-length = 120
 indent-width = 4
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -130,3 +125,7 @@ fixable = ["ALL"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
