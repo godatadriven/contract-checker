@@ -3,10 +3,13 @@ install:
 
 test:
 	$(MAKE) test-unit
-	# add any more test groups here to run them all at once using 'make test'
+	$(MAKE) test-integration
 
 test-unit:
 	uv run pytest ./tests/unit
+
+test-integration:
+	uv run pytest ./tests/integration
 
 validate-examples:
 	uv run contract-checker

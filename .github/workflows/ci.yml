@@ -22,8 +22,7 @@ jobs:
           enable-cache: true
 
       - name: Sync environment
-        if: steps.setup-uv.outputs.cache-hit == 'true'
-        run: uv sync --dev
+        run: uv sync --group dev --group lint
 
       - name: Restore pre-commit hooks cache
         uses: actions/cache@v5
