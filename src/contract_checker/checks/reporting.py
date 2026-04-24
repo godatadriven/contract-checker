@@ -19,7 +19,7 @@ class ValidationReporter:
     def print_results(
         self,
         reports: Union[ContractValidationReport, List[ContractValidationReport]],
-        verbose: bool = True,
+        verbose: bool = False,
         summary_only: bool = False,
     ) -> None:
         """
@@ -40,10 +40,17 @@ class ValidationReporter:
         self.console.print("[bold white]Data Contract Checker[/bold white]", justify="center")
         self.console.print()  # spacing after header
 
-        if summary_only:
+        all_passed = all(r.success for r in reports)
+
+        if all_passed:
+            self._print_top_summary(reports)
+        elif summary_only:
+            self._print_top_summary(reports)
             self._print_failed_checks_summary_table(reports)
         else:
-            # Print individual contract results
+            self._print_top_summary(reports)
+
+            # Print individual contract results (failures only unless verbose)
             self._print_individual_contracts(reports, verbose)
 
             # Add big divider before summary table
@@ -52,10 +59,31 @@ class ValidationReporter:
             # Print failed checks summary table
             self._print_failed_checks_summary_table(reports)
 
+    def _print_top_summary(self, reports: List[ContractValidationReport]) -> None:
+        """Print a one-line summary at the top of the output"""
+        total_checks = sum(r.total_checks for r in reports)
+        failed_checks = sum(r.failed_checks for r in reports)
+        total_contracts = len(reports)
+
+        if failed_checks == 0:
+            self.console.print(
+                f"[bold green]✓ All checks passed "
+                f"({total_checks} checks across {total_contracts} data contracts)"
+                f"[/bold green]"
+            )
+        else:
+            self.console.print(
+                f"[bold red]✗ {failed_checks}/{total_checks} checks across "
+                f"{total_contracts} data contracts failing[/bold red]"
+            )
+        self.console.print()  # spacing after summary
+
     def _print_individual_contracts(self, reports: List[ContractValidationReport], verbose: bool) -> None:
         """Print detailed results for each contract in individual tables"""
 
-        for i, report in enumerate(reports, 1):
+        visible_reports = [(i, r) for i, r in enumerate(reports, 1) if verbose or not r.success]
+
+        for pos, (i, report) in enumerate(visible_reports):
             # Contract header
             status_text = Text()
             if report.success:
@@ -67,7 +95,7 @@ class ValidationReporter:
             filename = f"{report.contract_file!s}".split("/")[-1]
 
             # Add divider before each contract (except the first one)
-            if i > 1:
+            if pos > 0:
                 self.console.print("\n" + " " * 80)
 
             self.console.print(
