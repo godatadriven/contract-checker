@@ -77,7 +77,7 @@ def main(
         custom_schema_path=custom_schema_path,
     )
 
-    validate_contracts(contracts, checks_dict)
+    validate_contracts(contracts, checks_dict, verbose=verbosity)
 
     raise typer.Exit()
 
