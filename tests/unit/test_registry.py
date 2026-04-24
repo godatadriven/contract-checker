@@ -12,17 +12,6 @@ from contract_checker.checks.registry import CheckRegistry
 from contract_checker.checks.validators import RequiredCheck
 
 
-class _DummyCheck(Check):
-    """Minimal Check subclass for testing custom registration."""
-
-    @property
-    def check_type(self) -> str:
-        return "dummy"
-
-    def execute(self, attribute_path: str, value_list: list[Any], check_value: Any) -> list[ValidationResult]:  # noqa: ANN401
-        return []
-
-
 class TestCheckRegistry:
     """Test CheckRegistry functionality."""
 
@@ -48,7 +37,40 @@ class TestCheckRegistry:
 
     def test_register_custom_check(self) -> None:
         """Test that a custom Check subclass can be registered and retrieved."""
+
+        class _DummyCheck(Check):
+            """Minimal Check subclass for testing custom registration."""
+
+            @property
+            def check_type(self) -> str:
+                return "dummy"
+
+            def execute(self, attribute_path: str, value_list: list[Any], check_value: Any) -> list[ValidationResult]:  # noqa: ANN401
+                return []
+
         dummy = _DummyCheck()
         self.registry.register(dummy)
         result = self.registry.get("dummy")
         assert isinstance(result, _DummyCheck)
+
+    def test_register_overrides_existing(self) -> None:
+        """Re-registering a check type replaces the previous handler."""
+
+        class _OverrideRequired(Check):
+            @property
+            def check_type(self) -> str:
+                return "required"
+
+            def execute(self, attribute_path: str, value_list: list[Any], check_value: Any) -> list[ValidationResult]:  # noqa: ANN401
+                return [ValidationResult("", attribute_path, self.check_type, True, "overridden")]
+
+        override = _OverrideRequired()
+        self.registry.register(override)
+
+        assert self.registry.get("required") is override
+
+    def test_each_check_type_returns_correct_type(self) -> None:
+        """Each default check's check_type property should match its registry key."""
+        for check_type_name in self.registry.list_available():
+            check = self.registry.get(check_type_name)
+            assert check.check_type == check_type_name
