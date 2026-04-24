@@ -1,34 +1,33 @@
-"""Core data contract validation logic."""
+"""Core data contract validation logic with integrated reporting."""
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import jsonschema
-import yaml
 
 from contract_checker.contract.contract_base import Contract
 
 from .models import ContractValidationReport, ValidationResult
 from .registry import CheckRegistry
+from .reporting import ValidationReporter
 
 
 class DataContractValidator:
     """Validates data contract YAML files against defined checks"""
 
-    def __init__(
-        self, checks_file: str, check_registry: Optional[CheckRegistry] = None
-    ) -> None:
+    def __init__(self, checks_dict: dict, check_registry: Optional[CheckRegistry] = None) -> None:
         """
-        Initialize validator with checks configuration
+        Initialize validator with checks configuration and reporter
 
         Args:
-            checks_file: Path to the checks YAML file
+            checks_dict: Dictionary containing the checks configuration
             check_registry: Optional custom CheckRegistry instance
         """
-        with open(checks_file, "r") as f:
-            self.checks_config = yaml.safe_load(f)
+        self.checks_config = checks_dict
 
         self.registry = check_registry or CheckRegistry()
+        # Initialize the reporter for output formatting and summary generation
+        self.reporter = ValidationReporter()
 
     def run_checks(self, data_contract: Contract) -> ContractValidationReport:
         """
@@ -49,33 +48,35 @@ class DataContractValidator:
             results.extend(schema_results)
         else:
             # Run standard checks only if not using custom schema
-            for check_group in self.checks_config["data_contract_checks"]:
-                attribute_path = check_group["attribute"]
-                checks = check_group["checks"]
+            for attribute in self.checks_config["data_contract_checks"]:
+                attribute_path = attribute["attribute"]
+                checks = attribute["checks"]
 
-                # Get the value(s) at the specified attribute path
-                values = self._get_attribute_values(
-                    data_contract.contract_content, attribute_path
-                )
+                if "*" in attribute_path:
+                    # Wildcard path: expand into concrete paths and run
+                    # checks individually per matched item
+                    expanded = self._expand_wildcard_paths(data_contract.contract_content, attribute_path)
+                    for concrete_path, values in expanded.items():
+                        for check_config in checks:
+                            check_type = next(iter(check_config.keys()))
+                            check_value = check_config[check_type]
+                            check_handler = self.registry.get(check_type)
+                            check_results = check_handler.execute(concrete_path, values, check_value)
+                            for result in check_results:
+                                result.contract_file = data_contract.contract_path
+                            results.extend(check_results)
+                else:
+                    # Non-wildcard path: original behavior
+                    values = self._get_attribute_values(data_contract.contract_content, attribute_path)
 
-                # Run all checks for this attribute
-                for check_config in checks:
-                    check_type = next(iter(check_config.keys()))
-                    check_value = check_config[check_type]
-
-                    # Get the appropriate check handler from registry
-                    check_handler = self.registry.get(check_type)
-
-                    # Execute the check
-                    check_results = check_handler.execute(
-                        attribute_path, values, check_value
-                    )
-
-                    # Add contract file to each result
-                    for result in check_results:
-                        result.contract_file = data_contract.contract_path
-
-                    results.extend(check_results)
+                    for check_config in checks:
+                        check_type = next(iter(check_config.keys()))
+                        check_value = check_config[check_type]
+                        check_handler = self.registry.get(check_type)
+                        check_results = check_handler.execute(attribute_path, values, check_value)
+                        for result in check_results:
+                            result.contract_file = data_contract.contract_path
+                        results.extend(check_results)
 
         # Create report
         passed = sum(1 for r in results if r.passed)
@@ -89,9 +90,7 @@ class DataContractValidator:
             results=results,
         )
 
-    def _validate_against_custom_schema(
-        self, data_contract: Contract
-    ) -> List[ValidationResult]:
+    def _validate_against_custom_schema(self, data_contract: Contract) -> List[ValidationResult]:
         """
         Validate contract against custom JSON Schema
 
@@ -150,8 +149,7 @@ class DataContractValidator:
                     attribute="schema",
                     check_type="json_schema",
                     passed=False,
-                    message=f"Custom schema file not found: "
-                    f"{data_contract.custom_schema_path}",
+                    message=f"Custom schema file not found: {data_contract.custom_schema_path}",
                 )
             )
         except json.JSONDecodeError as e:
@@ -177,9 +175,7 @@ class DataContractValidator:
 
         return results
 
-    def validate(
-        self, data_contracts: List[Contract]
-    ) -> List[ContractValidationReport]:
+    def validate(self, data_contracts: List[Contract]) -> List[ContractValidationReport]:
         """
         Validate multiple data contract YAML files
 
@@ -216,6 +212,27 @@ class DataContractValidator:
 
         return reports
 
+    def print_results(
+        self,
+        reports: Union[ContractValidationReport, List[ContractValidationReport]],
+        verbose: bool = True,
+        summary_only: bool = False,
+    ) -> None:
+        """
+        Print validation results in a readable format
+
+        Delegates to the ValidationReporter for consistent formatting.
+        """
+        self.reporter.print_results(reports, verbose, summary_only)
+
+    def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
+        """
+        Get a summary dictionary of validation results
+
+        Delegates to the ValidationReporter for consistent formatting.
+        """
+        return self.reporter.get_summary(reports)
+
     def _get_attribute_values(self, data: Dict, attribute_path: str) -> List[Any]:
         """
         Extract values from nested data structure based on attribute path
@@ -223,13 +240,81 @@ class DataContractValidator:
         Args:
             data: The data dictionary
             attribute_path: Dot-separated attribute path (e.g., 'models.fields.unique')
-                Supports wildcard '*' to match all items (e.g., 'models.*.fields')
-
         Returns:
             List of values found at the attribute path
         """
         parts = attribute_path.split(".")
         return self._traverse_path(data, parts, [])
+
+    def _expand_wildcard_paths(self, data: Dict, attribute_path: str) -> Dict[str, List[Any]]:
+        """
+        For paths containing wildcards, expand into concrete paths and collect
+        values for each. This allows checks to run per-item rather than across
+        all matched items combined.
+
+        Args:
+            data: The data dictionary
+            attribute_path: Dot-separated path with wildcards (e.g., 'models.*.fields.*.unique')
+
+        Returns:
+            Dict mapping each concrete expanded path to its list of values.
+            Paths where the leaf attribute is missing will map to an empty list.
+        """
+        parts = attribute_path.split(".")
+        return self._expand_and_collect(data, parts, [])
+
+    def _expand_and_collect(
+        self,
+        data: Any,  # noqa: ANN401
+        parts: List[str],
+        current_path: List[str],
+    ) -> Dict[str, List[Any]]:
+        """
+        Recursively expand wildcards and collect values per concrete path.
+
+        Args:
+            data: Current data node
+            parts: Remaining parts of the field path
+            current_path: Concrete path segments accumulated so far
+
+        Returns:
+            Dict mapping concrete path strings to their values
+        """
+        if not parts:
+            path_str = ".".join(current_path)
+            return {path_str: [data] if data is not None else []}
+
+        current_part = parts[0]
+        remaining = parts[1:]
+
+        if data is None:
+            path_str = ".".join(current_path + parts)
+            return {path_str: []}
+
+        if isinstance(data, dict):
+            if current_part == "*":
+                # Wildcard: expand into each key in the dict
+                results_wildcard: Dict[str, List[Any]] = {}
+                for key, value in data.items():
+                    sub = self._expand_and_collect(value, remaining, [*current_path, key])
+                    results_wildcard.update(sub)
+                return results_wildcard
+            elif current_part in data:
+                return self._expand_and_collect(data[current_part], remaining, [*current_path, current_part])
+            else:
+                path_str = ".".join(current_path + parts)
+                return {path_str: []}
+
+        elif isinstance(data, list):
+            results: Dict[str, List[Any]] = {}
+            for item in data:
+                sub = self._expand_and_collect(item, parts, current_path)
+                for k, v in sub.items():
+                    results.setdefault(k, []).extend(v)
+            return results
+
+        path_str = ".".join(current_path + parts)
+        return {path_str: []}
 
     def _traverse_path(
         self,
@@ -260,9 +345,7 @@ class DataContractValidator:
         # Handle dictionary
         if isinstance(data, dict):
             if current_part in data:
-                return self._traverse_path(
-                    data[current_part], remaining_parts, [*current_path, current_part]
-                )
+                return self._traverse_path(data[current_part], remaining_parts, [*current_path, current_part])
             else:
                 return []
 

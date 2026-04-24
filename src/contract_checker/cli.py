@@ -23,19 +23,17 @@ def version_callback(value: bool) -> None:
 
 @app.callback(invoke_without_command=True)
 def main(
-    config_path: Annotated[
-        Path, typer.Argument(help="The location of the data contract check file.")
-    ] = Path("data-contract-checks.yml"),
+    checks_config_path: Annotated[Path, typer.Argument(help="The location of the data contract check file.")] = Path(
+        "data-contract-checks.yml"
+    ),
     severity: Annotated[
         str,
         typer.Option(help="The severity level of the checks. Can be 'error' or 'warn'"),
     ] = "error",
-    verbosity: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Enables verbose output.")
-    ] = False,
-    contract_path: Annotated[
-        Optional[Path], typer.Option(help="The location of the data contract file.")
-    ] = Path("tests/fixtures/dcs/"),
+    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
+    contract_path: Annotated[Optional[Path], typer.Option(help="The location of the data contract file.")] = Path(
+        "tests/fixtures/dcs/"
+    ),
     version: Annotated[
         Optional[bool],
         typer.Option(
@@ -63,14 +61,14 @@ def main(
     if verbosity:
         logging.debug("Verbose mode is enabled.")
     logging.info(f"Running contract-checker version: {version}")
-    logging.debug(f"Configuration path: {config_path}")
+    logging.debug(f"Checks configuration path: {checks_config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
     if custom_schema_path:
         logging.debug(f"Custom schema path: {custom_schema_path}")
         logging.debug(f"Custom configuration path: {custom_config_path}")
 
-    checks_dict = parse_yml_to_dict(config_path)
+    checks_dict = parse_yml_to_dict(checks_config_path)
 
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
@@ -79,7 +77,7 @@ def main(
         custom_schema_path=custom_schema_path,
     )
 
-    validate_contracts(contracts, config_path, verbose=verbosity)
+    validate_contracts(contracts, checks_dict, verbose=verbosity)
 
     raise typer.Exit()
 

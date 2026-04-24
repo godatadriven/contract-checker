@@ -37,9 +37,7 @@ class ValidationReporter:
         self.console.print()  # spacing
 
         # Print header
-        self.console.print(
-            "[bold white]Data Contract Checker[/bold white]", justify="center"
-        )
+        self.console.print("[bold white]Data Contract Checker[/bold white]", justify="center")
         self.console.print()  # spacing after header
 
         all_passed = all(r.success for r in reports)
@@ -80,14 +78,10 @@ class ValidationReporter:
             )
         self.console.print()  # spacing after summary
 
-    def _print_individual_contracts(
-        self, reports: List[ContractValidationReport], verbose: bool
-    ) -> None:
+    def _print_individual_contracts(self, reports: List[ContractValidationReport], verbose: bool) -> None:
         """Print detailed results for each contract in individual tables"""
 
-        visible_reports = [
-            (i, r) for i, r in enumerate(reports, 1) if verbose or not r.success
-        ]
+        visible_reports = [(i, r) for i, r in enumerate(reports, 1) if verbose or not r.success]
 
         for pos, (i, report) in enumerate(visible_reports):
             # Contract header
@@ -157,13 +151,9 @@ class ValidationReporter:
                 self.console.print(table)
 
             else:
-                self.console.print(
-                    "[dim]No checks to display with current verbosity settings[/dim]"
-                )
+                self.console.print("[dim]No checks to display with current verbosity settings[/dim]")
 
-    def _print_failed_checks_summary_table(
-        self, reports: List[ContractValidationReport]
-    ) -> None:
+    def _print_failed_checks_summary_table(self, reports: List[ContractValidationReport]) -> None:
         """Print summary table showing all failed checks per contract"""
 
         # Create failed checks summary table
