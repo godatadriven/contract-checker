@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contract_checker.checks.validators import (
     AcceptedValuesCheck,
+    AtLeastOneCheck,
     MaxItemsCheck,
     MinItemsCheck,
     PatternCheck,
@@ -225,3 +226,58 @@ class TestAcceptedValuesCheck:
         results = self.check.execute("test.field", [None], ["active", "inactive"])
 
         assert len(results) == 0
+
+
+class TestAtLeastOneCheck:
+    """Test AtLeastOneCheck functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.check = AtLeastOneCheck()
+
+    def test_dict_check_passes(self) -> None:
+        """Test dict check passes when at least one item has the required attribute."""
+        fields = {"order_id": {"unique": True, "type": "text"}, "name": {"type": "text"}}
+        results = self.check.execute("models.orders.fields", [fields], {"unique": True})
+
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert "at least one item" in results[0].message
+
+    def test_dict_check_fails(self) -> None:
+        """Test dict check fails when no item has the required attribute."""
+        fields = {"order_id": {"type": "text"}, "name": {"type": "text"}}
+        results = self.check.execute("models.orders.fields", [fields], {"unique": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "no items" in results[0].message
+
+    def test_dict_check_empty_collection(self) -> None:
+        """Test dict check fails when the collection is empty."""
+        results = self.check.execute("models.orders.fields", [{}], {"unique": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+
+    def test_missing_attribute(self) -> None:
+        """Test check fails when the attribute is missing entirely."""
+        results = self.check.execute("models.orders.fields", [], {"unique": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "missing" in results[0].message
+
+    def test_scalar_check_passes(self) -> None:
+        """Test scalar check passes when at least one value matches."""
+        results = self.check.execute("test.field", [False, True], True)
+
+        assert len(results) == 1
+        assert results[0].passed is True
+
+    def test_scalar_check_fails(self) -> None:
+        """Test scalar check fails when no value matches."""
+        results = self.check.execute("test.field", [False, False], True)
+
+        assert len(results) == 1
+        assert results[0].passed is False
