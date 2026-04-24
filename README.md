@@ -1,49 +1,124 @@
-# contract-checker
-An open source Python package that is able to parse data contract standards and allows users to configure checks
+# Data Contract Checker
 
-## Project Structure
+> Validate data contracts against configurable rules — with human-readable output.
 
-```
-checks/
-├── __init__.py              # Main module with backward compatibility
-├── base.py                  # Abstract base classes - contract definitions for extensibility
-├── models.py                # Data structures
-├── registry.py              # Check registry system
-├── validator.py             # Core validation logic - path traversal and validation orchestration
-├── reporting.py             # Output formatting and reporting
-└── validators/              # Individual check implementations - each check type in its own file
-    ├── __init__.py
-    ├── required_check.py    # Required field validation
-    ├── pattern_check.py     # Regex pattern validation
-    └── items_check.py       # Min/max items validation
-```
+[![PyPI version](https://img.shields.io/pypi/v/contract-checker)](https://pypi.org/project/contract-checker/)
+[![Python versions](https://img.shields.io/pypi/pyversions/contract-checker)](https://pypi.org/project/contract-checker/)
+[![License](https://img.shields.io/github/license/godatadriven/contract-checker)](LICENSE)
 
+Data Contract Checker is an open source Python package that lets you define and enforce validation rules across your data contracts. Think of it as [dbt-bouncer](https://github.com/godatadriven/dbt-bouncer) but for data contracts — configure the checks you care about, run the CLI, and get clear pass/fail feedback on every contract in your repository.
 
-## How to use the Data Contract Checker
-1. Define your validation rules in ```data-contract-checks.yml```. This YAML file should specify the validation rules for your data contracts, such as required fields, regex patterns, or item count constraints.
-2. Run the CLI based validator to check your data.
-3. Review the output for any issues.
+It supports the two major open data contract standards out of the box, with custom JSON Schema support for everything else.
 
+**Full documentation:** [godatadriven.github.io/contract-checker](https://godatadriven.github.io/contract-checker)
 
-Example validation rules:
-```fields:
-  name:
-    required: true
-    pattern: "^[A-Za-z ]+$"
-  age:
-    required: true
-    min: 0
-    max: 120
-  tags:
-    min_items: 1
-    max_items: 5
+---
+
+## Supported standards
+
+| Standard | Versions |
+|---|---|
+| [DCS — Data Contract Specification](https://datacontract.com) | 0.9.0 – 1.2.1 |
+| [ODCS — Open Data Contract Standard](https://bitol-io.github.io/open-data-contract-standard/) | 2.2.1 – 3.0.2 |
+| Custom JSON Schema | any |
+
+---
+
+## Installation
+
+```bash
+pip install contract-checker
 ```
 
+```bash
+# or with uv
+uv add contract-checker
+```
 
-## How to run locally
-- Initialize venv
-- ```make install``` to synchronize dependencies from `uv.lock`
-- ```pre-commit install``` to initialise `pre-commit`
-- ```make test``` to run all tests
-- ```uv run python -m contract_checker.cli --help``` to see available commands
-- ```uv run python -m contract_checker.cli --verbose --contract-path tests/fixtures/dcs/1.2.0/``` to run with a sample contract using dcs standard
+Requires Python 3.10+.
+
+---
+
+## Quick start
+
+**1. Create a `data-contract-checks.yml` file** in your project root:
+
+```yaml
+data_contract_specification: dcs   # or "odcs" / "custom"
+
+data_contract_checks:
+  - attribute: info.title
+    checks:
+      - required: true
+      - pattern: "^[A-Z]"          # title must start with a capital letter
+
+  - attribute: info.version
+    checks:
+      - required: true
+      - pattern: "^\\d+\\.\\d+\\.\\d+$"  # must be semver
+
+  - attribute: models.*.fields.*.description
+    checks:
+      - required: true             # every field must have a description
+
+  - attribute: servers.type
+    checks:
+      - accepted_values:
+          - s3
+          - gcs
+          - azure_blob
+```
+
+**2. Run the checker** against your contracts:
+
+```bash
+contract-checker --contract-path ./contracts/
+```
+
+With verbose output (shows passing checks too):
+
+```bash
+contract-checker --contract-path ./contracts/ --verbose
+```
+
+---
+
+## Available checks
+
+| Check | YAML key | Description |
+|---|---|---|
+| Required | `required: true` | Field must exist and be non-null |
+| Pattern | `pattern: "^regex$"` | Value must match a regular expression |
+| Accepted values | `accepted_values: [a, b]` | Value must be one of the listed options |
+| Min items | `min_items: 2` | List must contain at least N items |
+| Max items | `max_items: 10` | List must contain at most N items |
+
+---
+
+## Key features
+
+- **Wildcard path support** — apply checks across all models and fields with `models.*.fields.*.unique`
+- **Severity levels** — configure checks as `error`, `warn`, or `info`, either globally or per field
+- **Contract filtering** — include or exclude contracts by directory path or field value (e.g. only `status: active` contracts)
+- **Custom JSON Schema** — validate contracts against your own schema in addition to built-in standard validation
+- **Rich output** — colour-coded pass/fail tables per contract plus a summary across all contracts
+- **Extensible** — implement the `Check` abstract base class to add your own check types via the Python API
+
+---
+
+## Configuration reference
+
+The full configuration schema — including path filtering, severity overrides, and custom schema options — is documented at [godatadriven.github.io/contract-checker](https://godatadriven.github.io/contract-checker).
+
+---
+
+## Contributing
+
+Contributions are welcome! See the [contributing guide](https://godatadriven.github.io/contract-checker/contributing) for how to set up the project locally and open a pull request.
+
+```bash
+# Local setup
+make install          # sync dependencies from uv.lock
+pre-commit install    # install pre-commit hooks
+make test             # run the test suite
+```
