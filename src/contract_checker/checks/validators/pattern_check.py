@@ -42,9 +42,7 @@ class PatternCheck(Check):
         """
         return "pattern"
 
-    def execute(
-        self, attribute_path: str, values: List[Any], pattern: str
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, values: List[Any], pattern: str) -> List[ValidationResult]:
         """Execute the pattern matching validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked.
@@ -64,8 +62,7 @@ class PatternCheck(Check):
                         attribute_path,
                         self.check_type,
                         False,
-                        f"Attribute '{attribute_path}' is null, cannot match "
-                        f"pattern '{pattern}'",
+                        f"Attribute '{attribute_path}' is null, cannot match pattern {pattern}",
                     )
                 )
                 continue
@@ -74,16 +71,10 @@ class PatternCheck(Check):
             passed = re.match(pattern, value_str) is not None
 
             if passed:
-                message = f"Attribute '{attribute_path}' value '{value_str}' matches "
-                f"pattern '{pattern}'"
+                message = f"Attribute '{attribute_path}' value '{value_str}' matches pattern '{pattern}'"
             else:
-                message = (
-                    f"Attribute '{attribute_path}' value '{value_str}' does not match "
-                    f"pattern '{pattern}'"
-                )
+                message = f"Attribute '{attribute_path}' value '{value_str}' does not match pattern '{pattern}'"
 
-            results.append(
-                ValidationResult("", attribute_path, self.check_type, passed, message)
-            )
+            results.append(ValidationResult("", attribute_path, self.check_type, passed, message))
 
         return results

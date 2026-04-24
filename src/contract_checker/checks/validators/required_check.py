@@ -34,9 +34,7 @@ class RequiredCheck(Check):
         """
         return "required"
 
-    def execute(
-        self, attribute_path: str, values: List[Any], check_value: bool
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
         """Execute the required field validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked
