@@ -36,3 +36,39 @@ checks:
 ```
 
 Multi-key mappings, empty mappings, and non-mapping values (scalars, lists) are rejected with a failing result.
+
+### `exactly_one`
+
+Passes when **exactly one** item in a collection satisfies a key-value condition — not zero, not two, not more. Use this when a constraint must hold for a *single* designated item. The motivating case is primary-key enforcement: a model with two `primaryKey: true` fields is a modelling bug that `at_least_one` silently accepts.
+
+Point the `attribute` path at the **collection** (not the leaf attribute), and specify a single key-value pair as the check value using a YAML block mapping:
+
+```yaml
+data_contract_checks:
+  # Every model must have exactly one primary key field
+  - attribute: models.*.fields
+    checks:
+      - exactly_one:
+          primaryKey: true
+
+  # Every model must have exactly one event-time timestamp field
+  - attribute: models.*.fields
+    checks:
+      - exactly_one:
+          type: timestamp
+```
+
+Failure messages include the actual count, e.g. `has 2 items with 'primaryKey: true', expected exactly 1`.
+
+> **Why point at the collection?** Wildcard paths like `models.*.fields.*.primaryKey` are expanded and checked *per field*. Stopping one level up at `models.*.fields` passes the entire fields dict to the check, so it can count all matching fields together.
+
+> **Per-model, not aggregated.** When the attribute path contains a wildcard (e.g. `models.*.fields`), the check runs **once per expanded path** — once for each model in this example. Each model must independently have *exactly one* match; results are **not** pooled across models. To require a single designated item across *all* models, point `attribute` at a non-wildcarded path instead.
+
+> **Check-value shape contract.** `exactly_one` requires a **single-key** mapping. Anything else fails loudly:
+>
+> | `check_value`                                  | Result                           |
+> |------------------------------------------------|----------------------------------|
+> | `{primaryKey: true}`                           | OK — checked                     |
+> | `{primaryKey: true, unique: true}`             | FAIL — multi-key rejected        |
+> | `{}`                                           | FAIL — empty mapping rejected    |
+> | `true` / `"unique"` / `[primaryKey]` / `null`  | FAIL — non-mapping rejected      |
