@@ -42,9 +42,7 @@ class PatternCheck(Check):
         """
         return "pattern"
 
-    def execute(
-        self, attribute_path: str, values: List[Any], pattern: str
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, values: List[Any], pattern: str) -> List[ValidationResult]:
         """Execute the pattern matching validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked.

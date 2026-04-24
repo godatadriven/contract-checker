@@ -36,9 +36,7 @@ class MinItemsCheck(Check):
         """
         return "min_items"
 
-    def execute(
-        self, attribute_path: str, values: List[Any], min_count: int
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, values: List[Any], min_count: int) -> List[ValidationResult]:
         """Execute the minimum items validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked.
@@ -110,9 +108,7 @@ class MaxItemsCheck(Check):
         """
         return "max_items"
 
-    def execute(
-        self, attribute_path: str, values: List[Any], max_count: int
-    ) -> List[ValidationResult]:
+    def execute(self, attribute_path: str, values: List[Any], max_count: int) -> List[ValidationResult]:
         """Execute the maximum items validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked.
