@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contract_checker.checks.validators import (
+    AcceptedValuesCheck,
     MaxItemsCheck,
     MinItemsCheck,
     PatternCheck,
@@ -179,3 +180,48 @@ class TestMaxItemsCheck:
         assert len(results) == 1
         assert results[0].passed is True
         assert "skipped" in results[0].message
+
+
+class TestAcceptedValuesCheck:
+    """Test AcceptedValuesCheck functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.check = AcceptedValuesCheck()
+
+    def test_accepted_values_check_string_passes(self) -> None:
+        """Test accepted values check passes when string is in accepted list."""
+        results = self.check.execute("test.field", ["active"], ["active", "inactive"])
+
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert "is in the list of accepted values" in results[0].message
+
+    def test_accepted_values_check_string_fails(self) -> None:
+        """Test accepted values check fails when string is not in accepted list."""
+        results = self.check.execute("test.field", ["unknown"], ["active", "inactive"])
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "is not in the list of accepted values" in results[0].message
+
+    def test_accepted_values_check_list_all_pass(self) -> None:
+        """Test accepted values check passes when all list items are accepted."""
+        results = self.check.execute("test.field", [["active", "inactive"]], ["active", "inactive", "pending"])
+
+        assert len(results) == 2
+        assert all(r.passed is True for r in results)
+
+    def test_accepted_values_check_list_partial_fail(self) -> None:
+        """Test accepted values check returns mixed results when some list items are not accepted."""
+        results = self.check.execute("test.field", [["active", "unknown"]], ["active", "inactive"])
+
+        assert len(results) == 2
+        assert results[0].passed is True
+        assert results[1].passed is False
+
+    def test_accepted_values_check_none_skipped(self) -> None:
+        """Test accepted values check skips None values."""
+        results = self.check.execute("test.field", [None], ["active", "inactive"])
+
+        assert len(results) == 0
