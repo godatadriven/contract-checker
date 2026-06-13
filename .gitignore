@@ -208,6 +208,9 @@ __marimo__/
 
 .DS_Store
 
+# Local git worktrees
+.worktrees/
+
 
 #TODO: remove this
 archive/
