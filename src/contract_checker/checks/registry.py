@@ -4,6 +4,8 @@ from typing import Dict, List
 
 from .base import Check
 from .validators.accepted_values_check import AcceptedValuesCheck
+from .validators.at_least_one_check import AtLeastOneCheck
+from .validators.exactly_one_check import ExactlyOneCheck
 from .validators.items_check import MaxItemsCheck, MinItemsCheck
 from .validators.pattern_check import PatternCheck
 from .validators.required_check import RequiredCheck
@@ -24,6 +26,8 @@ class CheckRegistry:
             AcceptedValuesCheck(),
             MinItemsCheck(),
             MaxItemsCheck(),
+            AtLeastOneCheck(),
+            ExactlyOneCheck(),
         ]
 
         for check in default_checks:
