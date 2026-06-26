@@ -83,7 +83,7 @@ class TestCustomSchemaCli:
         """The custom schema path can be supplied via the checks config file."""
         config = _write_checks_config(
             tmp_path,
-            f'data_contract_specification: custom\ncustom_schema_path: "{VALID_SCHEMA}"\ndata_contract_checks: []\n',
+            f'data_contract_specification: custom\ncustom_schema_path: "{VALID_SCHEMA.as_posix()}"\ndata_contract_checks: []\n',
         )
         result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), str(config)])
         assert result.exit_code == 0
@@ -93,7 +93,7 @@ class TestCustomSchemaCli:
         # Config points at a valid schema, but the CLI flag points at an invalid one.
         config = _write_checks_config(
             tmp_path,
-            f'custom_schema_path: "{VALID_SCHEMA}"\ndata_contract_checks: []\n',
+            f'custom_schema_path: "{VALID_SCHEMA.as_posix()}"\ndata_contract_checks: []\n',
         )
         result = self.runner.invoke(
             app,
