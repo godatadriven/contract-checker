@@ -208,6 +208,14 @@ __marimo__/
 
 .DS_Store
 
+# Claude Code
+# Override the global .claude/ ignore so project skills can be tracked.
+# Personal and ephemeral files are still excluded below.
+!.claude/
+.claude/settings.local.json
+.claude/worktrees/
+.claude/plans/
+
 # Local git worktrees
 .worktrees/
 
