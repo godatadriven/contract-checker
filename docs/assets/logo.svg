@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Data Contract Checker logo">
+  <title>Data Contract Checker</title>
+  <!-- White line-art for use on the deep-purple docs header -->
+  <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- contract document with a folded corner -->
+    <path d="M18 10 H36 L46 20 V52 H18 Z"/>
+    <path d="M36 10 V20 H46"/>
+    <!-- text lines -->
+    <path d="M24 27 H40"/>
+    <path d="M24 34 H35"/>
+  </g>
+  <!-- validation check mark -->
+  <path d="M22 41 L28 47 L42 32" fill="none" stroke="#69F0AE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

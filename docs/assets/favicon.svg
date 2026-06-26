@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Data Contract Checker logo">
+  <title>Data Contract Checker</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7E57C2"/>
+      <stop offset="1" stop-color="#4527A0"/>
+    </linearGradient>
+  </defs>
+  <!-- deep-purple rounded badge -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)"/>
+  <!-- contract document with a folded corner -->
+  <path d="M20 12 H36 L44 20 V50 a2 2 0 0 1 -2 2 H20 a2 2 0 0 1 -2 -2 V14 a2 2 0 0 1 2 -2 Z" fill="#ffffff"/>
+  <path d="M36 12 V20 H44 Z" fill="#D1C4E9"/>
+  <!-- text lines -->
+  <rect x="23" y="24" width="15" height="3" rx="1.5" fill="#B39DDB"/>
+  <rect x="23" y="31" width="11" height="3" rx="1.5" fill="#B39DDB"/>
+  <!-- validation check mark -->
+  <path d="M22 41 L28 47 L41 33" fill="none" stroke="#00E676" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

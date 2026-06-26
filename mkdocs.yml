@@ -6,6 +6,8 @@ repo_name: godatadriven/contract-checker
 
 theme:
   name: material
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
   features:
     - navigation.tabs
     - navigation.sections
