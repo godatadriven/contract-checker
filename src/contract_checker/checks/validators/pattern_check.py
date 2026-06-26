@@ -8,12 +8,7 @@ from ..models import ValidationResult
 
 
 class PatternCheck(Check):
-    """Check if value matches a regex pattern.
-
-    Uses ``re.match``, which anchors at the start of the string but not the
-    end. Callers must fully anchor their patterns (``^...$``) if they want
-    whole-string matching — e.g. ``r"\\d+"`` will accept ``"123abc"`` as a
-    match. To enforce full-string matching implicitly, switch this to
+    """Check if value matches a regex pattern. To enforce full-string matching implicitly, switch this to
     ``re.fullmatch``.
     """
 
@@ -31,8 +26,8 @@ class PatternCheck(Check):
                         "",
                         attribute_path,
                         self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot match pattern {pattern}",
+                        True,
+                        f"Attribute '{attribute_path}' is null (pattern check skipped)",
                     )
                 )
                 continue

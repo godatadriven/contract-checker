@@ -32,13 +32,13 @@ class TestRequiredCheck:
 
         An empty values list means the attribute path wasn't found in the
         parsed data. The check should report a single failure with a
-        "missing or null" message.
+        "missing" message (distinct from null).
         """
         results = self.check.execute("test.field", [], True)
 
         assert len(results) == 1
         assert results[0].passed is False
-        assert "missing or null" in results[0].message
+        assert "is missing" in results[0].message
 
     def test_required_check_with_none_values(self) -> None:
         """Test required check fails when values contain None."""
@@ -46,6 +46,7 @@ class TestRequiredCheck:
 
         assert len(results) == 1
         assert results[0].passed is False
+        assert "is null" in results[0].message
 
     def test_required_check_disabled(self) -> None:
         """Test required check passes when disabled."""
@@ -55,13 +56,13 @@ class TestRequiredCheck:
         assert results[0].passed is True
         assert "optional" in results[0].message
 
-    # TODO: re-check how we want to handle None values
     def test_required_with_single_none_value(self) -> None:
-        """A single None value should fail required."""
+        """A single None value should fail required with a 'null' message."""
         results = self.check.execute("test.field", [None], True)
 
         assert len(results) == 1
         assert results[0].passed is False
+        assert "is null" in results[0].message
 
     def test_required_with_empty_string(self) -> None:
         """An empty string is still a present value."""
@@ -127,21 +128,19 @@ class TestPatternCheck:
         assert results[1].passed is False
         assert results[2].passed is True
 
-    # TODO: re-check how we want to handle None values
     def test_pattern_check_with_none(self) -> None:
-        """None values fail PatternCheck (not skipped).
+        """None values are skipped by PatternCheck (presence is required_check's job).
 
-        This is an important semantic distinction from AcceptedValuesCheck,
-        which skips None values entirely (returns no result). PatternCheck
-        instead produces an explicit failing result for each None, signalling
-        that a null value cannot satisfy a required pattern.
+        A null value produces a passing result with a "skipped" note.
+        To enforce both presence and a pattern, combine required: true
+        with the pattern check.
         """
         pattern = r"^[A-Z]+$"
         results = self.check.execute("test.field", [None], pattern)
 
         assert len(results) == 1
-        assert results[0].passed is False
-        assert "is null" in results[0].message
+        assert results[0].passed is True
+        assert "skipped" in results[0].message
 
     def test_empty_values_no_results(self) -> None:
         """Empty values list produces no results."""
