@@ -216,5 +216,9 @@ __marimo__/
 .claude/worktrees/
 .claude/plans/
 
+# Local git worktrees
+.worktrees/
+
+
 #TODO: remove this
 archive/
