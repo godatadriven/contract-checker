@@ -282,7 +282,7 @@ class DataContractValidator:
         """
         if not parts:
             path_str = ".".join(current_path)
-            return {path_str: [data] if data is not None else []}
+            return {path_str: [data]}
 
         current_part = parts[0]
         remaining = parts[1:]
@@ -334,7 +334,7 @@ class DataContractValidator:
             List of values found
         """
         if not parts:
-            return [data] if data is not None else []
+            return [data]
 
         current_part = parts[0]
         remaining_parts = parts[1:]

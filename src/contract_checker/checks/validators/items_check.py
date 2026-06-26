@@ -25,20 +25,21 @@ class MinItemsCheck(Check):
                 )
             ]
 
+        if any(v is None for v in values):
+            return [
+                ValidationResult(
+                    "",
+                    attribute_path,
+                    self.check_type,
+                    True,
+                    f"Attribute '{attribute_path}' is null (min_items check skipped)",
+                )
+            ]
+
         # Check if any value is a list and validate its length
         all_passed = True
         for value in values:
-            if value is None:
-                return [
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot check for minimum items {min_count}",
-                    )
-                ]
-            elif isinstance(value, list):
+            if isinstance(value, list):
                 if len(value) < min_count:
                     all_passed = False
                     break
@@ -76,19 +77,20 @@ class MaxItemsCheck(Check):
                 )
             ]
 
+        if any(v is None for v in values):
+            return [
+                ValidationResult(
+                    "",
+                    attribute_path,
+                    self.check_type,
+                    True,
+                    f"Attribute '{attribute_path}' is null (max_items check skipped)",
+                )
+            ]
+
         all_passed = True
         for value in values:
-            if value is None:
-                return [
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot check for maximum items {max_count}",
-                    )
-                ]
-            elif isinstance(value, list):
+            if isinstance(value, list):
                 if len(value) > max_count:
                     all_passed = False
                     break

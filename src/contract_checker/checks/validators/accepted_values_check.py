@@ -23,8 +23,8 @@ class AcceptedValuesCheck(Check):
                         "",
                         attribute_path,
                         self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot check against accepted values {accepted_values}",
+                        True,
+                        f"Attribute '{attribute_path}' is null (accepted_values check skipped)",
                     )
                 )
                 continue
@@ -32,7 +32,19 @@ class AcceptedValuesCheck(Check):
             if isinstance(value, str):
                 items = [value]
             elif isinstance(value, list):
-                items = value
+                # Filter out null elements and report them explicitly
+                items = [v for v in value if v is not None]
+                null_count = len(value) - len(items)
+                if null_count:
+                    results.append(
+                        ValidationResult(
+                            "",
+                            attribute_path,
+                            self.check_type,
+                            False,
+                            f"Attribute '{attribute_path}' contains {null_count} null element(s)",
+                        )
+                    )
             else:
                 items = [value]
 

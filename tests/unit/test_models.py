@@ -31,7 +31,7 @@ class TestValidationResult:
             attribute="info.title",
             check_type="required",
             passed=False,
-            message="Required attribute 'info.title' is missing or null",
+            message="Required attribute 'info.title' is missing",
         )
 
         assert result.passed is False

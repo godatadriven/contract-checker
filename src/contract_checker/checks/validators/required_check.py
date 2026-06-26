@@ -15,12 +15,15 @@ class RequiredCheck(Check):
 
     def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
         if check_value:
-            passed = len(values) > 0 and all(v is not None for v in values)
-            message = (
-                f"Attribute '{attribute_path}' is present"
-                if passed
-                else f"Required attribute '{attribute_path}' is missing or null"
-            )
+            if not values:
+                passed = False
+                message = f"Required attribute '{attribute_path}' is missing"
+            elif any(v is None for v in values):
+                passed = False
+                message = f"Required attribute '{attribute_path}' is null"
+            else:
+                passed = True
+                message = f"Attribute '{attribute_path}' is present"
         else:
             passed = True
             message = f"Attribute '{attribute_path}' is optional"
