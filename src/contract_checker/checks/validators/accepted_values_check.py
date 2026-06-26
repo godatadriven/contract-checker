@@ -18,6 +18,15 @@ class AcceptedValuesCheck(Check):
         results = []
         for value in value_list:
             if value is None:
+                results.append(
+                    ValidationResult(
+                        "",
+                        attribute_path,
+                        self.check_type,
+                        False,
+                        f"Attribute '{attribute_path}' is null, cannot check against accepted values {accepted_values}",
+                    )
+                )
                 continue
 
             if isinstance(value, str):

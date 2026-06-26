@@ -8,7 +8,14 @@ from ..models import ValidationResult
 
 
 class PatternCheck(Check):
-    """Check if value matches a regex pattern"""
+    """Check if value matches a regex pattern.
+
+    Uses ``re.match``, which anchors at the start of the string but not the
+    end. Callers must fully anchor their patterns (``^...$``) if they want
+    whole-string matching — e.g. ``r"\\d+"`` will accept ``"123abc"`` as a
+    match. To enforce full-string matching implicitly, switch this to
+    ``re.fullmatch``.
+    """
 
     @property
     def check_type(self) -> str:

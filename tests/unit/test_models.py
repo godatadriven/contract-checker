@@ -83,6 +83,27 @@ class TestContractValidationReport:
 
         assert report.success is True
 
+    def test_success_ignores_total_checks_invariant(self) -> None:
+        """Documents current behavior: success only inspects failed_checks.
+
+        The dataclass does NOT validate that
+        total_checks == passed_checks + failed_checks. If the caller
+        constructs an inconsistent report (e.g. totals that don't sum),
+        `success` still returns True as long as `failed_checks == 0`.
+        This test pins the current contract; add invariant validation
+        to the dataclass if callers should be forced to keep counts
+        consistent.
+        """
+        report = ContractValidationReport(
+            contract_file="test.yaml",
+            total_checks=10,
+            passed_checks=3,
+            failed_checks=0,
+            results=[],
+        )
+
+        assert report.success is True
+
     def test_results_list_stored(self) -> None:
         """Report should store the full list of ValidationResult objects."""
         results = [
