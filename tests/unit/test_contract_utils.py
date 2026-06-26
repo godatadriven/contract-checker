@@ -38,9 +38,7 @@ class TestParseSpecificationFromContract:
     """Test parse_specification_from_contract normalises the ODCS version too."""
 
     def test_odcs_strips_v_prefix(self) -> None:
-        version, spec = parse_specification_from_contract(
-            {"apiVersion": "v3.0.2"}, {"data_contract_standard": "odcs"}
-        )
+        version, spec = parse_specification_from_contract({"apiVersion": "v3.0.2"}, {"data_contract_standard": "odcs"})
         assert (version, spec) == ("3.0.2", "odcs")
 
     def test_dcs_passthrough(self) -> None:
