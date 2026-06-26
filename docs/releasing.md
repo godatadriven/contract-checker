@@ -30,6 +30,8 @@ Publishing the release triggers the
 which:
 
 1. Checks out the tagged commit (with full history, so `setuptools-scm` can resolve the version).
+1. Runs the test suite against the tagged commit — PyPI uploads are immutable, so a release that
+   fails its tests never reaches PyPI.
 1. Builds the sdist and wheel with `uv build`.
 1. Publishes them to PyPI via
    [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC — no API tokens stored

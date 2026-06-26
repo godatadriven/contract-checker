@@ -4,6 +4,13 @@ on:
   release:
     types: [published]
 
+# Never run two publishes for the same release concurrently — a partial
+# re-run could race the immutable PyPI upload. Don't cancel an in-flight
+# publish either.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,6 +24,11 @@ jobs:
         with:
           python-version-file: ".python-version"
           enable-cache: true
+
+      # Verification gate: PyPI uploads are immutable, so prove the tagged
+      # commit passes its tests before we build and publish it.
+      - name: Run tests
+        run: uv run pytest
 
       - name: Build sdist and wheel
         run: uv build
@@ -47,3 +59,6 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true  # Re-running a release must not fail on an already-uploaded version.
