@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/favicon.svg" alt="Data Contract Checker logo" width="120" height="120">
+</p>
+
 # Data Contract Checker
 
 Welcome to the **Data Contract Checker** documentation! This is an open source Python package that enables you to enforce standards in your data contracts.

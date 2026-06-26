@@ -1,4 +1,8 @@
-# Data Contract Checker
+<p align="center">
+  <img src="docs/assets/favicon.svg" alt="Data Contract Checker logo" width="120" height="120">
+</p>
+
+<h1 align="center">Data Contract Checker</h1>
 
 > Validate data contracts against configurable rules — with human-readable output.
 
