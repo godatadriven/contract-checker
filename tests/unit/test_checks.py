@@ -5,6 +5,7 @@ from __future__ import annotations
 from contract_checker.checks.validators import (
     AcceptedValuesCheck,
     AtLeastOneCheck,
+    ExactlyOneCheck,
     MaxItemsCheck,
     MinItemsCheck,
     PatternCheck,
@@ -323,3 +324,108 @@ class TestAtLeastOneCheck:
 
         assert pass_results[0].passed is True
         assert fail_results[0].passed is False
+
+
+class TestExactlyOneCheck:
+    """Test ExactlyOneCheck functionality."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.check = ExactlyOneCheck()
+
+    def test_exactly_one_match_passes(self) -> None:
+        """Passes when exactly one item in the collection matches."""
+        fields = {
+            "order_id": {"primaryKey": True, "type": "text"},
+            "name": {"type": "text"},
+            "created_at": {"type": "timestamp"},
+        }
+        results = self.check.execute("models.orders.fields", [fields], {"primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert "exactly one" in results[0].message
+
+    def test_zero_matches_fails(self) -> None:
+        """Fails with count 0 when no items match."""
+        fields = {"order_id": {"type": "text"}, "name": {"type": "text"}}
+        results = self.check.execute("models.orders.fields", [fields], {"primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "0 items" in results[0].message
+        assert "expected exactly 1" in results[0].message
+
+    def test_two_matches_fails(self) -> None:
+        """Fails with count 2 when two items match."""
+        fields = {
+            "order_id": {"primaryKey": True, "type": "text"},
+            "customer_id": {"primaryKey": True, "type": "text"},
+            "name": {"type": "text"},
+        }
+        results = self.check.execute("models.orders.fields", [fields], {"primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "2 items" in results[0].message
+        assert "expected exactly 1" in results[0].message
+
+    def test_empty_collection_fails(self) -> None:
+        """Fails when the collection is empty (0 matches)."""
+        results = self.check.execute("models.orders.fields", [{}], {"primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "0 items" in results[0].message
+
+    def test_missing_attribute_fails(self) -> None:
+        """Fails when the attribute is missing entirely."""
+        results = self.check.execute("models.orders.fields", [], {"primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "missing" in results[0].message
+
+    def test_multi_key_check_value_rejected(self) -> None:
+        """Multi-key mapping as check_value is rejected with a failing result."""
+        fields = {"order_id": {"primaryKey": True, "unique": True}}
+        results = self.check.execute("models.orders.fields", [fields], {"primaryKey": True, "unique": True})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "single-key mapping" in results[0].message
+        assert "2 keys" in results[0].message
+
+    def test_empty_dict_check_value_rejected(self) -> None:
+        """Empty mapping as check_value is rejected with a failing result."""
+        fields = {"order_id": {"primaryKey": True}}
+        results = self.check.execute("models.orders.fields", [fields], {})
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "single-key mapping" in results[0].message
+        assert "0 keys" in results[0].message
+
+    def test_non_mapping_check_value_rejected(self) -> None:
+        """Non-mapping check_value values are rejected with a failing result."""
+        fields = {"order_id": {"primaryKey": True}}
+
+        for bad in [True, "primaryKey", ["primaryKey"], None, 1]:
+            results = self.check.execute("models.orders.fields", [fields], bad)
+
+            assert len(results) == 1
+            assert results[0].passed is False, f"expected failure for check_value={bad!r}"
+            assert "single-key mapping" in results[0].message
+
+    def test_non_dict_items_in_collection_skipped(self) -> None:
+        """Non-dict items inside the collection are not counted."""
+        fields = {
+            "order_id": {"primaryKey": True, "type": "text"},
+            "stray_scalar": "not a mapping",
+            "stray_list": [1, 2, 3],
+        }
+        results = self.check.execute("models.orders.fields", [fields], {"primaryKey": True})
+
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert "exactly one" in results[0].message
