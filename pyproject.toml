@@ -8,7 +8,7 @@ authors = [
 ]
 dependencies = [
     "typer>=0.20.0",
-    "pydantic>=2.13.2",
+    "pydantic>=2.13.3",
     "pyyaml>=6",
     "types-PyYAML",
     "jsonschema>=4.0",
