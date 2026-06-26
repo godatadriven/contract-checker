@@ -1,19 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Data Contract Checker logo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Data Contract Checker logo">
   <title>Data Contract Checker</title>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7E57C2"/>
-      <stop offset="1" stop-color="#4527A0"/>
-    </linearGradient>
-  </defs>
-  <!-- deep-purple rounded badge -->
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)"/>
+  <!-- circular badge (dbt-bouncer family palette) -->
+  <circle cx="120" cy="120" r="118" fill="#130912"/>
+  <circle cx="120" cy="120" r="113" fill="none" stroke="#fafafa" stroke-width="2"/>
+  <circle cx="120" cy="120" r="108" fill="none" stroke="#d1d1d1" stroke-width="1"/>
+
   <!-- contract document with a folded corner -->
-  <path d="M20 12 H36 L44 20 V50 a2 2 0 0 1 -2 2 H20 a2 2 0 0 1 -2 -2 V14 a2 2 0 0 1 2 -2 Z" fill="#ffffff"/>
-  <path d="M36 12 V20 H44 Z" fill="#D1C4E9"/>
+  <path d="M84 60 H150 L172 82 V174 a6 6 0 0 1 -6 6 H90 a6 6 0 0 1 -6 -6 V66 a6 6 0 0 1 6 -6 Z" fill="#fafafa"/>
+  <path d="M150 60 V82 H172 Z" fill="#d1d1d1"/>
   <!-- text lines -->
-  <rect x="23" y="24" width="15" height="3" rx="1.5" fill="#B39DDB"/>
-  <rect x="23" y="31" width="11" height="3" rx="1.5" fill="#B39DDB"/>
-  <!-- validation check mark -->
-  <path d="M22 41 L28 47 L41 33" fill="none" stroke="#00E676" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="98" y="86" width="48" height="6" rx="3" fill="#d1d1d1"/>
+  <rect x="98" y="102" width="36" height="6" rx="3" fill="#d1d1d1"/>
+  <rect x="98" y="118" width="44" height="6" rx="3" fill="#d1d1d1"/>
+
+  <!-- coral approval stamp with a check mark -->
+  <g transform="rotate(-12 150 150)">
+    <circle cx="150" cy="150" r="30" fill="#ff694a"/>
+    <circle cx="150" cy="150" r="23" fill="none" stroke="#fafafa" stroke-width="2" stroke-dasharray="3 3"/>
+    <path d="M136 150 l9 10 l19 -23" fill="none" stroke="#fafafa" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>
