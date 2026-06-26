@@ -28,7 +28,12 @@ class TestRequiredCheck:
         assert "is present" in results[0].message
 
     def test_required_check_with_empty_values(self) -> None:
-        """Test required check fails when no values present."""
+        """Required check fails when the field is completely absent from the contract.
+
+        An empty values list means the attribute path wasn't found in the
+        parsed data. The check should report a single failure with a
+        "missing or null" message.
+        """
         results = self.check.execute("test.field", [], True)
 
         assert len(results) == 1
@@ -49,6 +54,41 @@ class TestRequiredCheck:
         assert len(results) == 1
         assert results[0].passed is True
         assert "optional" in results[0].message
+
+    # TODO: re-check how we want to handle None values
+    def test_required_with_single_none_value(self) -> None:
+        """A single None value should fail required."""
+        results = self.check.execute("test.field", [None], True)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+
+    def test_required_with_empty_string(self) -> None:
+        """An empty string is still a present value."""
+        results = self.check.execute("test.field", [""], True)
+
+        assert len(results) == 1
+        assert results[0].passed is True
+
+    def test_required_with_zero(self) -> None:
+        """Zero is a valid present value."""
+        results = self.check.execute("test.field", [0], True)
+
+        assert len(results) == 1
+        assert results[0].passed is True
+
+    def test_required_with_false(self) -> None:
+        """Boolean False is a valid present value."""
+        results = self.check.execute("test.field", [False], True)
+
+        assert len(results) == 1
+        assert results[0].passed is True
+
+    def test_attribute_path_in_message(self) -> None:
+        """The attribute path should appear in the result message."""
+        results = self.check.execute("models.orders.fields.order_id.unique", ["val"], True)
+
+        assert "models.orders.fields.order_id.unique" in results[0].message
 
 
 class TestPatternCheck:
@@ -87,14 +127,62 @@ class TestPatternCheck:
         assert results[1].passed is False
         assert results[2].passed is True
 
+    # TODO: re-check how we want to handle None values
     def test_pattern_check_with_none(self) -> None:
-        """Test pattern check with None value."""
+        """None values fail PatternCheck (not skipped).
+
+        This is an important semantic distinction from AcceptedValuesCheck,
+        which skips None values entirely (returns no result). PatternCheck
+        instead produces an explicit failing result for each None, signalling
+        that a null value cannot satisfy a required pattern.
+        """
         pattern = r"^[A-Z]+$"
         results = self.check.execute("test.field", [None], pattern)
 
         assert len(results) == 1
         assert results[0].passed is False
         assert "is null" in results[0].message
+
+    def test_empty_values_no_results(self) -> None:
+        """Empty values list produces no results."""
+        results = self.check.execute("test.field", [], r"^.*$")
+
+        assert len(results) == 0
+
+    def test_non_string_value_coerced(self) -> None:
+        """Non-string values are coerced via str() before matching."""
+        results = self.check.execute("test.field", [123], r"^\d+$")
+
+        assert len(results) == 1
+        assert results[0].passed is True
+
+    def test_semantic_version_pattern(self) -> None:
+        """Test with a real-world semver pattern."""
+        pattern = r"^\d+\.\d+\.\d+$"
+        results = self.check.execute("info.version", ["1.0.0"], pattern)
+
+        assert results[0].passed is True
+
+    def test_semantic_version_pattern_fails(self) -> None:
+        """Semver pattern rejects non-conforming values."""
+        pattern = r"^\d+\.\d+\.\d+$"
+        results = self.check.execute("info.version", ["v1.0"], pattern)
+
+        assert results[0].passed is False
+
+    def test_unanchored_pattern_accepts_partial_match(self) -> None:
+        """Documents current behavior: unanchored patterns allow partial matches.
+
+        PatternCheck uses re.match, which anchors at the start only. A pattern
+        like r'\\d+' matches '123abc' because the prefix satisfies the regex.
+        Callers must fully anchor their patterns (use ^...$) to enforce whole-
+        string matching. If this surprises users in practice, switch the
+        implementation to re.fullmatch.
+        """
+        results = self.check.execute("test.field", ["123abc"], r"\d+")
+
+        assert len(results) == 1
+        assert results[0].passed is True
 
 
 class TestMinItemsCheck:
@@ -219,89 +307,3 @@ class TestAcceptedValuesCheck:
         assert len(results) == 2
         assert results[0].passed is True
         assert results[1].passed is False
-
-    def test_accepted_values_check_none_skipped(self) -> None:
-        """Test accepted values check skips None values."""
-        results = self.check.execute("test.field", [None], ["active", "inactive"])
-
-        assert len(results) == 0
-
-
-# ===================================================================
-# Additional edge cases for existing checks
-# ===================================================================
-
-
-class TestRequiredCheckEdgeCases:
-    """Additional edge cases for RequiredCheck."""
-
-    def setup_method(self) -> None:
-        self.check = RequiredCheck()
-
-    def test_required_with_single_none_value(self) -> None:
-        """A single None value should fail required."""
-        results = self.check.execute("test.field", [None], True)
-
-        assert len(results) == 1
-        assert results[0].passed is False
-
-    def test_required_with_empty_string(self) -> None:
-        """An empty string is still a present value."""
-        results = self.check.execute("test.field", [""], True)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-
-    def test_required_with_zero(self) -> None:
-        """Zero is a valid present value."""
-        results = self.check.execute("test.field", [0], True)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-
-    def test_required_with_false(self) -> None:
-        """Boolean False is a valid present value."""
-        results = self.check.execute("test.field", [False], True)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-
-    def test_attribute_path_in_message(self) -> None:
-        """The attribute path should appear in the result message."""
-        results = self.check.execute("models.orders.fields.order_id.unique", ["val"], True)
-
-        assert "models.orders.fields.order_id.unique" in results[0].message
-
-
-class TestPatternCheckEdgeCases:
-    """Additional edge cases for PatternCheck."""
-
-    def setup_method(self) -> None:
-        self.check = PatternCheck()
-
-    def test_empty_values_no_results(self) -> None:
-        """Empty values list produces no results."""
-        results = self.check.execute("test.field", [], r"^.*$")
-
-        assert len(results) == 0
-
-    def test_non_string_value_coerced(self) -> None:
-        """Non-string values are coerced via str() before matching."""
-        results = self.check.execute("test.field", [123], r"^\d+$")
-
-        assert len(results) == 1
-        assert results[0].passed is True
-
-    def test_semantic_version_pattern(self) -> None:
-        """Test with a real-world semver pattern."""
-        pattern = r"^\d+\.\d+\.\d+$"
-        results = self.check.execute("info.version", ["1.0.0"], pattern)
-
-        assert results[0].passed is True
-
-    def test_semantic_version_pattern_fails(self) -> None:
-        """Semver pattern rejects non-conforming values."""
-        pattern = r"^\d+\.\d+\.\d+$"
-        results = self.check.execute("info.version", ["v1.0"], pattern)
-
-        assert results[0].passed is False

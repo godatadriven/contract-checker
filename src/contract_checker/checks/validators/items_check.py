@@ -28,7 +28,17 @@ class MinItemsCheck(Check):
         # Check if any value is a list and validate its length
         all_passed = True
         for value in values:
-            if isinstance(value, list):
+            if value is None:
+                return [
+                    ValidationResult(
+                        "",
+                        attribute_path,
+                        self.check_type,
+                        False,
+                        f"Attribute '{attribute_path}' is null, cannot check for minimum items {min_count}",
+                    )
+                ]
+            elif isinstance(value, list):
                 if len(value) < min_count:
                     all_passed = False
                     break
@@ -68,7 +78,17 @@ class MaxItemsCheck(Check):
 
         all_passed = True
         for value in values:
-            if isinstance(value, list):
+            if value is None:
+                return [
+                    ValidationResult(
+                        "",
+                        attribute_path,
+                        self.check_type,
+                        False,
+                        f"Attribute '{attribute_path}' is null, cannot check for maximum items {max_count}",
+                    )
+                ]
+            elif isinstance(value, list):
                 if len(value) > max_count:
                     all_passed = False
                     break
