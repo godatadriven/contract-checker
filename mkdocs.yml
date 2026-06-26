@@ -42,6 +42,7 @@ nav:
   - Checks: checks.md
   - CLI: cli.md
   - Contributing: contributing.md
+  - Releasing: releasing.md
 
 plugins:
   - search

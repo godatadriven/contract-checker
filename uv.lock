@@ -186,7 +186,6 @@ wheels = [
 
 [[package]]
 name = "contract-checker"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
@@ -224,8 +223,8 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pytest", specifier = ">=9.0.3" },
     { name = "pre-commit", specifier = ">=4.6.0,<5" },
+    { name = "pytest", specifier = ">=9.0.3" },
 ]
 docs = [
     { name = "mkdocs", specifier = ">=1.5.0" },

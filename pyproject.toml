@@ -1,8 +1,9 @@
 [project]
 name = "contract_checker"
 description = "Data contract checker"
+readme = "README.md"
 requires-python = ">= 3.10.0"
-version = "0.1.0"
+dynamic = ["version"]
 authors = [
     {name = "Thom van Engelenburg, Sonu Jacob"},
 ]
@@ -37,8 +38,11 @@ dev = [
 contract-checker = "contract_checker.cli:app"
 
 [build-system]
-requires = ["setuptools==82.0.1"]
+requires = ["setuptools==82.0.1", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Derive the version from the latest `vX.Y.Z` git tag (single source of truth).
 
 [tool.mypy]
 python_version = "3.12"
