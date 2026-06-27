@@ -43,12 +43,12 @@ SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 ODCS_CONTENTS_API = "https://api.github.com/repos/bitol-io/open-data-contract-standard/contents/schema?ref=main"
 ODCS_FILE_RE = re.compile(r"^odcs-json-schema-v(\d+\.\d+\.\d+)\.json$")
 
-# DCS does not tag every release; instead the schema on `main` lists every supported
-# version in properties.dataContractSpecification.enum (newest first) and the file itself
-# IS the latest version's schema. So the latest version is discovered from that enum and
-# vendored from the same file.
-DCS_MAIN_SCHEMA_RAW = (
-    "https://raw.githubusercontent.com/datacontract/datacontract-specification/main/datacontract.schema.json"
+# DCS publishes every release as its own directory under versions/, each containing a
+# datacontract.schema.json. Versions are discovered by listing that directory.
+DCS_VERSIONS_API = "https://api.github.com/repos/datacontract/datacontract-specification/contents/versions?ref=main"
+DCS_SCHEMA_RAW = (
+    "https://raw.githubusercontent.com/datacontract/datacontract-specification/"
+    "main/versions/{version}/datacontract.schema.json"
 )
 
 
@@ -109,20 +109,20 @@ def discover_odcs() -> dict[str, str]:
 
 
 def discover_dcs() -> dict[str, str]:
-    """Return ``{version: download_url}`` for the latest DCS schema published upstream.
+    """Return ``{version: download_url}`` for DCS schemas published upstream.
 
-    The latest version is read from the ``dataContractSpecification`` enum of the schema
-    on ``main``; that same file is the schema for that version. Only the latest is
-    discoverable this way (older versions' historical schemas are not addressable), which
-    matches how this repo's existing DCS versions were captured.
+    Each version has its own directory under ``versions/`` containing a
+    ``datacontract.schema.json``.
     """
-    schema = fetch_schema(DCS_MAIN_SCHEMA_RAW)
-    enum = schema.get("properties", {}).get("dataContractSpecification", {}).get("enum", [])
-    versions = [v for v in enum if SEMVER_RE.match(v)]
-    if not versions:
-        return {}
-    latest = max(versions, key=version_key)
-    return {latest: DCS_MAIN_SCHEMA_RAW}
+    entries = fetch_json(DCS_VERSIONS_API)
+    if not isinstance(entries, list):
+        raise ValueError("unexpected DCS versions API response")
+    versions: dict[str, str] = {}
+    for entry in entries:
+        name = entry["name"]
+        if entry.get("type") == "dir" and SEMVER_RE.match(name):
+            versions[name] = DCS_SCHEMA_RAW.format(version=name)
+    return versions
 
 
 # ---------------------------------------------------------------------------
