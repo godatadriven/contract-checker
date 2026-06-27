@@ -23,5 +23,5 @@ class TestCli:
 
     def test_missing_checks_config(self) -> None:
         """Test that a non-existent checks config path causes a non-zero exit."""
-        result = self.runner.invoke(app, ["nonexistent-checks.yml"])
+        result = self.runner.invoke(app, ["--checks-config-path", "nonexistent-checks.yml"])
         assert result.exit_code != 0
