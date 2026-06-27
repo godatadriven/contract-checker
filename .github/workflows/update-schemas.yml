@@ -46,9 +46,10 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           # CI (ci.yml) only runs on the PR when it is opened by a non-GITHUB_TOKEN
-          # identity. Set a SCHEMA_BOT_TOKEN secret (a PAT or GitHub App token with
-          # `contents` + `pull-requests` write) to trigger CI automatically; without it
-          # this falls back to the default token and CI must be kicked off manually.
+          # identity. Create a fine-grained PAT scoped to this repo with Contents:
+          # read/write and Pull requests: read/write, store it as the SCHEMA_BOT_TOKEN
+          # secret, and CI runs on the schema-update PRs automatically. Without the
+          # secret this falls back to the default token and CI must be kicked off manually.
           token: ${{ secrets.SCHEMA_BOT_TOKEN || github.token }}
           branch: automation/update-schemas
           base: main
