@@ -45,8 +45,11 @@ jobs:
         # Opens a PR only when there is a diff; updates the existing branch/PR on re-run.
         uses: peter-evans/create-pull-request@v7
         with:
-          # To have CI run automatically on the PR, supply a PAT here instead of the
-          # default token: token: ${{ secrets.SCHEMA_BOT_TOKEN }}
+          # CI (ci.yml) only runs on the PR when it is opened by a non-GITHUB_TOKEN
+          # identity. Set a SCHEMA_BOT_TOKEN secret (a PAT or GitHub App token with
+          # `contents` + `pull-requests` write) to trigger CI automatically; without it
+          # this falls back to the default token and CI must be kicked off manually.
+          token: ${{ secrets.SCHEMA_BOT_TOKEN || github.token }}
           branch: automation/update-schemas
           base: main
           commit-message: "chore: vendor new ODCS/DCS schema versions"
