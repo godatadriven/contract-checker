@@ -224,13 +224,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pytest", specifier = ">=9.0.3" },
     { name = "pre-commit", specifier = ">=4.6.0,<5" },
+    { name = "pytest", specifier = ">=9.0.3" },
 ]
 docs = [
     { name = "mkdocs", specifier = ">=1.5.0" },
     { name = "mkdocs-material", specifier = ">=9.4.0" },
-    { name = "mkdocs-typer2", specifier = ">=0.2.0" },
+    { name = "mkdocs-typer2", specifier = ">=0.4.1" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=1.0.4" },
     { name = "pymdown-extensions", specifier = ">=10.0.0" },
 ]
@@ -653,16 +653,16 @@ wheels = [
 
 [[package]]
 name = "mkdocs-typer2"
-version = "0.2.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "mkdocs" },
+    { name = "markdown" },
     { name = "pydantic" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/fb/7f1b0fe2eecbcc2700bc8a857f5470ba3c71fc81a727851312c67670dd35/mkdocs_typer2-0.2.0.tar.gz", hash = "sha256:3f389b83f3d5f8d270bf81a2840f9307b74dbce9575243ab1f96d0e89ccbe5a1", size = 29342, upload-time = "2026-01-15T03:19:25.588Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/53/09beebd17749d6fa27b7ff380e8007fd1f7afcde70ac9743146ffcccb045/mkdocs_typer2-0.4.1.tar.gz", hash = "sha256:b00a68d71c8b6f9efc75005619fe1da2036ea3c24b67b9978086d69389247ada", size = 45549, upload-time = "2026-06-17T12:51:02.54Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/6e/4b82657b44567f430e35e62c4c22b5cd5fd1f40f369873e2fd92fb77a662/mkdocs_typer2-0.2.0-py3-none-any.whl", hash = "sha256:079fab0b30889f509f9f29a190722aa5cb29a8cf13c231571155fdb69838ec18", size = 14636, upload-time = "2026-01-15T03:19:24.497Z" },
+    { url = "https://files.pythonhosted.org/packages/47/09/2633221fcd537b55c425950c8af23cb38d5760dc0a8b8f1bd53d38f7b5e6/mkdocs_typer2-0.4.1-py3-none-any.whl", hash = "sha256:9ecde0c020ffdf5cffd7cef3cc65906b38caaa3887c0f3b5ffbeb73b7887b34c", size = 24587, upload-time = "2026-06-17T12:51:01.557Z" },
 ]
 
 [[package]]
