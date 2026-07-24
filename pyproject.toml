@@ -23,7 +23,7 @@ lint = [
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.4.0",
-    "mkdocs-typer2>=0.2.0",
+    "mkdocs-typer2>=0.4.1",
     "mkdocstrings[python]>=1.0.4",
     "pymdown-extensions>=10.0.0",
 ]
