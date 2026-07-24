@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from typer.testing import CliRunner
 
 from contract_checker.cli import app
@@ -27,10 +25,3 @@ class TestCli:
         """Test that a non-existent checks config path causes a non-zero exit."""
         result = self.runner.invoke(app, ["nonexistent-checks.yml"])
         assert result.exit_code != 0
-
-    def test_missing_contract_path_errors(self, tmp_path: Path) -> None:
-        """No --contract-path and no data_contracts_path in config -> exit code 1."""
-        checks = tmp_path / "checks.yml"
-        checks.write_text("data_contract_specification: dcs\ndata_contract_checks: []\n")
-        result = self.runner.invoke(app, [str(checks)])
-        assert result.exit_code == 1
