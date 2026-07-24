@@ -7,7 +7,7 @@ Think about enforcing naming conventions for your models, enforcing a minimum am
 ## Data Contract Standard suppport
 We support the following data contract standards:
 
-- **ODCS (Open Data Contract Standard)** - versions 2.2.1 through 3.1.0
+- **ODCS (Open Data Contract Standard)** - versions 2.2.1 through 3.0.2
 - **DCS (Data Contract Specification)** - versions 0.9.0 through 1.2.1
 
 ## Community & Support
