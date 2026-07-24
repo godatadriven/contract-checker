@@ -7,7 +7,7 @@ authors = [
     {name = "Thom van Engelenburg, Sonu Jacob"},
 ]
 dependencies = [
-    "typer>=0.20.0",
+    "typer>=0.26.8",
     "pydantic>=2.13.3",
     "pyyaml>=6",
     "types-PyYAML",
