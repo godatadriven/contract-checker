@@ -95,9 +95,7 @@ def test_custom_schema_and_attribute_checks_run_together() -> None:
 
 def test_valid_contract_passes_extended_odcs_schema() -> None:
     """A contract satisfying base ODCS and the in-house rules passes."""
-    contract = _load_contract(
-        CUSTOM_FIXTURES / "valid-odcs-extended-contract.yaml", ODCS_EXTENDED_SCHEMA
-    )
+    contract = _load_contract(CUSTOM_FIXTURES / "valid-odcs-extended-contract.yaml", ODCS_EXTENDED_SCHEMA)
     report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
 
     assert report.failed_checks == 0
@@ -106,9 +104,7 @@ def test_valid_contract_passes_extended_odcs_schema() -> None:
 
 def test_invalid_contract_fails_extended_odcs_schema() -> None:
     """A contract that is valid ODCS but breaks the in-house rules fails."""
-    contract = _load_contract(
-        CUSTOM_FIXTURES / "invalid-odcs-extended-contract.yaml", ODCS_EXTENDED_SCHEMA
-    )
+    contract = _load_contract(CUSTOM_FIXTURES / "invalid-odcs-extended-contract.yaml", ODCS_EXTENDED_SCHEMA)
     report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
 
     assert report.failed_checks > 0

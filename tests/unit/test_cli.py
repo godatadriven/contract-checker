@@ -89,9 +89,7 @@ class TestCustomSchemaCli:
             f'custom_schema_path: "{VALID_SCHEMA.as_posix()}"\n'
             "data_contract_checks: []\n",
         )
-        result = self.runner.invoke(
-            app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)]
-        )
+        result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
         assert result.exit_code == 0
 
     def test_cli_flag_overrides_config(self, tmp_path: Path) -> None:
