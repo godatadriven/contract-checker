@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
-from contract_checker.utils.contract_utils import load_contracts
+from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
 from contract_checker.utils.utils import parse_yml_to_dict
 from contract_checker.version import version
 
@@ -41,9 +41,12 @@ def main(
         typer.Option(help="The severity level of the checks. Can be 'error' or 'warn'"),
     ] = "error",
     verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
-    contract_path: Annotated[Optional[Path], typer.Option(help="The location of the data contract file.")] = Path(
-        "tests/fixtures/dcs/"
-    ),
+    contract_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to a data contract file or directory. Overrides 'data_contracts_path' from the checks config."
+        ),
+    ] = None,
     version: Annotated[
         Optional[bool],
         typer.Option(
@@ -76,7 +79,8 @@ def main(
         config_path: Path to the YAML file containing data contract check definitions.
         severity: Severity level for validation issues ('error' or 'warn').
         verbosity: Enable verbose/debug output when True.
-        contract_path: Directory or file path containing data contract definitions.
+        contract_path: Optional override for the contract file or directory configured
+        via 'data_contracts_path' in the checks config.
         version: Display version information and exit.
         custom_schema_path: Optional path to a custom JSON Schema for validation.
         custom_config_path: Optional path to custom configuration file.
@@ -97,11 +101,21 @@ def main(
 
     checks_dict = parse_yml_to_dict(checks_config_path)
 
+    config_contract_path, include_paths, exclude_paths = parse_data_contracts_path_config(checks_dict)
+    resolved_contract_path = contract_path or config_contract_path
+    if resolved_contract_path is None:
+        logging.error(
+            "No contract path provided. Set 'data_contracts_path' in the checks config or pass --contract-path."
+        )
+        raise typer.Exit(code=1)
+
     # Load the contract -> internally identify type of contract -> validate contract
     contracts = load_contracts(
-        contract_path=contract_path,
+        contract_path=resolved_contract_path,
         contract_specification=checks_dict.get("data_contract_specification"),
         custom_schema_path=custom_schema_path,
+        include_paths=include_paths,
+        exclude_paths=exclude_paths,
     )
 
     validate_contracts(contracts, checks_dict, verbose=verbosity)
