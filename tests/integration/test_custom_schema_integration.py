@@ -18,6 +18,7 @@ from contract_checker.utils.utils import parse_yml_to_dict
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
 ECOMMERCE_SCHEMA = CUSTOM_FIXTURES / "ecommerce-product-schema.json"
 ODCS_EXTENDED_SCHEMA = CUSTOM_FIXTURES / "odcs-extended-schema.json"
+INVALID_SCHEMA = CUSTOM_FIXTURES / "invalid-json-schema.json"
 
 
 def _load_contract(contract_file: Path, schema: Path) -> Contract:
@@ -47,6 +48,23 @@ def test_invalid_contract_fails_custom_schema() -> None:
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)
+
+
+def test_invalid_schema_reports_failure_not_exception() -> None:
+    """Driving the validator directly with an invalid schema yields a clear failure.
+
+    The meta-schema check is enforced inside the validator, not only at the CLI
+    layer, so an invalid schema surfaces as a single failed ``json_schema`` result
+    rather than a generic runtime error.
+    """
+    contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", INVALID_SCHEMA)
+    report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
+
+    assert report.failed_checks == 1
+    (result,) = report.results
+    assert result.check_type == "json_schema"
+    assert not result.passed
+    assert "not a valid JSON Schema" in result.message
 
 
 def test_custom_schema_with_no_checks_config() -> None:

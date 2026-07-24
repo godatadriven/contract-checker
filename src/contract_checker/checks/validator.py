@@ -1,11 +1,11 @@
 """Core data contract validation logic with integrated reporting."""
 
-import json
 from typing import Any, Dict, List, Optional, Union
 
 import jsonschema
 
 from contract_checker.contract.contract_base import Contract
+from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema
 
 from .models import ContractValidationReport, ValidationResult
 from .registry import CheckRegistry
@@ -105,11 +105,25 @@ class DataContractValidator:
         """
         results = []
 
+        # Load and meta-validate the schema here too (not just at the CLI layer),
+        # so the "schema is itself a valid JSON Schema" guarantee holds even when
+        # the validator is driven directly. A bad schema surfaces as a single,
+        # clear failure instead of a generic runtime error.
         try:
-            # Load the custom schema
-            with open(data_contract.custom_schema_path, "r") as f:
-                schema = json.load(f)
+            schema = load_and_validate_json_schema(data_contract.custom_schema_path)
+        except CustomSchemaError as e:
+            results.append(
+                ValidationResult(
+                    contract_file=data_contract.contract_path,
+                    attribute="schema",
+                    check_type="json_schema",
+                    passed=False,
+                    message=str(e),
+                )
+            )
+            return results
 
+        try:
             # Create a validator to get all errors
             validatorClass = jsonschema.validators.validator_for(schema)
             validator = validatorClass(schema)
@@ -144,27 +158,6 @@ class DataContractValidator:
                             message=f"Schema validation failed: {error.message}",
                         )
                     )
-
-        except FileNotFoundError:
-            results.append(
-                ValidationResult(
-                    contract_file=data_contract.contract_path,
-                    attribute="schema",
-                    check_type="json_schema",
-                    passed=False,
-                    message=f"Custom schema file not found: {data_contract.custom_schema_path}",
-                )
-            )
-        except json.JSONDecodeError as e:
-            results.append(
-                ValidationResult(
-                    contract_file=data_contract.contract_path,
-                    attribute="schema",
-                    check_type="json_schema",
-                    passed=False,
-                    message=f"Invalid JSON in custom schema file: {e}",
-                )
-            )
         except Exception as e:
             results.append(
                 ValidationResult(
