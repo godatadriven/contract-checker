@@ -21,7 +21,7 @@ It supports the two major open data contract standards out of the box, with cust
 | Standard | Versions |
 |---|---|
 | [DCS — Data Contract Specification](https://datacontract.com) | 0.9.0 – 1.2.1 |
-| [ODCS — Open Data Contract Standard](https://bitol-io.github.io/open-data-contract-standard/) | 2.2.1 – 3.1.0 |
+| [ODCS — Open Data Contract Standard](https://bitol-io.github.io/open-data-contract-standard/) | 2.2.1 – 3.0.2 |
 | Custom JSON Schema | any |
 
 See the [documentation](https://godatadriven.github.io/contract-checker/) for the full version-compatibility detail per standard.
