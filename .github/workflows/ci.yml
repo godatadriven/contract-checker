@@ -61,3 +61,10 @@ jobs:
 
         - name: Run pytest (unit tests)
           run: uv run pytest
+
+  ci-success:
+    name: CI
+    needs: [pre-commit, unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All checks passed"
