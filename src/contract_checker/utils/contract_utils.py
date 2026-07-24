@@ -60,7 +60,10 @@ def get_specification_version(contract_content: dict, contract_standard: str) ->
     elif contract_standard == "dcs":
         return str(contract_content["dataContractSpecification"])
     elif contract_standard == "odcs":
-        return str(contract_content["apiVersion"])
+        # ODCS contracts carry the version as `apiVersion: vX.Y.Z`, but the
+        # vendored schema folders are bare semver (e.g. odcs/3.0.2). Strip the
+        # leading `v` so the version resolves to a supported schema directory.
+        return str(contract_content["apiVersion"]).removeprefix("v")
     else:
         raise ValueError("Specification field not found in data contract.")
 
@@ -79,7 +82,8 @@ def parse_specification_from_contract(contract_content: dict, checks_dict: dict)
     if contract_specification == "dcs":
         version = contract_content["dataContractSpecification"]
     elif contract_specification == "odcs":
-        version = contract_content["apiVersion"]
+        # Normalise `vX.Y.Z` to bare semver to match the schema folder names.
+        version = str(contract_content["apiVersion"]).removeprefix("v")
         return version, contract_specification
     else:
         raise ValueError("Specification field not found in data contract.")

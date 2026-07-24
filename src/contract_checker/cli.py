@@ -33,7 +33,7 @@ def version_callback(value: bool) -> None:
 
 @app.callback(invoke_without_command=True)
 def main(
-    checks_config_path: Annotated[Path, typer.Argument(help="The location of the data contract check file.")] = Path(
+    checks_config_path: Annotated[Path, typer.Option(help="The location of the data contract check file.")] = Path(
         "data-contract-checks.yml"
     ),
     severity: Annotated[
