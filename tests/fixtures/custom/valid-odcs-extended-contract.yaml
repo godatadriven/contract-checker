@@ -1,0 +1,21 @@
+# A contract that satisfies both the base ODCS v3.0.2 schema and the extra
+# in-house governance rules layered on top by odcs-extended-schema.json.
+version: 1.0.0
+apiVersion: v3.0.2
+kind: DataContract
+id: 53581432-6c55-4ba2-a65f-72344a91553a
+status: active
+name: orders
+dataProduct: sales_analytics
+domain: sales
+description:
+  usage: Curated order events for downstream sales analytics.
+  purpose: Single source of truth for completed orders.
+tags:
+  - sales
+  - gold
+team:
+  - username: jwayne
+    role: dpo
+    dateIn: "2019-03-14"
+schema: []

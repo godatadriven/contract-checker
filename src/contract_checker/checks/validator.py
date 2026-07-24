@@ -41,42 +41,44 @@ class DataContractValidator:
         """
         results = []
 
-        # If using custom schema, validate against JSON Schema
+        # When a custom schema is provided, validate the whole contract against
+        # it first. This does not replace the attribute-level checks below: the
+        # two compose, so a custom schema and data_contract_checks run together.
         if data_contract.custom_schema_path:
-            # first do json validation
             schema_results = self._validate_against_custom_schema(data_contract)
             results.extend(schema_results)
-        else:
-            # Run standard checks only if not using custom schema
-            for attribute in self.checks_config["data_contract_checks"]:
-                attribute_path = attribute["attribute"]
-                checks = attribute["checks"]
 
-                if "*" in attribute_path:
-                    # Wildcard path: expand into concrete paths and run
-                    # checks individually per matched item
-                    expanded = self._expand_wildcard_paths(data_contract.contract_content, attribute_path)
-                    for concrete_path, values in expanded.items():
-                        for check_config in checks:
-                            check_type = next(iter(check_config.keys()))
-                            check_value = check_config[check_type]
-                            check_handler = self.registry.get(check_type)
-                            check_results = check_handler.execute(concrete_path, values, check_value)
-                            for result in check_results:
-                                result.contract_file = data_contract.contract_path
-                            results.extend(check_results)
-                else:
-                    # Non-wildcard path: original behavior
-                    values = self._get_attribute_values(data_contract.contract_content, attribute_path)
+        # Run the attribute-level checks. The list may be empty (or omitted),
+        # which is the schema-only case when a custom schema is set.
+        for attribute in self.checks_config.get("data_contract_checks") or []:
+            attribute_path = attribute["attribute"]
+            checks = attribute["checks"]
 
+            if "*" in attribute_path:
+                # Wildcard path: expand into concrete paths and run
+                # checks individually per matched item
+                expanded = self._expand_wildcard_paths(data_contract.contract_content, attribute_path)
+                for concrete_path, values in expanded.items():
                     for check_config in checks:
                         check_type = next(iter(check_config.keys()))
                         check_value = check_config[check_type]
                         check_handler = self.registry.get(check_type)
-                        check_results = check_handler.execute(attribute_path, values, check_value)
+                        check_results = check_handler.execute(concrete_path, values, check_value)
                         for result in check_results:
                             result.contract_file = data_contract.contract_path
                         results.extend(check_results)
+            else:
+                # Non-wildcard path: original behavior
+                values = self._get_attribute_values(data_contract.contract_content, attribute_path)
+
+                for check_config in checks:
+                    check_type = next(iter(check_config.keys()))
+                    check_value = check_config[check_type]
+                    check_handler = self.registry.get(check_type)
+                    check_results = check_handler.execute(attribute_path, values, check_value)
+                    for result in check_results:
+                        result.contract_file = data_contract.contract_path
+                    results.extend(check_results)
 
         # Create report
         passed = sum(1 for r in results if r.passed)
