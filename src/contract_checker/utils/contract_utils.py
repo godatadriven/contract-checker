@@ -1,11 +1,56 @@
+import logging
 from pathlib import Path
 from typing import Optional
 
 from contract_checker.contract.contract_base import Contract
+from contract_checker.utils.path_filter import filter_contract_paths
 from contract_checker.utils.utils import (
     is_dir_or_yaml,
     parse_yml_to_dict,
 )
+
+
+def parse_data_contracts_path_config(
+    checks_dict: dict,
+) -> tuple[Optional[Path], list[str], list[str]]:
+    """Parse the optional 'data_contracts_path' block from the checks config.
+
+    Accepts either a plain string path:
+
+        data_contracts_path: ./contracts/
+
+    or a mapping with optional glob filters:
+
+        data_contracts_path:
+          path: ./contracts/
+          include_paths:
+            - domain/**
+          exclude_paths:
+            - marts/**
+
+    Args:
+        checks_dict: Parsed checks configuration.
+
+    Returns:
+        Tuple of (path or None, include_paths, exclude_paths).
+
+    Raises:
+        ValueError: If 'data_contracts_path' is neither a string nor a mapping.
+    """
+    raw = (checks_dict or {}).get("data_contracts_path")
+    if raw is None:
+        return None, [], []
+    if isinstance(raw, str):
+        return Path(raw), [], []
+    if not isinstance(raw, dict):
+        raise ValueError("'data_contracts_path' must be a string or a mapping.")
+
+    for ignored_key in ("include_custom", "exclude_custom"):
+        if ignored_key in raw:
+            logging.debug(f"'{ignored_key}' in data_contracts_path is not yet supported and will be ignored.")
+
+    path = Path(raw["path"]) if raw.get("path") else None
+    return path, raw.get("include_paths") or [], raw.get("exclude_paths") or []
 
 
 def get_specification_version(contract_content: dict, contract_standard: str) -> str:
@@ -50,6 +95,8 @@ def load_contracts(
     contract_path: Path,
     contract_specification: str,
     custom_schema_path: Optional[Path] = None,
+    include_paths: Optional[list[str]] = None,
+    exclude_paths: Optional[list[str]] = None,
 ) -> list[dict]:
     """Load all data contracts within a user-provided path."""
 
@@ -61,8 +108,17 @@ def load_contracts(
     if path_type == "yaml_file":
         contract_paths = [contract_path]
     else:
-        # TODO: check working with different folder structures
-        contract_paths = list(contract_path.rglob("*.yaml"))
+        contract_paths = sorted([*contract_path.rglob("*.yaml"), *contract_path.rglob("*.yml")])
+        discovered_count = len(contract_paths)
+        contract_paths = filter_contract_paths(contract_paths, contract_path, include_paths or [], exclude_paths or [])
+        logging.debug(
+            f"Discovered {discovered_count} contract file(s), {len(contract_paths)} remaining after filtering."
+        )
+        if discovered_count > 0 and not contract_paths:
+            logging.warning(
+                "include_paths/exclude_paths filtered out ALL discovered contracts, nothing will be validated. "
+                "Check your patterns in 'data_contracts_path'."
+            )
     contracts = []
     for contract_path in contract_paths:
         contract_content = parse_yml_to_dict(file_path=Path(contract_path))
