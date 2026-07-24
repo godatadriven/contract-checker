@@ -49,6 +49,19 @@ def test_invalid_contract_fails_custom_schema() -> None:
     assert all(r.check_type == "json_schema" for r in report.results)
 
 
+def test_custom_schema_with_no_checks_config() -> None:
+    """A custom schema validates even when the checks config is absent (None).
+
+    This is the schema-only case driven entirely by --custom-schema-path with no
+    (or an empty/unparseable) checks file, which must not crash.
+    """
+    contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
+    report = DataContractValidator(None).run_checks(contract)  # type: ignore[arg-type]
+
+    assert report.failed_checks == 0
+    assert all(r.check_type == "json_schema" for r in report.results)
+
+
 def test_custom_schema_and_attribute_checks_run_together() -> None:
     """A custom schema does not replace ``data_contract_checks``; both run.
 

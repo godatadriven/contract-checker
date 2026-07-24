@@ -48,9 +48,10 @@ class DataContractValidator:
             schema_results = self._validate_against_custom_schema(data_contract)
             results.extend(schema_results)
 
-        # Run the attribute-level checks. The list may be empty (or omitted),
-        # which is the schema-only case when a custom schema is set.
-        for attribute in self.checks_config.get("data_contract_checks") or []:
+        # Run the attribute-level checks. The list may be empty, omitted, or the
+        # whole config may be absent (None) — e.g. schema-only validation driven
+        # entirely by --custom-schema-path. All of these mean "no extra checks".
+        for attribute in (self.checks_config or {}).get("data_contract_checks") or []:
             attribute_path = attribute["attribute"]
             checks = attribute["checks"]
 
