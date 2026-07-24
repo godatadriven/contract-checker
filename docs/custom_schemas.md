@@ -5,10 +5,16 @@ data contracts against a **custom JSON Schema** that you provide. This is useful
 contracts follow an in-house format, or an extended version of an existing standard, that the
 built-in schemas do not cover.
 
-!!! note "Scope"
-    Custom schemas are **standalone**: the schema you supply must fully describe a valid contract
-    on its own. Custom schema validation **replaces** the attribute-level `data_contract_checks`
-    rather than running alongside them.
+!!! note "Schema and checks compose"
+    A custom schema does **not** replace the attribute-level `data_contract_checks`. When a
+    custom schema is set, each contract is validated against the JSON Schema **and** against any
+    `data_contract_checks` you configure — both run, and every failure from either is reported.
+    Leave `data_contract_checks` empty (or omit it) for schema-only validation, or add checks to
+    layer extra rules on top of the schema. See
+    [Combining a schema with attribute checks](#combining-a-schema-with-attribute-checks).
+
+The schema you supply must fully describe a valid contract on its own; the checker does not merge
+it with the built-in DCS/ODCS schemas.
 
 ## Providing a schema
 
@@ -50,3 +56,58 @@ Custom schema is not a valid JSON Schema (./schemas/my-contract-schema.json): 'n
 Each contract found under `--contract-path` is validated against the custom schema. Every schema
 violation is reported as an individual result, with the failing attribute path and the underlying
 JSON Schema error message.
+
+## Combining a schema with attribute checks
+
+A custom schema and the attribute-level `data_contract_checks` run **together**. This lets you
+keep the structural rules in the schema while expressing rules that are awkward in JSON Schema —
+or that you want to reuse across standards — as checks. Both are evaluated against every contract
+and all failures are reported.
+
+```yaml
+data_contract_specification: custom
+custom_schema_path: ./schemas/my-contract-schema.json
+
+# Runs in addition to the JSON Schema validation above.
+data_contract_checks:
+  - attribute: quality_requirements.completeness.critical_fields
+    checks:
+      - min_items: 1
+```
+
+For schema-only validation, set `data_contract_checks: []` (or omit it entirely).
+
+## Extending an existing standard
+
+A custom schema does not have to be an entirely in-house format — it can be an existing standard
+with extra rules layered on top. Because JSON Schema's `allOf` requires an instance to satisfy
+every subschema, you can reference the base standard and add your own required fields and
+constraints:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "title": "Extended ODCS Data Contract Schema",
+  "allOf": [
+    { "$ref": "#/$defs/OdcsBase" },
+    { "$ref": "#/$defs/HouseRules" }
+  ],
+  "$defs": {
+    "OdcsBase": { "...": "the full ODCS schema" },
+    "HouseRules": {
+      "type": "object",
+      "required": ["description", "domain", "tags", "team"],
+      "properties": {
+        "status": { "enum": ["draft", "active", "deprecated", "retired"] },
+        "tags": { "type": "array", "minItems": 1 }
+      }
+    }
+  }
+}
+```
+
+A contract must then pass **both** the base standard and your house rules. Because the schema is
+standalone, embed the base standard's definitions in `$defs` rather than pointing at a remote URL —
+the checker resolves `$ref`s within the file and does not fetch over the network.
+[`tests/fixtures/custom/odcs-extended-schema.json`](https://github.com/godatadriven/contract-checker/blob/main/tests/fixtures/custom/odcs-extended-schema.json)
+is a complete, working example built on top of ODCS v3.0.2.
