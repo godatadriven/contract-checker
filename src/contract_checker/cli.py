@@ -118,14 +118,21 @@ def main(
             logging.error(str(e))
             raise typer.Exit(code=1)
 
-    # Load the contract -> internally identify type of contract -> validate contract
-    contracts = load_contracts(
-        contract_path=resolved_contract_path,
-        contract_specification=checks_dict.get("data_contract_specification") if checks_dict else None,
-        custom_schema_path=resolved_schema_path,
-        include_paths=include_paths,
-        exclude_paths=exclude_paths,
-    )
+    # Load the contract -> internally identify type of contract -> validate contract.
+    # Misconfiguration (e.g. a 'custom' spec with no schema, or a missing contract
+    # path) surfaces as a clear error and a non-zero exit, matching the fail-fast
+    # handling above rather than leaking a stack trace.
+    try:
+        contracts = load_contracts(
+            contract_path=resolved_contract_path,
+            contract_specification=checks_dict.get("data_contract_specification") if checks_dict else None,
+            custom_schema_path=resolved_schema_path,
+            include_paths=include_paths,
+            exclude_paths=exclude_paths,
+        )
+    except (ValueError, FileNotFoundError) as e:
+        logging.error(str(e))
+        raise typer.Exit(code=1)
 
     validate_contracts(contracts, checks_dict, verbose=verbosity)
 

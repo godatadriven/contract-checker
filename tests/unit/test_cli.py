@@ -92,6 +92,18 @@ class TestCustomSchemaCli:
         result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
         assert result.exit_code == 0
 
+    def test_custom_spec_without_schema_exits_cleanly(self, tmp_path: Path) -> None:
+        """A 'custom' spec with no schema exits 1 with a clear error, not a traceback."""
+        config = _write_checks_config(
+            tmp_path,
+            "data_contract_specification: custom\ndata_contract_checks: []\n",
+        )
+        result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
+        assert result.exit_code == 1
+        # A clean typer exit, not an unhandled exception surfaced by the runner.
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+        assert "no custom schema was provided" in result.output
+
     def test_cli_flag_overrides_config(self, tmp_path: Path) -> None:
         """The --custom-schema-path flag overrides the config file value."""
         # Config points at a valid schema, but the CLI flag points at an invalid one.
