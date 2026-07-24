@@ -50,6 +50,11 @@ Requires Python 3.10+.
 ```yaml
 data_contract_specification: dcs   # or "odcs" / "custom"
 
+data_contracts_path:
+  path: ./contracts/               # where your contracts live
+  exclude_paths:
+    - archive/**                   # optional glob filters
+
 data_contract_checks:
   - attribute: info.title
     checks:
@@ -76,13 +81,20 @@ data_contract_checks:
 **2. Run the checker** against your contracts:
 
 ```bash
-contract-checker --contract-path ./contracts/
+contract-checker
 ```
 
 With verbose output (shows passing checks too):
 
 ```bash
-contract-checker --contract-path ./contracts/ --verbose
+contract-checker --verbose
+```
+
+To validate a different location (or a single contract) ad hoc, override the
+configured path with `--contract-path`:
+
+```bash
+contract-checker --contract-path ./contracts/orders.yaml
 ```
 
 For the full config-file schema — path filtering, severity overrides, and custom schemas — see the [configuration guide](https://godatadriven.github.io/contract-checker/config/).
@@ -107,7 +119,7 @@ See the [checks reference](https://godatadriven.github.io/contract-checker/check
 
 - **Wildcard path support** — apply checks across all models and fields with `models.*.fields.*.unique`
 - **Severity levels** — configure checks as `error`, `warn`, or `info`, either globally or per field
-- **Contract filtering** — include or exclude contracts by directory path or field value (e.g. only `status: active` contracts)
+- **Contract filtering** — include or exclude contracts with glob patterns (`domain/**`, `**/draft_*.yaml`); filtering by field value (e.g. only `status: active` contracts) is planned
 - **Custom JSON Schema** — validate contracts against your own schema in addition to built-in standard validation
 - **Rich output** — colour-coded pass/fail tables per contract plus a summary across all contracts
 - **Extensible** — implement the `Check` abstract base class to add your own check types via the Python API
