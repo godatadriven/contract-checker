@@ -48,6 +48,24 @@ Supported values:
 
 - `dcs` - Data Contract Specification
 - `odcs` - Open Data Contract Standard
+- `custom` - Validate against a custom JSON Schema (see [Custom Schemas](custom_schemas.md))
+
+### `custom_schema_path`
+
+Path to a custom JSON Schema file. Only used when `data_contract_specification` is `custom`. The
+`--custom-schema-path` CLI option overrides this value.
+
+When a custom schema is set, each contract is validated against that JSON Schema **and** against
+any `data_contract_checks` you configure — both run. Set `data_contract_checks: []` (or omit it)
+for schema-only validation.
+
+```yaml
+data_contract_specification: custom
+custom_schema_path: ./schemas/my-contract-schema.json
+data_contract_checks: []   # or add checks to run on top of the schema
+```
+
+See [Custom Schemas](custom_schemas.md) for the full behaviour.
 
 ### `data_contracts_path`
 
