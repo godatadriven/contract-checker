@@ -582,3 +582,89 @@ class TestUnknownCheckType:
 
         with pytest.raises(ValueError, match="Unknown check type"):
             v.run_checks(_FakeContract(SAMPLE_DATA))
+
+
+# ===================================================================
+# 10. ODCS-style contracts (repeatable objects as lists)
+# ===================================================================
+
+
+ODCS_SAMPLE_DATA = {
+    "apiVersion": "v3.0.2",
+    "kind": "DataContract",
+    "name": "my_table",
+    "status": "active",
+    "schema": [
+        {
+            "name": "tbl",
+            "physicalType": "table",
+            "properties": [
+                {
+                    "name": "rcvr_cntry_code",
+                    "logicalType": "string",
+                    "primaryKey": True,
+                },
+                {
+                    "name": "amount",
+                    "logicalType": "number",
+                },
+            ],
+        }
+    ],
+}
+
+
+class TestOdcsListStyleContracts:
+    """Full pipeline against ODCS-shaped contracts, where repeatable
+    objects are lists of named objects instead of dicts keyed by name."""
+
+    def test_required_name_per_property(self) -> None:
+        v = _make_validator([{"attribute": "schema.*.properties.*.name", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path["schema.tbl.properties.rcvr_cntry_code.name"] is True
+        assert results_by_path["schema.tbl.properties.amount.name"] is True
+        assert report.failed_checks == 0
+
+    def test_required_missing_leaf_fails_per_property(self) -> None:
+        v = _make_validator([{"attribute": "schema.*.properties.*.primaryKey", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path["schema.tbl.properties.rcvr_cntry_code.primaryKey"] is True
+        assert results_by_path["schema.tbl.properties.amount.primaryKey"] is False
+
+    def test_accepted_values_per_property(self) -> None:
+        v = _make_validator(
+            [{"attribute": "schema.*.properties.*.logicalType", "checks": [{"accepted_values": ["string"]}]}]
+        )
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path["schema.tbl.properties.rcvr_cntry_code.logicalType"] is True
+        assert results_by_path["schema.tbl.properties.amount.logicalType"] is False
+
+    def test_same_path_shape_works_for_both_standards(self) -> None:
+        """The same wildcard path yields field names for list-style (ODCS)
+        and dict-style (DCS) contracts alike."""
+        odcs_style = {"models": [{"name": "orders", "fields": [{"name": "order_id"}]}]}
+        dcs_style = {"models": {"orders": {"fields": {"order_id": {"type": "text"}}}}}
+
+        v = _make_validator([{"attribute": "models.*.fields.*.name", "checks": [{"required": True}]}])
+
+        for content in (odcs_style, dcs_style):
+            report = v.run_checks(_FakeContract(content))
+            assert report.failed_checks == 0
+            assert report.results[0].attribute == "models.orders.fields.order_id.name"
+
+    def test_concrete_paths_no_wildcards_in_output(self) -> None:
+        v = _make_validator([{"attribute": "schema.*.properties.*.name", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        assert report.results, "expected per-property results"
+        for result in report.results:
+            assert "*" not in result.attribute
