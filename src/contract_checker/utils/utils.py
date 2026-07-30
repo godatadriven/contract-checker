@@ -1,9 +1,48 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
+import jsonschema
 import yaml
+
+
+class CustomSchemaError(Exception):
+    """Raised when a custom JSON Schema is missing, unparseable, or itself invalid."""
+
+
+def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
+    """Load a custom JSON Schema and verify it is itself a valid JSON Schema.
+
+    Unlike :func:`load_json_schema`, this does not swallow errors: it raises
+    :class:`CustomSchemaError` with a clear, user-facing message for each failure
+    mode so the CLI can fail fast before validating any contracts.
+
+    :param schema_path: Path to the custom JSON Schema file.
+    :returns: The parsed schema as a dict.
+    :raises CustomSchemaError: If the file is missing, not valid JSON, or not a
+        valid JSON Schema (checked against its meta-schema).
+    """
+    try:
+        with open(schema_path, "r") as file:
+            schema = json.load(file)
+    except FileNotFoundError as e:
+        raise CustomSchemaError(f"Custom schema file not found: {schema_path}") from e
+    except json.JSONDecodeError as e:
+        raise CustomSchemaError(f"Custom schema is not valid JSON ({schema_path}): {e}") from e
+
+    if not isinstance(schema, dict):
+        raise CustomSchemaError(f"Custom schema must be a JSON object ({schema_path}).")
+
+    # Validate the schema itself against its meta-schema. The draft is auto-detected
+    # from the schema's "$schema" key (falling back to the latest supported draft).
+    validator_class = jsonschema.validators.validator_for(schema)
+    try:
+        validator_class.check_schema(schema)
+    except jsonschema.exceptions.SchemaError as e:
+        raise CustomSchemaError(f"Custom schema is not a valid JSON Schema ({schema_path}): {e.message}") from e
+
+    return schema
 
 
 def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
