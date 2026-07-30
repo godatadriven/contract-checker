@@ -8,7 +8,7 @@ from typing_extensions import Annotated
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
-from contract_checker.utils.utils import parse_yml_to_dict
+from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, parse_yml_to_dict
 from contract_checker.version import version
 
 app = typer.Typer(
@@ -59,15 +59,10 @@ def main(
     custom_schema_path: Annotated[
         Optional[Path],
         typer.Option(
-            help="Path to a custom JSON Schema file for contract validation.",
+            help="Path to a custom JSON Schema file for contract validation. "
+            "Overrides 'custom_schema_path' in the checks config file.",
         ),
     ] = None,
-    custom_config_path: Annotated[
-        Optional[Path],
-        typer.Option(
-            help="Optional custom path to configuration file.",
-        ),
-    ] = Path("custom-checks-config.yml"),
 ) -> None:
     """Main entry point for the contract-checker CLI.
 
@@ -83,7 +78,6 @@ def main(
         via 'data_contracts_path' in the checks config.
         version: Display version information and exit.
         custom_schema_path: Optional path to a custom JSON Schema for validation.
-        custom_config_path: Optional path to custom configuration file.
 
     Raises:
         typer.Exit: Always raised upon completion to properly terminate the CLI.
@@ -95,12 +89,12 @@ def main(
     logging.debug(f"Checks configuration path: {checks_config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
-    if custom_schema_path:
-        logging.debug(f"Custom schema path: {custom_schema_path}")
-        logging.debug(f"Custom configuration path: {custom_config_path}")
 
     checks_dict = parse_yml_to_dict(checks_config_path)
 
+    # Resolve the contract path: the CLI flag wins, otherwise fall back to the
+    # 'data_contracts_path' block in the checks config file (which may also carry
+    # include/exclude glob filters).
     config_contract_path, include_paths, exclude_paths = parse_data_contracts_path_config(checks_dict)
     resolved_contract_path = contract_path or config_contract_path
     if resolved_contract_path is None:
@@ -109,14 +103,36 @@ def main(
         )
         raise typer.Exit(code=1)
 
-    # Load the contract -> internally identify type of contract -> validate contract
-    contracts = load_contracts(
-        contract_path=resolved_contract_path,
-        contract_specification=checks_dict.get("data_contract_specification"),
-        custom_schema_path=custom_schema_path,
-        include_paths=include_paths,
-        exclude_paths=exclude_paths,
-    )
+    # Resolve the custom schema path: the CLI flag wins, otherwise fall back to the
+    # 'custom_schema_path' key in the checks config file.
+    config_schema_path = checks_dict.get("custom_schema_path") if checks_dict else None
+    resolved_schema_path = custom_schema_path or (Path(config_schema_path) if config_schema_path else None)
+
+    # Fail fast: a custom schema must itself be a valid JSON Schema before we
+    # attempt to validate any contracts against it.
+    if resolved_schema_path is not None:
+        logging.debug(f"Custom schema path: {resolved_schema_path}")
+        try:
+            load_and_validate_json_schema(resolved_schema_path)
+        except CustomSchemaError as e:
+            logging.error(str(e))
+            raise typer.Exit(code=1)
+
+    # Load the contract -> internally identify type of contract -> validate contract.
+    # Misconfiguration (e.g. a 'custom' spec with no schema, or a missing contract
+    # path) surfaces as a clear error and a non-zero exit, matching the fail-fast
+    # handling above rather than leaking a stack trace.
+    try:
+        contracts = load_contracts(
+            contract_path=resolved_contract_path,
+            contract_specification=checks_dict.get("data_contract_specification") if checks_dict else None,
+            custom_schema_path=resolved_schema_path,
+            include_paths=include_paths,
+            exclude_paths=exclude_paths,
+        )
+    except (ValueError, FileNotFoundError) as e:
+        logging.error(str(e))
+        raise typer.Exit(code=1)
 
     validate_contracts(contracts, checks_dict, verbose=verbosity)
 

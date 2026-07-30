@@ -9,6 +9,7 @@ We support the following data contract standards:
 
 - **ODCS (Open Data Contract Standard)** - versions 2.2.1 through 3.1.0
 - **DCS (Data Contract Specification)** - versions 0.9.0 through 1.2.1
+- **Custom JSON Schema** - validate against your own schema, see [Custom Schemas](custom_schemas.md)
 
 ## Community & Support
 
