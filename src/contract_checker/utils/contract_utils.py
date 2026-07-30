@@ -100,6 +100,13 @@ def load_contracts(
 ) -> list[dict]:
     """Load all data contracts within a user-provided path."""
 
+    # A 'custom' specification is meaningless without a schema to validate against.
+    if custom_schema_path is None and contract_specification == "custom":
+        raise ValueError(
+            "data_contract_specification is 'custom' but no custom schema was provided. "
+            "Set 'custom_schema_path' in the checks config file or pass --custom-schema-path."
+        )
+
     # Check if the contract_path exists before proceeding
     if not contract_path.exists():
         raise FileNotFoundError(f"Provided contract path does not exist: {contract_path}")
