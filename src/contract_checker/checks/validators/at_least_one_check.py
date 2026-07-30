@@ -88,11 +88,13 @@ class AtLeastOneCheck(Check):
         required_attr, required_val = next(iter(check_value.items()))
         found = False
         for value in values:
-            if isinstance(value, dict):
-                for item in value.values():
-                    if isinstance(item, dict) and item.get(required_attr) == required_val:
-                        found = True
-                        break
+            # A collection is either a dict keyed by item name (DCS style)
+            # or a list of named objects (ODCS style).
+            items = value.values() if isinstance(value, dict) else value if isinstance(value, list) else []
+            for item in items:
+                if isinstance(item, dict) and item.get(required_attr) == required_val:
+                    found = True
+                    break
             if found:
                 break
 

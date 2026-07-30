@@ -252,6 +252,18 @@ class DataContractValidator:
         values for each. This allows checks to run per-item rather than across
         all matched items combined.
 
+        A ``*`` segment matches each repeated item regardless of how the
+        repetition is represented in the contract standard:
+
+        - dict keyed by name (DCS style): ``*`` expands over the dict entries,
+          e.g. ``models.*.fields.*.unique``
+        - list of objects (ODCS style): ``*`` expands over the list items,
+          e.g. ``schema.*.properties.*.logicalType``
+
+        A trailing ``name`` segment after a dict ``*`` resolves to the dict key
+        itself when the entry has no explicit ``name`` value, so
+        ``models.*.fields.*.name`` yields field names for both standards.
+
         Args:
             data: The data dictionary
             attribute_path: Dot-separated path with wildcards (e.g., 'models.*.fields.*.unique')
@@ -293,11 +305,18 @@ class DataContractValidator:
 
         if isinstance(data, dict):
             if current_part == "*":
-                # Wildcard: expand into each key in the dict
+                # Wildcard: expand into each entry of the dict (DCS-style
+                # repeatable objects are dicts keyed by name).
                 results_wildcard: Dict[str, List[Any]] = {}
                 for key, value in data.items():
-                    sub = self._expand_and_collect(value, remaining, [*current_path, key])
-                    results_wildcard.update(sub)
+                    if remaining == ["name"] and not (isinstance(value, dict) and "name" in value):
+                        # Key-as-name: in dict-style contracts the entry name
+                        # is the key itself (e.g. DCS `fields:`). An explicit
+                        # `name` value inside the entry wins over the key.
+                        results_wildcard[".".join([*current_path, key, "name"])] = [key]
+                    else:
+                        sub = self._expand_and_collect(value, remaining, [*current_path, key])
+                        results_wildcard.update(sub)
                 return results_wildcard
             elif current_part in data:
                 return self._expand_and_collect(data[current_part], remaining, [*current_path, current_part])
@@ -307,10 +326,26 @@ class DataContractValidator:
 
         elif isinstance(data, list):
             results: Dict[str, List[Any]] = {}
-            for item in data:
-                sub = self._expand_and_collect(item, parts, current_path)
-                for k, v in sub.items():
-                    results.setdefault(k, []).extend(v)
+            if current_part == "*":
+                # Wildcard: expand into each item of the list (ODCS-style
+                # repeatable objects are lists of named objects). Label each
+                # concrete path with the item's `name` when available,
+                # falling back to the item's index.
+                for index, item in enumerate(data):
+                    if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"]:
+                        label = item["name"]
+                    else:
+                        label = str(index)
+                    sub = self._expand_and_collect(item, remaining, [*current_path, label])
+                    for k, v in sub.items():
+                        results.setdefault(k, []).extend(v)
+            else:
+                # Non-wildcard segment: lists are transparent, the segment
+                # applies to each item (e.g. `servers.type`).
+                for item in data:
+                    sub = self._expand_and_collect(item, parts, current_path)
+                    for k, v in sub.items():
+                        results.setdefault(k, []).extend(v)
             return results
 
         path_str = ".".join(current_path + parts)

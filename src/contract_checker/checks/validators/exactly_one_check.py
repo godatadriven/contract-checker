@@ -114,10 +114,12 @@ class ExactlyOneCheck(Check):
         required_attr, required_val = next(iter(check_value.items()))
         count = 0
         for value in values:
-            if isinstance(value, dict):
-                for item in value.values():
-                    if isinstance(item, dict) and item.get(required_attr) == required_val:
-                        count += 1
+            # A collection is either a dict keyed by item name (DCS style)
+            # or a list of named objects (ODCS style).
+            items = value.values() if isinstance(value, dict) else value if isinstance(value, list) else []
+            for item in items:
+                if isinstance(item, dict) and item.get(required_attr) == required_val:
+                    count += 1
 
         passed = count == 1
         if passed:
