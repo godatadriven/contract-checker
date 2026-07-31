@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typer.testing import CliRunner
+from typer.testing import CliRunner, Result
 
 from contract_checker.cli import app
 from contract_checker.version import version
@@ -39,6 +39,59 @@ class TestCli:
         """Test that a non-existent checks config path causes a non-zero exit."""
         result = self.runner.invoke(app, ["--checks-config-path", "nonexistent-checks.yml"])
         assert result.exit_code != 0
+
+
+class TestExitCodes:
+    """Test that the exit code reflects the validation outcome and severity."""
+
+    FAILING_CHECKS = (
+        "data_contract_checks:\n  - attribute: info.thisdoesnotexist\n    checks:\n      - required: true\n"
+    )
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def _invoke(self, config: Path, *extra: str) -> Result:
+        return self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+                *extra,
+            ],
+        )
+
+    def test_passing_checks_exit_zero(self, tmp_path: Path) -> None:
+        """A run with no failing checks exits 0."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke(config)
+        assert result.exit_code == 0
+
+    def test_failing_checks_exit_one(self, tmp_path: Path) -> None:
+        """A failing check exits 1 (default severity 'error') after printing the report."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke(config)
+        assert result.exit_code == 1
+        # The full report is still printed before exiting non-zero.
+        assert "FAIL" in result.output
+
+    def test_failing_checks_with_severity_warn_exit_zero(self, tmp_path: Path) -> None:
+        """With --severity warn, failing checks still print but the exit code is 0."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke(config, "--severity", "warn")
+        assert result.exit_code == 0
+        assert "FAIL" in result.output
+
+    def test_invalid_severity_exits_two(self, tmp_path: Path) -> None:
+        """An unknown severity value is a usage error and exits 2."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke(config, "--severity", "bogus")
+        assert result.exit_code == 2
 
 
 class TestCustomSchemaCli:

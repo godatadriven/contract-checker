@@ -13,6 +13,20 @@ Use `--verbose` / `-v` to also show passing checks for each contract:
 contract-checker --verbose
 ```
 
+## Exit codes
+
+All checks always run and the full report is always printed; the exit code signals the
+overall outcome so CI pipelines can pass or fail on it:
+
+| Code | Meaning |
+| ---- | ------- |
+| 0 | All checks passed, or failures occurred with `--severity warn` |
+| 1 | One or more checks failed with `--severity error` (the default), or a config/load error |
+| 2 | Usage error (e.g. an invalid `--severity` value) |
+
+Use `--severity warn` to keep the checker advisory: the same report is printed, but the
+run always exits 0 so the pipeline stays green.
+
 ## Contract discovery
 
 Contracts are loaded from `data_contracts_path` in the checks config, including any

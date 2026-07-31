@@ -38,7 +38,10 @@ def main(
     ),
     severity: Annotated[
         str,
-        typer.Option(help="The severity level of the checks. Can be 'error' or 'warn'"),
+        typer.Option(
+            help="The severity level of the checks. 'error' exits with code 1 when checks fail "
+            "(fails CI); 'warn' prints the same report but always exits 0."
+        ),
     ] = "error",
     verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
     contract_path: Annotated[
@@ -90,6 +93,10 @@ def main(
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
 
+    if severity not in ("error", "warn"):
+        logging.error(f"Invalid severity '{severity}'. Use 'error' or 'warn'.")
+        raise typer.Exit(code=2)
+
     checks_dict = parse_yml_to_dict(checks_config_path)
 
     # Resolve the contract path: the CLI flag wins, otherwise fall back to the
@@ -134,7 +141,14 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
-    validate_contracts(contracts, checks_dict, verbose=verbosity)
+    reports = validate_contracts(contracts, checks_dict, verbose=verbosity)
+
+    # All checks have run and the full report has been printed above; the exit
+    # code only signals the overall outcome to the shell/CI. With severity
+    # 'warn' the run always exits 0, keeping the check advisory.
+    failed_checks = sum(report.failed_checks for report in reports)
+    if failed_checks > 0 and severity == "error":
+        raise typer.Exit(code=1)
 
     raise typer.Exit()
 
