@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -173,6 +174,82 @@ class TestOutputModes:
         config = _write_checks_config(tmp_path)
         result = self._invoke_on(VALID_CONTRACT, config, "--output-mode", "bogus")
         assert result.exit_code == 2
+
+
+class TestOutputFormat:
+    """Test the --format option and GitHub Actions annotations."""
+
+    FAILING_CHECKS = (
+        "data_contract_checks:\n  - attribute: info.thisdoesnotexist\n    checks:\n      - required: true\n"
+    )
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def _invoke(self, config: Path, *extra: str, env: dict[str, str] | None = None) -> Result:
+        return self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+                *extra,
+            ],
+            env=env,
+        )
+
+    def test_json_format_outputs_parseable_document(self, tmp_path: Path) -> None:
+        """--format json prints a JSON document with failure details, no text report."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke(config, "--format", "json")
+        # Parse stdout only: logging goes to stderr, keeping stdout pipeable JSON.
+        document = json.loads(result.stdout)
+        assert document["total_contracts"] == 1
+        assert document["failed_checks"] == 1
+        failed = [r for r in document["contracts"][0]["results"] if not r["passed"]]
+        assert failed[0]["attribute"] == "info.thisdoesnotexist"
+        assert failed[0]["check_type"] == "required"
+        assert "missing or null" in failed[0]["message"]
+        # The human-readable report must not pollute the JSON stdout.
+        assert "Data Contract Checker" not in result.stdout
+
+    def test_json_format_keeps_exit_codes(self, tmp_path: Path) -> None:
+        """--format json still exits 1 on failing checks and 0 when all pass."""
+        failing = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        assert self._invoke(failing, "--format", "json").exit_code == 1
+        passing_dir = tmp_path / "passing"
+        passing_dir.mkdir()
+        passing = _write_checks_config(passing_dir)
+        assert self._invoke(passing, "--format", "json").exit_code == 0
+
+    def test_invalid_format_exits_two(self, tmp_path: Path) -> None:
+        """An unknown format is a usage error and exits 2."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke(config, "--format", "yaml")
+        assert result.exit_code == 2
+
+    def test_annotations_emitted_in_github_actions(self, tmp_path: Path) -> None:
+        """Inside GitHub Actions, failed checks are emitted as ::error annotations."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke(config, env={"GITHUB_ACTIONS": "true"})
+        assert "::error file=" in result.output
+        assert "title=required" in result.output
+
+    def test_annotations_absent_outside_github_actions(self, tmp_path: Path) -> None:
+        """Without the GITHUB_ACTIONS env var, no annotation lines are printed."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke(config, env={"GITHUB_ACTIONS": ""})
+        assert "::error" not in result.output
+
+    def test_no_annotations_flag_suppresses_annotations(self, tmp_path: Path) -> None:
+        """--no-annotations disables annotations even inside GitHub Actions."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke(config, "--no-annotations", env={"GITHUB_ACTIONS": "true"})
+        assert "::error" not in result.output
 
 
 class TestCustomSchemaCli:

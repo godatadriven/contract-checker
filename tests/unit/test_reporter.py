@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contract_checker.checks.models import ContractValidationReport, ValidationResult
-from contract_checker.checks.reporting import ValidationReporter
+from contract_checker.checks.reporting import ValidationReporter, github_annotations
 
 
 def _make_result(passed: bool, check_type: str = "required") -> ValidationResult:
@@ -75,3 +75,54 @@ class TestValidationReporter:
         assert summary["total_checks"] == 0
         assert summary["passed_checks"] == 0
         assert summary["failed_checks"] == 0
+
+    def test_get_summary_includes_per_check_results(self) -> None:
+        """Each contract entry carries its individual check results."""
+        report = _make_report("a.yml", [_make_result(True), _make_result(False)])
+
+        summary = self.reporter.get_summary([report])
+
+        contract = summary["contracts"][0]
+        assert contract["file"] == "a.yml"
+        assert len(contract["results"]) == 2
+        failed = [r for r in contract["results"] if not r["passed"]]
+        assert failed[0]["check_type"] == "required"
+        assert failed[0]["attribute"] == "some.attribute"
+        assert failed[0]["message"] == "failed"
+
+
+class TestGithubAnnotations:
+    """Test GitHub Actions workflow-command generation."""
+
+    def test_one_line_per_failed_check(self) -> None:
+        """Only failed checks produce annotation lines."""
+        report = _make_report("a.yml", [_make_result(True), _make_result(False), _make_result(False)])
+
+        lines = github_annotations([report])
+
+        assert len(lines) == 2
+        assert all(line.startswith("::error file=") for line in lines)
+        assert all("title=required" in line for line in lines)
+        assert all(line.endswith("::failed") for line in lines)
+
+    def test_no_failures_no_lines(self) -> None:
+        """A fully passing report yields no annotations."""
+        report = _make_report("a.yml", [_make_result(True)])
+        assert github_annotations([report]) == []
+
+    def test_message_newlines_are_escaped(self) -> None:
+        """Newlines in messages are escaped so annotations stay one line."""
+        result = ValidationResult(
+            contract_file="a.yml",
+            attribute="x",
+            check_type="pattern",
+            passed=False,
+            message="line one\nline two",
+        )
+        report = _make_report("a.yml", [result])
+
+        lines = github_annotations([report])
+
+        assert len(lines) == 1
+        assert "\n" not in lines[0]
+        assert "line one%0Aline two" in lines[0]
