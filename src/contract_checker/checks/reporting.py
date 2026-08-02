@@ -1,5 +1,7 @@
 """Validation result reporting and output formatting."""
 
+import json
+import os
 from typing import Any, Dict, List, Union
 
 from rich.console import Console
@@ -10,6 +12,99 @@ from .models import ContractValidationReport
 
 # Valid values for the CLI's --output-mode option.
 OUTPUT_MODES = ("summary", "failures", "full")
+
+# Valid values for the CLI's --format option.
+OUTPUT_FORMATS = ("text", "json")
+
+
+def build_summary(reports: List[ContractValidationReport]) -> Dict[str, Any]:
+    """
+    Build a JSON-serializable summary of validation results.
+
+    Includes per-check results for each contract so machine consumers
+    (scripts, dashboards, other tools) get the full picture, not just counts.
+
+    Args:
+        reports: List of ContractValidationReport objects
+
+    Returns:
+        Dictionary with summary statistics and per-contract check results
+    """
+    return {
+        "total_contracts": len(reports),
+        "passed_contracts": sum(1 for r in reports if r.success),
+        "failed_contracts": sum(1 for r in reports if not r.success),
+        "total_checks": sum(r.total_checks for r in reports),
+        "passed_checks": sum(r.passed_checks for r in reports),
+        "failed_checks": sum(r.failed_checks for r in reports),
+        "contracts": [
+            {
+                "file": str(r.contract_file),
+                "success": r.success,
+                "passed": r.passed_checks,
+                "failed": r.failed_checks,
+                "results": [
+                    {
+                        "check_type": result.check_type,
+                        "attribute": result.attribute,
+                        "passed": result.passed,
+                        "message": result.message,
+                    }
+                    for result in r.results
+                ],
+            }
+            for r in reports
+        ],
+    }
+
+
+def render_json(reports: List[ContractValidationReport]) -> str:
+    """Render validation results as a JSON document for machine consumption."""
+    return json.dumps(build_summary(reports), indent=2)
+
+
+def _escape_annotation_data(value: str) -> str:
+    """Escape the message part of a GitHub workflow command."""
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _escape_annotation_property(value: str) -> str:
+    """Escape a property value (file, title) of a GitHub workflow command."""
+    return _escape_annotation_data(value).replace(":", "%3A").replace(",", "%2C")
+
+
+def github_annotations(reports: List[ContractValidationReport]) -> List[str]:
+    """
+    Build GitHub Actions workflow-command lines for every failed check.
+
+    Each line renders as an error annotation on the contract file in the PR's
+    'Files changed' view. Paths are made relative to the working directory
+    (the repository root on GitHub runners) so GitHub can match them to files
+    in the diff.
+
+    Args:
+        reports: List of ContractValidationReport objects
+
+    Returns:
+        One '::error ...' line per failed check
+    """
+    lines = []
+    for report in reports:
+        for result in report.results:
+            if result.passed:
+                continue
+            file_path = str(report.contract_file)
+            try:
+                file_path = os.path.relpath(file_path)
+            except ValueError:
+                # Different drive on Windows etc. - keep the original path.
+                pass
+            lines.append(
+                f"::error file={_escape_annotation_property(file_path)},"
+                f"title={_escape_annotation_property(result.check_type)}"
+                f"::{_escape_annotation_data(result.message)}"
+            )
+    return lines
 
 
 class ValidationReporter:
@@ -238,22 +333,6 @@ class ValidationReporter:
             reports: List of ContractValidationReport objects
 
         Returns:
-            Dictionary with summary statistics
+            Dictionary with summary statistics and per-contract check results
         """
-        return {
-            "total_contracts": len(reports),
-            "passed_contracts": sum(1 for r in reports if r.success),
-            "failed_contracts": sum(1 for r in reports if not r.success),
-            "total_checks": sum(r.total_checks for r in reports),
-            "passed_checks": sum(r.passed_checks for r in reports),
-            "failed_checks": sum(r.failed_checks for r in reports),
-            "contracts": [
-                {
-                    "file": r.contract_file,
-                    "success": r.success,
-                    "passed": r.passed_checks,
-                    "failed": r.failed_checks,
-                }
-                for r in reports
-            ],
-        }
+        return build_summary(reports)

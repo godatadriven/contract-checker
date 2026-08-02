@@ -1,11 +1,12 @@
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
 import typer
 from typing_extensions import Annotated
 
-from contract_checker.checks.reporting import OUTPUT_MODES
+from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, github_annotations
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
@@ -52,6 +53,21 @@ def main(
             "'full': also show passing checks."
         ),
     ] = "failures",
+    output_format: Annotated[
+        str,
+        typer.Option(
+            "--format",
+            help="Output format. 'text': human-readable report (default); "
+            "'json': machine-readable JSON document on stdout.",
+        ),
+    ] = "text",
+    no_annotations: Annotated[
+        bool,
+        typer.Option(
+            "--no-annotations",
+            help="Disable GitHub Actions error annotations (emitted automatically when running in GitHub Actions).",
+        ),
+    ] = False,
     verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose (debug) logging.")] = False,
     contract_path: Annotated[
         Optional[Path],
@@ -86,6 +102,8 @@ def main(
         config_path: Path to the YAML file containing data contract check definitions.
         severity: Severity level for validation issues ('error' or 'warn').
         output_mode: How much of the report to print ('summary', 'failures', or 'full').
+        output_format: 'text' for the human-readable report, 'json' for machine output.
+        no_annotations: Disable the GitHub Actions error annotations.
         verbosity: Enable verbose (debug) logging when True.
         contract_path: Optional override for the contract file or directory configured
         via 'data_contracts_path' in the checks config.
@@ -109,6 +127,10 @@ def main(
 
     if output_mode not in OUTPUT_MODES:
         logging.error(f"Invalid output mode '{output_mode}'. Use one of: {', '.join(OUTPUT_MODES)}.")
+        raise typer.Exit(code=2)
+
+    if output_format not in OUTPUT_FORMATS:
+        logging.error(f"Invalid format '{output_format}'. Use one of: {', '.join(OUTPUT_FORMATS)}.")
         raise typer.Exit(code=2)
 
     checks_dict = parse_yml_to_dict(checks_config_path)
@@ -155,7 +177,15 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
-    reports = validate_contracts(contracts, checks_dict, output_mode=output_mode)
+    reports = validate_contracts(contracts, checks_dict, output_mode=output_mode, output_format=output_format)
+
+    # Inside GitHub Actions (detected via the GITHUB_ACTIONS env var the runner
+    # always sets), also emit workflow-command lines so failures show up as
+    # inline annotations on the PR diff. Text format only: JSON consumers get
+    # the same information structured in the document itself.
+    if output_format == "text" and not no_annotations and os.environ.get("GITHUB_ACTIONS") == "true":
+        for line in github_annotations(reports):
+            print(line)
 
     # All checks have run and the full report has been printed above; the exit
     # code only signals the overall outcome to the shell/CI. With severity

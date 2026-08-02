@@ -22,6 +22,22 @@ Use `--verbose` / `-v` to enable debug logging (this no longer affects the repor
 contract-checker --verbose
 ```
 
+## Machine-readable output
+
+`--format json` replaces the human-readable report with a JSON document on stdout,
+including per-check results for every contract. Logging goes to stderr, so stdout
+stays clean for piping. Exit codes work exactly as in text mode.
+
+```bash
+# list all failing contract files
+contract-checker --format json | jq -r '.contracts[] | select(.success | not) .file'
+```
+
+When running inside GitHub Actions (auto-detected via the `GITHUB_ACTIONS` env var),
+failed checks are additionally emitted as `::error` workflow commands, which GitHub
+renders as inline annotations on the PR diff. Disable with `--no-annotations`.
+See [GitHub Actions](ci.md) for details.
+
 ## Exit codes
 
 All checks always run and the full report is always printed; the exit code signals the
