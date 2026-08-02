@@ -211,15 +211,15 @@ class DataContractValidator:
     def print_results(
         self,
         reports: Union[ContractValidationReport, List[ContractValidationReport]],
-        verbose: bool = True,
-        summary_only: bool = False,
+        output_mode: str = "failures",
     ) -> None:
         """
         Print validation results in a readable format
 
         Delegates to the ValidationReporter for consistent formatting.
+        See ValidationReporter.print_results for the available output modes.
         """
-        self.reporter.print_results(reports, verbose, summary_only)
+        self.reporter.print_results(reports, output_mode)
 
     def get_summary(self, reports: List[ContractValidationReport]) -> Dict[str, Any]:
         """

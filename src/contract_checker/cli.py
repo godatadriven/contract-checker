@@ -5,6 +5,7 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
+from contract_checker.checks.reporting import OUTPUT_MODES
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
@@ -43,7 +44,15 @@ def main(
             "(fails CI); 'warn' prints the same report but always exits 0."
         ),
     ] = "error",
-    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
+    output_mode: Annotated[
+        str,
+        typer.Option(
+            help="How much of the report to print. 'summary': verdict plus the failed-checks "
+            "summary table; 'failures': per-contract failure details (default); "
+            "'full': also show passing checks."
+        ),
+    ] = "failures",
+    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose (debug) logging.")] = False,
     contract_path: Annotated[
         Optional[Path],
         typer.Option(
@@ -76,7 +85,8 @@ def main(
     Args:
         config_path: Path to the YAML file containing data contract check definitions.
         severity: Severity level for validation issues ('error' or 'warn').
-        verbosity: Enable verbose/debug output when True.
+        output_mode: How much of the report to print ('summary', 'failures', or 'full').
+        verbosity: Enable verbose (debug) logging when True.
         contract_path: Optional override for the contract file or directory configured
         via 'data_contracts_path' in the checks config.
         version: Display version information and exit.
@@ -95,6 +105,10 @@ def main(
 
     if severity not in ("error", "warn"):
         logging.error(f"Invalid severity '{severity}'. Use 'error' or 'warn'.")
+        raise typer.Exit(code=2)
+
+    if output_mode not in OUTPUT_MODES:
+        logging.error(f"Invalid output mode '{output_mode}'. Use one of: {', '.join(OUTPUT_MODES)}.")
         raise typer.Exit(code=2)
 
     checks_dict = parse_yml_to_dict(checks_config_path)
@@ -141,7 +155,7 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
-    reports = validate_contracts(contracts, checks_dict, verbose=verbosity)
+    reports = validate_contracts(contracts, checks_dict, output_mode=output_mode)
 
     # All checks have run and the full report has been printed above; the exit
     # code only signals the overall outcome to the shell/CI. With severity

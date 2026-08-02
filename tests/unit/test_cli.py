@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 from typer.testing import CliRunner, Result
@@ -20,6 +22,20 @@ def _write_checks_config(directory: Path, body: str = "data_contract_checks: []\
     config = directory / "data-contract-checks.yml"
     config.write_text(body)
     return config
+
+
+def test_cli_imports_cleanly_in_fresh_interpreter() -> None:
+    """Importing the CLI module first must not hit a circular import.
+
+    Pytest can mask import-order cycles because other modules are already
+    loaded; a fresh interpreter reproduces what the console script does.
+    """
+    result = subprocess.run(
+        [sys.executable, "-c", "from contract_checker.cli import app"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 class TestCli:
@@ -91,6 +107,71 @@ class TestExitCodes:
         """An unknown severity value is a usage error and exits 2."""
         config = _write_checks_config(tmp_path)
         result = self._invoke(config, "--severity", "bogus")
+        assert result.exit_code == 2
+
+
+class TestOutputModes:
+    """Test the --output-mode option and the failed-checks summary table rule."""
+
+    FAILING_CHECKS = (
+        "data_contract_checks:\n  - attribute: info.thisdoesnotexist\n    checks:\n      - required: true\n"
+    )
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def _invoke_on(self, contract_path: Path, config: Path, *extra: str) -> Result:
+        return self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(contract_path),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+                *extra,
+            ],
+        )
+
+    def test_default_hides_summary_table_for_single_contract(self, tmp_path: Path) -> None:
+        """A single failing contract shows the detail table but no duplicate summary table."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke_on(VALID_CONTRACT, config)
+        assert "Contract 1" in result.output
+        assert "Failed Checks Summary" not in result.output
+
+    def test_default_shows_summary_table_for_multiple_contracts(self, tmp_path: Path) -> None:
+        """With two failing contracts, the summary table appears as an overview."""
+        contracts_dir = tmp_path / "contracts"
+        contracts_dir.mkdir()
+        for name in ("one.yaml", "two.yaml"):
+            (contracts_dir / name).write_text(VALID_CONTRACT.read_text())
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke_on(contracts_dir, config)
+        assert "Contract 2" in result.output
+        assert "Failed Checks Summary" in result.output
+
+    def test_summary_mode_skips_detail_tables(self, tmp_path: Path) -> None:
+        """--output-mode summary prints the summary table without per-contract details."""
+        config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
+        result = self._invoke_on(VALID_CONTRACT, config, "--output-mode", "summary")
+        assert "Failed Checks Summary" in result.output
+        assert "Contract 1" not in result.output
+
+    def test_full_mode_shows_passing_checks(self, tmp_path: Path) -> None:
+        """--output-mode full lists passing checks that are hidden by default."""
+        config = _write_checks_config(tmp_path)
+        default_result = self._invoke_on(VALID_CONTRACT, config)
+        full_result = self._invoke_on(VALID_CONTRACT, config, "--output-mode", "full")
+        assert "PASS" not in default_result.output
+        assert "PASS" in full_result.output
+
+    def test_invalid_output_mode_exits_two(self, tmp_path: Path) -> None:
+        """An unknown output mode is a usage error and exits 2."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke_on(VALID_CONTRACT, config, "--output-mode", "bogus")
         assert result.exit_code == 2
 
 

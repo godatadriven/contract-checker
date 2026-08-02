@@ -4,10 +4,19 @@ This page provides documentation for the ```data-contract-checker``` CLI.
 
 ## Output behaviour
 
-By default, `contract-checker` shows all contracts with only their **failing checks** — passing
-checks are hidden to reduce noise. A summary table of all failures is printed at the end.
+How much of the report is printed is controlled by `--output-mode`:
 
-Use `--verbose` / `-v` to also show passing checks for each contract:
+| Mode | What is printed |
+| ---- | --------------- |
+| `failures` (default) | A verdict line, then one table per failing contract with its failing checks. When **more than one** contract fails, a consolidated failed-checks summary table is added at the end (for a single failing contract it would just duplicate the detail table, so it is skipped). |
+| `summary` | The verdict line and the failed-checks summary table only — no per-contract detail. Handy for large contract sets. |
+| `full` | Like `failures`, but passing checks and fully passing contracts are shown too. |
+
+```bash
+contract-checker --output-mode summary
+```
+
+Use `--verbose` / `-v` to enable debug logging (this no longer affects the report itself):
 
 ```bash
 contract-checker --verbose
