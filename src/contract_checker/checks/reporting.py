@@ -8,6 +8,9 @@ from rich.text import Text
 
 from .models import ContractValidationReport
 
+# Valid values for the CLI's --output-mode option.
+OUTPUT_MODES = ("summary", "failures", "full")
+
 
 class ValidationReporter:
     """Handles formatting and printing of validation results"""
@@ -19,16 +22,21 @@ class ValidationReporter:
     def print_results(
         self,
         reports: Union[ContractValidationReport, List[ContractValidationReport]],
-        verbose: bool = False,
-        summary_only: bool = False,
+        output_mode: str = "failures",
     ) -> None:
         """
         Print validation results in a readable format with color coding and tables
 
         Args:
             reports: Single ContractValidationReport or list of reports
-            verbose: If True, print all results; if False, only print failures
-            summary_only: If True, only print summary without individual check details
+            output_mode: One of OUTPUT_MODES.
+                'summary'  - verdict line plus the failed-checks summary table only.
+                'failures' - per-contract tables with failing checks (default). The
+                             failed-checks summary table is added only when more than
+                             one contract has failures, since with a single failing
+                             contract it would duplicate the detail table.
+                'full'     - like 'failures', but passing checks (and fully passing
+                             contracts) are shown as well.
         """
         # Handle single report
         if isinstance(reports, ContractValidationReport):
@@ -40,23 +48,32 @@ class ValidationReporter:
         self.console.print("[bold white]Data Contract Checker[/bold white]", justify="center")
         self.console.print()  # spacing after header
 
+        self._print_top_summary(reports)
+
+        show_passing = output_mode == "full"
         all_passed = all(r.success for r in reports)
 
         if all_passed:
-            self._print_top_summary(reports)
-        elif summary_only:
-            self._print_top_summary(reports)
+            # Nothing failed: the verdict line says it all. In 'full' mode the
+            # individual passing checks are still listed.
+            if show_passing:
+                self._print_individual_contracts(reports, show_passing)
+            return
+
+        if output_mode == "summary":
             self._print_failed_checks_summary_table(reports)
-        else:
-            self._print_top_summary(reports)
+            return
 
-            # Print individual contract results (failures only unless verbose)
-            self._print_individual_contracts(reports, verbose)
+        # Print individual contract results (failures only unless in 'full' mode)
+        self._print_individual_contracts(reports, show_passing)
 
+        # The failed-checks summary table only earns its place as an overview when
+        # failures are spread across multiple contracts; for a single failing
+        # contract it would repeat the detail table above verbatim.
+        failing_contracts = sum(1 for r in reports if not r.success)
+        if failing_contracts > 1:
             # Add big divider before summary table
             self.console.print("═" * 80)
-
-            # Print failed checks summary table
             self._print_failed_checks_summary_table(reports)
 
     def _print_top_summary(self, reports: List[ContractValidationReport]) -> None:
@@ -78,10 +95,10 @@ class ValidationReporter:
             )
         self.console.print()  # spacing after summary
 
-    def _print_individual_contracts(self, reports: List[ContractValidationReport], verbose: bool) -> None:
+    def _print_individual_contracts(self, reports: List[ContractValidationReport], show_passing: bool) -> None:
         """Print detailed results for each contract in individual tables"""
 
-        visible_reports = [(i, r) for i, r in enumerate(reports, 1) if verbose or not r.success]
+        visible_reports = [(i, r) for i, r in enumerate(reports, 1) if show_passing or not r.success]
 
         for pos, (i, report) in enumerate(visible_reports):
             # Contract header
@@ -123,7 +140,7 @@ class ValidationReporter:
             table.add_column("Message", style="white")
 
             # Add rows for each check result
-            visible_results = [r for r in report.results if verbose or not r.passed]
+            visible_results = [r for r in report.results if show_passing or not r.passed]
             for idx, result in enumerate(visible_results):
                 # Color code the status
                 if result.passed:
