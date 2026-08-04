@@ -186,6 +186,36 @@ class TestScoreboard:
         assert "1/1 passed" in output
 
 
+class TestNoTruncation:
+    """Long file names and attribute paths must always be fully viewable."""
+
+    LONG_FILE = "contracts/some/deeply/nested/folder/structure/really-long-datacontract-name.yaml"
+    LONG_ATTR = "models.customer_orders.fields.customer_shipping_address_line_two.constraints.pattern"
+
+    def _print(self, width: int) -> str:
+        result = ValidationResult(self.LONG_FILE, self.LONG_ATTR, "pattern", False, "does not match")
+        reports = [
+            _make_report(self.LONG_FILE, [result]),
+            _make_report("other.yml", [_make_result(False)]),
+        ]
+        buffer = io.StringIO()
+        reporter = ValidationReporter()
+        reporter.console = Console(file=buffer, width=width)
+        reporter.print_results(reports)
+        return buffer.getvalue()
+
+    def test_full_names_present_on_wide_console(self) -> None:
+        """On a wide console the full path and attribute appear verbatim."""
+        output = self._print(width=300)
+        assert self.LONG_FILE in output
+        assert self.LONG_ATTR in output
+
+    def test_narrow_console_folds_instead_of_truncating(self) -> None:
+        """On a narrow console values wrap onto extra lines; nothing is cut with an ellipsis."""
+        output = self._print(width=80)
+        assert "…" not in output
+
+
 class TestGithubAnnotations:
     """Test GitHub Actions workflow-command generation."""
 
