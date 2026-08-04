@@ -50,18 +50,34 @@ Supported values:
 - `odcs` - Open Data Contract Standard
 - `custom` - Validate against a custom JSON Schema (see [Custom Schemas](custom_schemas.md))
 
+### `lint`
+
+Whether to validate each contract against its **full JSON Schema** — the custom schema when one
+is provided, otherwise the built-in schema for the contract's specification and version. This is
+the equivalent of a `datacontract lint` step and is **off by default**. The `--lint` / `--no-lint`
+CLI option overrides this value.
+
+```yaml
+lint: true   # default: false
+```
+
+When enabled, schema validation runs **in addition** to any `data_contract_checks` — both run and
+every failure is reported. When disabled (the default), no JSON Schema validation is performed,
+even if a custom schema is configured. See [Schema Validation](linting.md) for full behaviour.
+
 ### `custom_schema_path`
 
 Path to a custom JSON Schema file. Only used when `data_contract_specification` is `custom`. The
 `--custom-schema-path` CLI option overrides this value.
 
-When a custom schema is set, each contract is validated against that JSON Schema **and** against
-any `data_contract_checks` you configure — both run. Set `data_contract_checks: []` (or omit it)
-for schema-only validation.
+Validation against the schema only happens when [`lint`](#lint) is enabled. When it is, each
+contract is validated against that JSON Schema **and** against any `data_contract_checks` you
+configure — both run. Set `data_contract_checks: []` (or omit it) for schema-only validation.
 
 ```yaml
 data_contract_specification: custom
 custom_schema_path: ./schemas/my-contract-schema.json
+lint: true                 # required to actually run schema validation
 data_contract_checks: []   # or add checks to run on top of the schema
 ```
 

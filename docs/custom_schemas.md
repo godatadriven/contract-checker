@@ -16,14 +16,21 @@ built-in schemas do not cover.
 The schema you supply must fully describe a valid contract on its own; the checker does not merge
 it with the built-in DCS/ODCS schemas.
 
+!!! warning "Enable linting to run schema validation"
+    Schema validation is **off by default**. Supplying a custom schema does not by itself validate
+    anything — you must also enable [linting](linting.md) with `--lint` or `lint: true`. With
+    linting off, the custom schema is ignored and a note is logged.
+
 ## Providing a schema
 
 You can point the checker at your schema in two ways. The CLI option always wins when both are set.
+In both cases, remember to enable [linting](linting.md).
 
 === "CLI option"
 
     ```bash
     contract-checker \
+      --lint \
       --contract-path ./data_contracts \
       --custom-schema-path ./schemas/my-contract-schema.json
     ```
@@ -35,6 +42,7 @@ You can point the checker at your schema in two ways. The CLI option always wins
     ```yaml
     data_contract_specification: custom
     custom_schema_path: ./schemas/my-contract-schema.json
+    lint: true
     data_contract_checks: []
     ```
 
