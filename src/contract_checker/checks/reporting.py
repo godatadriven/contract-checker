@@ -122,8 +122,17 @@ class ValidationReporter:
     """Handles formatting and printing of validation results"""
 
     def __init__(self) -> None:
-        """Initialize the reporter with a rich console"""
-        self.console = Console()
+        """Initialize the reporter with a rich console.
+
+        When output is not a terminal (CI logs, piping to a file), rich would
+        assume a width of 80 columns and squeeze the tables; use a generous
+        width instead (honouring the COLUMNS env var if set) so file paths and
+        attribute paths stay readable.
+        """
+        console = Console()
+        if not console.is_terminal:
+            console = Console(width=int(os.environ.get("COLUMNS", "120")))
+        self.console = console
 
     def print_results(
         self,
@@ -185,8 +194,8 @@ class ValidationReporter:
         # contract it would repeat the detail table above verbatim.
         failing_contracts = sum(1 for r in reports if not r.success)
         if failing_contracts > 1:
-            # Add big divider before summary table
-            self.console.print("═" * 80)
+            # Divider before the summary table, sized to the actual console width
+            self.console.rule(style="white")
             self._print_failed_checks_summary_table(reports)
 
     def _print_top_summary(self, reports: List[ContractValidationReport]) -> None:
@@ -226,9 +235,9 @@ class ValidationReporter:
             # most terminals.
             filename = display_path(str(report.contract_file))
 
-            # Add divider before each contract (except the first one)
+            # Add spacing before each contract (except the first one)
             if pos > 0:
-                self.console.print("\n" + " " * 80)
+                self.console.print()
 
             self.console.print(
                 f"\n[bold cyan]📄 Contract {i}: {filename} ~ "
@@ -238,11 +247,10 @@ class ValidationReporter:
             if report.success:
                 self.console.print(status_text)
 
-            # Create table for this contract's checks
-            # No title needed, but excluding it caused error
-            title = " "
+            # Create table for this contract's checks. overflow='fold' wraps
+            # long values onto extra lines instead of truncating with an
+            # ellipsis, so full attribute paths and messages stay readable.
             table = Table(
-                title=title,
                 show_header=True,
                 header_style="bold white",
                 border_style="white",
@@ -250,9 +258,9 @@ class ValidationReporter:
             )
 
             table.add_column("Status", style="bold", width=8)
-            table.add_column("Check Type", style="white")
-            table.add_column("Attribute", style="white")
-            table.add_column("Message", style="white")
+            table.add_column("Check Type", style="white", overflow="fold")
+            table.add_column("Attribute", style="white", overflow="fold")
+            table.add_column("Message", style="white", overflow="fold")
 
             # Add rows for each check result
             visible_results = [r for r in report.results if show_passing or not r.passed]
@@ -322,19 +330,19 @@ class ValidationReporter:
     def _print_failed_checks_summary_table(self, reports: List[ContractValidationReport]) -> None:
         """Print summary table showing all failed checks per contract"""
 
-        # Create failed checks summary table
+        # Create failed checks summary table; overflow='fold' keeps long paths
+        # and messages fully visible instead of truncating them.
         failed_checks_table = Table(
-            title=" ",
             show_header=True,
             header_style="bold white",
             border_style="white",
             padding=(0, 1),  # Add vertical and horizontal padding
         )
 
-        failed_checks_table.add_column("Contract File", style="cyan")
-        failed_checks_table.add_column("Check Type", style="yellow")
-        failed_checks_table.add_column("Attribute", style="white")
-        failed_checks_table.add_column("Failure Message", style="white")
+        failed_checks_table.add_column("Contract File", style="cyan", overflow="fold")
+        failed_checks_table.add_column("Check Type", style="yellow", overflow="fold")
+        failed_checks_table.add_column("Attribute", style="white", overflow="fold")
+        failed_checks_table.add_column("Failure Message", style="white", overflow="fold")
 
         # Track statistics
         total_contracts = len(reports)
