@@ -154,12 +154,23 @@ class TestOutputModes:
         assert "Contract 2" in result.output
         assert "Failed Checks Summary" in result.output
 
-    def test_summary_mode_skips_detail_tables(self, tmp_path: Path) -> None:
-        """--output-mode summary prints the summary table without per-contract details."""
+    def test_summary_mode_shows_scoreboard_not_details(self, tmp_path: Path) -> None:
+        """--output-mode summary prints the per-contract scoreboard: contract path
+        and failed check types, but no detail tables and no failure messages."""
         config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
         result = self._invoke_on(VALID_CONTRACT, config, "--output-mode", "summary")
-        assert "Failed Checks Summary" in result.output
+        assert "valid-ecommerce-contract.yaml" in result.output
+        assert "required" in result.output
+        # No per-contract detail tables, no consolidated message table, no messages.
         assert "Contract 1" not in result.output
+        assert "Failed Checks Summary" not in result.output
+        assert "missing or null" not in result.output
+
+    def test_summary_mode_lists_passing_contracts(self, tmp_path: Path) -> None:
+        """The scoreboard includes passing contracts so the checked scope is visible."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke_on(VALID_CONTRACT, config, "--output-mode", "summary")
+        assert "valid-ecommerce-contract.yaml" in result.output
 
     def test_full_mode_shows_passing_checks(self, tmp_path: Path) -> None:
         """--output-mode full lists passing checks that are hidden by default."""
@@ -208,6 +219,7 @@ class TestOutputFormat:
         result = self._invoke(config, "--format", "json")
         # Parse stdout only: logging goes to stderr, keeping stdout pipeable JSON.
         document = json.loads(result.stdout)
+        assert document["version"] == version()
         assert document["total_contracts"] == 1
         assert document["failed_checks"] == 1
         failed = [r for r in document["contracts"][0]["results"] if not r["passed"]]
@@ -250,6 +262,47 @@ class TestOutputFormat:
         config = _write_checks_config(tmp_path, self.FAILING_CHECKS)
         result = self._invoke(config, "--no-annotations", env={"GITHUB_ACTIONS": "true"})
         assert "::error" not in result.output
+
+
+class TestLogging:
+    """Test default quietness and the verbose version line."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def _invoke(self, config: Path, *extra: str) -> Result:
+        return self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+                *extra,
+            ],
+        )
+
+    def test_default_run_has_no_info_preamble(self, tmp_path: Path) -> None:
+        """Without -v, the INFO/DEBUG log lines stay hidden."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke(config)
+        assert "Running contract-checker version" not in result.output
+
+    def test_version_always_shown_in_report_header(self, tmp_path: Path) -> None:
+        """The report header carries the tool version on every run."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke(config)
+        assert f"Data Contract Checker v{version()}" in result.output
+
+    def test_verbose_logs_the_real_version(self, tmp_path: Path) -> None:
+        """With -v, the version line shows the actual version, never None."""
+        config = _write_checks_config(tmp_path)
+        result = self._invoke(config, "-v")
+        assert f"Running contract-checker version: {version()}" in result.output
+        assert "version: None" not in result.output
 
 
 class TestCustomSchemaCli:

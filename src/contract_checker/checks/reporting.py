@@ -8,6 +8,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+from contract_checker.version import version as get_version
+
 from .models import ContractValidationReport
 
 # Valid values for the CLI's --output-mode option.
@@ -31,6 +33,7 @@ def build_summary(reports: List[ContractValidationReport]) -> Dict[str, Any]:
         Dictionary with summary statistics and per-contract check results
     """
     return {
+        "version": get_version(),
         "total_contracts": len(reports),
         "passed_contracts": sum(1 for r in reports if r.success),
         "failed_contracts": sum(1 for r in reports if not r.success),
@@ -63,6 +66,19 @@ def render_json(reports: List[ContractValidationReport]) -> str:
     return json.dumps(build_summary(reports), indent=2)
 
 
+def display_path(path: str) -> str:
+    """
+    Make a contract path readable and unambiguous: relative to the working
+    directory (clickable in most terminals, and distinguishes same-named
+    files in different folders). Falls back to the original string when a
+    relative path cannot be computed (e.g. a different drive on Windows).
+    """
+    try:
+        return os.path.relpath(str(path))
+    except ValueError:
+        return str(path)
+
+
 def _escape_annotation_data(value: str) -> str:
     """Escape the message part of a GitHub workflow command."""
     return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
@@ -93,12 +109,7 @@ def github_annotations(reports: List[ContractValidationReport]) -> List[str]:
         for result in report.results:
             if result.passed:
                 continue
-            file_path = str(report.contract_file)
-            try:
-                file_path = os.path.relpath(file_path)
-            except ValueError:
-                # Different drive on Windows etc. - keep the original path.
-                pass
+            file_path = display_path(str(report.contract_file))
             lines.append(
                 f"::error file={_escape_annotation_property(file_path)},"
                 f"title={_escape_annotation_property(result.check_type)}"
@@ -125,7 +136,9 @@ class ValidationReporter:
         Args:
             reports: Single ContractValidationReport or list of reports
             output_mode: One of OUTPUT_MODES.
-                'summary'  - verdict line plus the failed-checks summary table only.
+                'summary'  - verdict line plus a one-line-per-contract scoreboard
+                             (failing contracts first with their failed check
+                             types, passing contracts dimmed). No messages.
                 'failures' - per-contract tables with failing checks (default). The
                              failed-checks summary table is added only when more than
                              one contract has failures, since with a single failing
@@ -139,8 +152,11 @@ class ValidationReporter:
 
         self.console.print()  # spacing
 
-        # Print header
-        self.console.print("[bold white]Data Contract Checker[/bold white]", justify="center")
+        # Print header with the tool version, always visible
+        self.console.print(
+            f"[bold white]Data Contract Checker[/bold white] [dim]v{get_version()}[/dim]",
+            justify="center",
+        )
         self.console.print()  # spacing after header
 
         self._print_top_summary(reports)
@@ -148,15 +164,17 @@ class ValidationReporter:
         show_passing = output_mode == "full"
         all_passed = all(r.success for r in reports)
 
+        if output_mode == "summary":
+            # Scoreboard: one line per contract, failing first. Shown even when
+            # everything passes, so the full scope of what was checked is visible.
+            self._print_contracts_scoreboard(reports)
+            return
+
         if all_passed:
             # Nothing failed: the verdict line says it all. In 'full' mode the
             # individual passing checks are still listed.
             if show_passing:
                 self._print_individual_contracts(reports, show_passing)
-            return
-
-        if output_mode == "summary":
-            self._print_failed_checks_summary_table(reports)
             return
 
         # Print individual contract results (failures only unless in 'full' mode)
@@ -203,8 +221,10 @@ class ValidationReporter:
             else:
                 status_text.append("✗ FAILED", style="bold red")
 
-            # Extract just the filename from the path
-            filename = f"{report.contract_file!s}".split("/")[-1]
+            # Show the path relative to the working directory: unambiguous when
+            # contracts in different folders share a filename, and clickable in
+            # most terminals.
+            filename = display_path(str(report.contract_file))
 
             # Add divider before each contract (except the first one)
             if pos > 0:
@@ -265,6 +285,40 @@ class ValidationReporter:
             else:
                 self.console.print("[dim]No checks to display with current verbosity settings[/dim]")
 
+    def _print_contracts_scoreboard(self, reports: List[ContractValidationReport]) -> None:
+        """
+        Print a compact scoreboard: one line per contract, failing contracts
+        first with their failed check types (no messages), passing contracts
+        dimmed below. Answers 'which contracts are broken, and roughly how?'
+        at a glance, even for large contract sets.
+        """
+        table = Table(show_header=False, box=None, padding=(0, 1))
+        table.add_column("status", width=2)
+        table.add_column("contract", overflow="fold")
+        table.add_column("checks", justify="right")
+        table.add_column("failed checks", overflow="fold")
+
+        ordered = [r for r in reports if not r.success] + [r for r in reports if r.success]
+        for report in ordered:
+            path = display_path(str(report.contract_file))
+            if report.success:
+                table.add_row(
+                    Text("✓", style="bold green"),
+                    Text(path, style="dim"),
+                    Text(f"{report.passed_checks}/{report.total_checks} passed", style="dim"),
+                    "",
+                )
+            else:
+                failed_types = sorted({result.check_type for result in report.results if not result.passed})
+                table.add_row(
+                    Text("✗", style="bold red"),
+                    Text(path, style="cyan"),
+                    Text(f"{report.failed_checks}/{report.total_checks} failed", style="red"),
+                    Text(", ".join(failed_types), style="red"),
+                )
+
+        self.console.print(table)
+
     def _print_failed_checks_summary_table(self, reports: List[ContractValidationReport]) -> None:
         """Print summary table showing all failed checks per contract"""
 
@@ -288,7 +342,7 @@ class ValidationReporter:
         total_failed_checks = 0
 
         for report in reports:
-            filename = f"{report.contract_file!s}".split("/")[-1]
+            filename = display_path(str(report.contract_file))
             failed_results = [r for r in report.results if not r.passed]
 
             if failed_results:
