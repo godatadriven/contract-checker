@@ -9,7 +9,7 @@ How much of the report is printed is controlled by `--output-mode`:
 | Mode | What is printed |
 | ---- | --------------- |
 | `failures` (default) | A verdict line, then one table per failing contract with its failing checks. When **more than one** contract fails, a consolidated failed-checks summary table is added at the end (for a single failing contract it would just duplicate the detail table, so it is skipped). |
-| `summary` | The verdict line and the failed-checks summary table only — no per-contract detail. Handy for large contract sets. |
+| `summary` | A scoreboard: one line per contract, failing contracts first with their failed check *types* (no messages), passing contracts dimmed below. Answers "which contracts are broken, and roughly how?" at a glance — handy for large contract sets. |
 | `full` | Like `failures`, but passing checks and fully passing contracts are shown too. |
 
 ```bash

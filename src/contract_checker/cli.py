@@ -11,7 +11,7 @@ from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
 from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, parse_yml_to_dict
-from contract_checker.version import version
+from contract_checker.version import version as get_version
 
 app = typer.Typer(
     name="contract-checker",
@@ -29,7 +29,7 @@ def version_callback(value: bool) -> None:
         typer.Exit: Always raised when value is True to terminate the CLI.
     """
     if value:
-        print(f"{version()}")
+        print(f"{get_version()}")
         raise typer.Exit()
 
 
@@ -116,7 +116,8 @@ def main(
     setup_console_logger(verbosity)
     if verbosity:
         logging.debug("Verbose mode is enabled.")
-    logging.info(f"Running contract-checker version: {version}")
+    # get_version(), not the shadowing --version flag parameter (always None here).
+    logging.info(f"Running contract-checker version: {get_version()}")
     logging.debug(f"Checks configuration path: {checks_config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
