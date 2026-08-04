@@ -103,11 +103,12 @@ class TestDisplayPath:
         assert display_path("contracts/sales/datacontract.yaml") == "contracts/sales/datacontract.yaml"
 
     def test_absolute_path_under_cwd_becomes_relative(self, tmp_path: object) -> None:
-        """An absolute path below the working directory is shown relative to it."""
+        """An absolute path below the working directory is shown relative to it,
+        with forward slashes on every platform."""
         import os
 
         absolute = os.path.join(os.getcwd(), "contracts", "datacontract.yaml")
-        assert display_path(absolute) == os.path.join("contracts", "datacontract.yaml")
+        assert display_path(absolute) == "contracts/datacontract.yaml"
 
 
 class TestSameNamedContracts:

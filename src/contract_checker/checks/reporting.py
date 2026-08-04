@@ -72,11 +72,15 @@ def display_path(path: str) -> str:
     directory (clickable in most terminals, and distinguishes same-named
     files in different folders). Falls back to the original string when a
     relative path cannot be computed (e.g. a different drive on Windows).
+
+    Always uses forward slashes, on every platform: consistent output,
+    valid in Windows terminals, and required by GitHub annotations.
     """
     try:
-        return os.path.relpath(str(path))
+        relative = os.path.relpath(str(path))
     except ValueError:
-        return str(path)
+        relative = str(path)
+    return relative.replace(os.sep, "/")
 
 
 def _escape_annotation_data(value: str) -> str:
