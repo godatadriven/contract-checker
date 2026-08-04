@@ -35,16 +35,34 @@ def _load_contract(contract_file: Path, schema: Path) -> Contract:
 def test_valid_contract_passes_custom_schema() -> None:
     """A conforming contract reports no failures against the custom schema."""
     contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
+    report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
+
+    assert report.failed_checks == 0
+    assert all(r.check_type == "json_schema" for r in report.results)
+
+
+def test_custom_schema_skipped_when_lint_disabled() -> None:
+    """With linting off (the default), even an invalid contract is not schema-checked."""
+    contract = _load_contract(CUSTOM_FIXTURES / "invalid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
     report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
 
     assert report.failed_checks == 0
+    assert not any(r.check_type == "json_schema" for r in report.results)
+
+
+def test_lint_from_config_enables_custom_schema_validation() -> None:
+    """The 'lint' key in the checks config enables schema validation without an explicit arg."""
+    contract = _load_contract(CUSTOM_FIXTURES / "invalid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
+    report = DataContractValidator({"lint": True, "data_contract_checks": []}).run_checks(contract)
+
+    assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)
 
 
 def test_invalid_contract_fails_custom_schema() -> None:
     """A non-conforming contract reports schema failures."""
     contract = _load_contract(CUSTOM_FIXTURES / "invalid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
-    report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
+    report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)
@@ -58,7 +76,7 @@ def test_invalid_schema_reports_failure_not_exception() -> None:
     rather than a generic runtime error.
     """
     contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", INVALID_SCHEMA)
-    report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
+    report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
     assert report.failed_checks == 1
     (result,) = report.results
@@ -74,7 +92,7 @@ def test_custom_schema_with_no_checks_config() -> None:
     (or an empty/unparseable) checks file, which must not crash.
     """
     contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
-    report = DataContractValidator(None).run_checks(contract)  # type: ignore[arg-type]
+    report = DataContractValidator(None, lint=True).run_checks(contract)  # type: ignore[arg-type]
 
     assert report.failed_checks == 0
     assert all(r.check_type == "json_schema" for r in report.results)
@@ -101,7 +119,7 @@ def test_custom_schema_and_attribute_checks_run_together() -> None:
             },
         ]
     }
-    report = DataContractValidator(checks_config).run_checks(contract)
+    report = DataContractValidator(checks_config, lint=True).run_checks(contract)
 
     check_types = {r.check_type for r in report.results}
     assert "json_schema" in check_types
@@ -114,7 +132,7 @@ def test_custom_schema_and_attribute_checks_run_together() -> None:
 def test_valid_contract_passes_extended_odcs_schema() -> None:
     """A contract satisfying base ODCS and the in-house rules passes."""
     contract = _load_contract(CUSTOM_FIXTURES / "valid-odcs-extended-contract.yaml", ODCS_EXTENDED_SCHEMA)
-    report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
+    report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
     assert report.failed_checks == 0
     assert all(r.check_type == "json_schema" for r in report.results)
@@ -123,7 +141,7 @@ def test_valid_contract_passes_extended_odcs_schema() -> None:
 def test_invalid_contract_fails_extended_odcs_schema() -> None:
     """A contract that is valid ODCS but breaks the in-house rules fails."""
     contract = _load_contract(CUSTOM_FIXTURES / "invalid-odcs-extended-contract.yaml", ODCS_EXTENDED_SCHEMA)
-    report = DataContractValidator({"data_contract_checks": []}).run_checks(contract)
+    report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)

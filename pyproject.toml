@@ -40,6 +40,14 @@ contract-checker = "contract_checker.cli:app"
 requires = ["setuptools==82.0.1"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+# Ship the vendored standard schemas (DCS / ODCS) so schema validation ("lint")
+# works from a pip-installed package, not just from the repo checkout.
+contract_checker = ["contract_schemas/**/*.json"]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true

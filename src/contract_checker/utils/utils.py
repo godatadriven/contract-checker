@@ -8,7 +8,7 @@ import yaml
 
 
 class CustomSchemaError(Exception):
-    """Raised when a custom JSON Schema is missing, unparseable, or itself invalid."""
+    """Raised when a JSON Schema is missing, unparseable, or itself invalid."""
 
 
 def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:

@@ -40,6 +40,7 @@ nav:
     - GitHub Actions: ci.md
   - Config File: config.md
   - Checks: checks.md
+  - Schema Validation: linting.md
   - Custom Schemas: custom_schemas.md
   - CLI: cli.md
   - Contributing: contributing.md

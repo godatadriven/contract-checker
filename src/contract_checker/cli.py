@@ -63,6 +63,15 @@ def main(
             "Overrides 'custom_schema_path' in the checks config file.",
         ),
     ] = None,
+    lint: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--lint/--no-lint",
+            help="Validate each contract against its JSON Schema (the custom schema when one "
+            "is provided, otherwise the standard schema for its specification/version). "
+            "Off by default. Overrides 'lint' in the checks config file.",
+        ),
+    ] = None,
 ) -> None:
     """Main entry point for the contract-checker CLI.
 
@@ -78,6 +87,9 @@ def main(
         via 'data_contracts_path' in the checks config.
         version: Display version information and exit.
         custom_schema_path: Optional path to a custom JSON Schema for validation.
+        lint: Whether to validate each contract against its JSON Schema (custom when
+            provided, otherwise the standard schema). Off by default; overrides the
+            'lint' key in the checks config.
 
     Raises:
         typer.Exit: Always raised upon completion to properly terminate the CLI.
@@ -103,14 +115,26 @@ def main(
         )
         raise typer.Exit(code=1)
 
+    # Resolve schema validation ("lint"): the CLI flag wins, otherwise fall back
+    # to the 'lint' key in the checks config file (default off).
+    config_lint = bool(checks_dict.get("lint", False)) if checks_dict else False
+    resolved_lint = lint if lint is not None else config_lint
+    logging.debug(f"Schema validation (lint): {resolved_lint}")
+
     # Resolve the custom schema path: the CLI flag wins, otherwise fall back to the
     # 'custom_schema_path' key in the checks config file.
     config_schema_path = checks_dict.get("custom_schema_path") if checks_dict else None
     resolved_schema_path = custom_schema_path or (Path(config_schema_path) if config_schema_path else None)
 
-    # Fail fast: a custom schema must itself be a valid JSON Schema before we
-    # attempt to validate any contracts against it.
-    if resolved_schema_path is not None:
+    if resolved_schema_path is not None and not resolved_lint:
+        logging.info(
+            "A custom schema was provided but linting is disabled; schema validation will be skipped. "
+            "Pass --lint or set 'lint: true' in the checks config to enable it."
+        )
+
+    # Fail fast: when linting against a custom schema, that schema must itself be
+    # a valid JSON Schema before we attempt to validate any contracts against it.
+    if resolved_lint and resolved_schema_path is not None:
         logging.debug(f"Custom schema path: {resolved_schema_path}")
         try:
             load_and_validate_json_schema(resolved_schema_path)
@@ -134,7 +158,7 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
-    validate_contracts(contracts, checks_dict, verbose=verbosity)
+    validate_contracts(contracts, checks_dict, verbose=verbosity, lint=resolved_lint)
 
     raise typer.Exit()
 
