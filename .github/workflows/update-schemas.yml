@@ -43,7 +43,7 @@ jobs:
 
       - name: Create or update pull request
         # Opens a PR only when there is a diff; updates the existing branch/PR on re-run.
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: automation/update-schemas
           base: main
