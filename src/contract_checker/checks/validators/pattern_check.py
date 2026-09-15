@@ -32,6 +32,8 @@ class PatternCheck(Check):
             checks:
               - pattern: ^[a-z][a-z0-9_]*$
     ```
+
+    To enforce full-string matching implicitly, switch this to ``re.fullmatch``.
     """
 
     @property
@@ -50,7 +52,8 @@ class PatternCheck(Check):
             converted to a string before pattern matching.
         :param pattern: The regular expression pattern to match against.
         :return: A list of :class:`ValidationResult` objects, one for each value
-            in the input list. Null values will result in a failed check.
+            in the input list. Null values are skipped and reported as passed;
+            presence is enforced by the ``required`` check.
         """
         results = []
 
