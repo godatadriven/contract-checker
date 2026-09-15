@@ -1,0 +1,18 @@
+# A contract that is valid ODCS v3.0.2 on its own, but violates the in-house
+# governance rules added by odcs-extended-schema.json:
+#   - id is not a UUID
+#   - status is outside the governed lifecycle enum
+#   - tags is missing (at least one tag is required)
+#   - domain and description are missing
+version: 1.0.0
+apiVersion: v3.0.2
+kind: DataContract
+id: orders-contract
+status: experimental
+name: orders
+dataProduct: sales_analytics
+team:
+  - username: jwayne
+    role: dpo
+    dateIn: "2019-03-14"
+schema: []
