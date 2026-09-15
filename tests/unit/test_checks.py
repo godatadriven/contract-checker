@@ -310,10 +310,12 @@ class TestAcceptedValuesCheck:
         assert results[1].passed is False
 
     def test_accepted_values_check_none_skipped(self) -> None:
-        """Test accepted values check skips None values."""
+        """Test accepted values check reports a None value as skipped (passed)."""
         results = self.check.execute("test.field", [None], ["active", "inactive"])
 
-        assert len(results) == 0
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert "skipped" in results[0].message
 
 
 class TestAtLeastOneCheck:
