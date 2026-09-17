@@ -181,6 +181,11 @@ class ValidationReporter:
             # Scoreboard: one line per contract, failing first. Shown even when
             # everything passes, so the full scope of what was checked is visible.
             self._print_contracts_scoreboard(reports)
+            if not all_passed:
+                # Point at the detailed modes only when there is something to
+                # dig into; a green scoreboard needs no follow-up.
+                self.console.print()  # spacing after scoreboard
+                self.console.print("[dim]For more details, use --output-mode failures or --output-mode full[/dim]")
             return
 
         if all_passed:
