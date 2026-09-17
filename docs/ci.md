@@ -33,3 +33,16 @@ jobs:
         run: |
           contract-checker --contract-path path/to/your/datacontracts.yaml
 ```
+
+## Pull request annotations
+
+When contract-checker detects it is running inside GitHub Actions, every failed
+check is emitted as an [error annotation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#setting-an-error-message):
+GitHub renders these inline on the contract files in the pull request's
+"Files changed" tab, so authors see exactly what failed without opening the logs.
+No configuration is needed; pass `--no-annotations` to turn this off.
+
+A failing check also makes the step exit non-zero (see
+[exit codes](cli.md#exit-codes)), so the workflow fails and can block the merge.
+Use `--severity warn` while rolling out new checks to keep the report visible
+without failing the pipeline.
