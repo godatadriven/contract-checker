@@ -13,6 +13,19 @@ if TYPE_CHECKING:
     pass
 
 
+@pytest.fixture(autouse=True)
+def _isolate_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep tests deterministic regardless of the environment they run in.
+
+    On GitHub Actions runners, GITHUB_ACTIONS=true would trigger the CLI's
+    annotation auto-detection and add '::error' lines to the output that
+    assertions do not expect. Tests that exercise annotations opt in
+    explicitly via CliRunner's env parameter.
+    """
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+
+
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """Create a temporary directory for tests."""
