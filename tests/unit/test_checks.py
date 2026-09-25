@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import pytest
+
+from contract_checker.checks.registry import CheckRegistry
 from contract_checker.checks.validators import (
     AcceptedValuesCheck,
     AtLeastOneCheck,
@@ -51,12 +56,10 @@ class TestRequiredCheck:
         assert "is null" in results[0].message
 
     def test_required_check_disabled(self) -> None:
-        """Test required check passes when disabled."""
-        results = self.check.execute("test.field", [], False)
-
-        assert len(results) == 1
-        assert results[0].passed is True
-        assert "optional" in results[0].message
+        """required: false checks nothing, so it produces no results."""
+        assert self.check.execute("test.field", [], False) == []
+        assert self.check.execute("test.field", [None], False) == []
+        assert self.check.execute("test.field", ["value"], False) == []
 
     def test_required_with_single_none_value(self) -> None:
         """A single None value should fail required with a 'null' message."""
@@ -131,18 +134,13 @@ class TestPatternCheck:
         assert results[2].passed is True
 
     def test_pattern_check_with_none(self) -> None:
-        """None values are skipped by PatternCheck (presence is required_check's job).
-
-        A null value produces a passing result with a "skipped" note.
-        To enforce both presence and a pattern, combine required: true
-        with the pattern check.
-        """
+        """A present-but-null value fails the pattern check."""
         pattern = r"^[A-Z]+$"
         results = self.check.execute("test.field", [None], pattern)
 
         assert len(results) == 1
-        assert results[0].passed is True
-        assert "skipped" in results[0].message
+        assert results[0].passed is False
+        assert results[0].message == "Attribute 'test.field' is null"
 
     def test_empty_values_no_results(self) -> None:
         """Empty values list produces no results."""
@@ -217,12 +215,32 @@ class TestMinItemsCheck:
         assert results[0].passed is True
 
     def test_min_items_check_missing_attribute(self) -> None:
-        """Test min items check with missing attribute."""
-        results = self.check.execute("test.field", [], 3)
+        """An absent attribute is skipped: presence is required's job."""
+        assert self.check.execute("test.field", [], 3) == []
+
+    def test_min_items_check_null_value(self) -> None:
+        """A present-but-null list fails."""
+        results = self.check.execute("test.field", [None], 1)
 
         assert len(results) == 1
         assert results[0].passed is False
-        assert "is missing" in results[0].message
+        assert results[0].message == "Attribute 'test.field' is null"
+
+    def test_min_items_check_null_elements_not_counted(self) -> None:
+        """Null elements fail and do not count toward the minimum."""
+        results = self.check.execute("test.field", [[None, None, None]], 1)
+
+        assert [r.passed for r in results] == [False, False]
+        assert "contains 3 null element(s)" in results[0].message
+        assert "fewer than 1 items" in results[1].message
+
+    def test_min_items_check_one_null_does_not_hide_other_lists(self) -> None:
+        """A null value fails on its own; the other lists are still counted."""
+        results = self.check.execute("test.field", [["a"], None, []], 1)
+
+        assert [r.passed for r in results] == [False, False]
+        assert "is null" in results[0].message
+        assert "fewer than 1 items" in results[1].message
 
     def test_min_items_check_non_list_value(self) -> None:
         """Test min items check with non-list value."""
@@ -263,12 +281,23 @@ class TestMaxItemsCheck:
         assert results[0].passed is True
 
     def test_max_items_check_missing_attribute(self) -> None:
-        """Test max items check with missing attribute."""
-        results = self.check.execute("test.field", [], 5)
+        """An absent attribute is skipped: presence is required's job."""
+        assert self.check.execute("test.field", [], 5) == []
+
+    def test_max_items_check_null_value(self) -> None:
+        """A present-but-null list fails."""
+        results = self.check.execute("test.field", [None], 5)
 
         assert len(results) == 1
-        assert results[0].passed is True
-        assert "skipped" in results[0].message
+        assert results[0].passed is False
+        assert results[0].message == "Attribute 'test.field' is null"
+
+    def test_max_items_check_null_elements_not_counted(self) -> None:
+        """Null elements fail and do not count toward the maximum."""
+        results = self.check.execute("test.field", [["a", None, None]], 2)
+
+        assert [r.passed for r in results] == [False, True]
+        assert "contains 2 null element(s)" in results[0].message
 
 
 class TestAcceptedValuesCheck:
@@ -309,13 +338,17 @@ class TestAcceptedValuesCheck:
         assert results[0].passed is True
         assert results[1].passed is False
 
-    def test_accepted_values_check_none_skipped(self) -> None:
-        """Test accepted values check reports a None value as skipped (passed)."""
+    def test_accepted_values_check_none_fails(self) -> None:
+        """A present-but-null value fails the accepted values check."""
         results = self.check.execute("test.field", [None], ["active", "inactive"])
 
         assert len(results) == 1
-        assert results[0].passed is True
-        assert "skipped" in results[0].message
+        assert results[0].passed is False
+        assert results[0].message == "Attribute 'test.field' is null"
+
+    def test_accepted_values_check_missing_no_results(self) -> None:
+        """An absent attribute is skipped: presence is required's job."""
+        assert self.check.execute("test.field", [], ["active"]) == []
 
 
 class TestAtLeastOneCheck:
@@ -351,12 +384,24 @@ class TestAtLeastOneCheck:
         assert results[0].passed is False
 
     def test_missing_attribute(self) -> None:
-        """Test check fails when the attribute is missing entirely."""
-        results = self.check.execute("models.orders.fields", [], {"unique": True})
+        """An absent collection is skipped: presence is required's job."""
+        assert self.check.execute("models.orders.fields", [], {"unique": True}) == []
+
+    def test_null_collection_fails(self) -> None:
+        """A present-but-null collection fails with the null message, not '0 items'."""
+        results = self.check.execute("models.orders.fields", [None], {"unique": True})
 
         assert len(results) == 1
         assert results[0].passed is False
-        assert "missing" in results[0].message
+        assert results[0].message == "Attribute 'models.orders.fields' is null"
+
+    def test_null_item_in_collection_fails(self) -> None:
+        """A null item fails and is named; the verdict still uses the other items."""
+        fields = {"id": None, "name": {"unique": True}}
+        results = self.check.execute("models.orders.fields", [fields], {"unique": True})
+
+        assert [r.passed for r in results] == [False, True]
+        assert results[0].message == "Attribute 'models.orders.fields' contains 1 null element(s): id"
 
     def test_multi_key_check_value_rejected(self) -> None:
         """Multi-key check_value must fail with a clear message, not silently ignore extras."""
@@ -467,13 +512,25 @@ class TestExactlyOneCheck:
         assert results[0].passed is False
         assert "0 items" in results[0].message
 
-    def test_missing_attribute_fails(self) -> None:
-        """Fails when the attribute is missing entirely."""
-        results = self.check.execute("models.orders.fields", [], {"primaryKey": True})
+    def test_missing_attribute_skipped(self) -> None:
+        """An absent collection is skipped: presence is required's job."""
+        assert self.check.execute("models.orders.fields", [], {"primaryKey": True}) == []
+
+    def test_null_collection_fails(self) -> None:
+        """A present-but-null collection fails with the null message, not '0 items'."""
+        results = self.check.execute("models.orders.fields", [None], {"primaryKey": True})
 
         assert len(results) == 1
         assert results[0].passed is False
-        assert "missing" in results[0].message
+        assert results[0].message == "Attribute 'models.orders.fields' is null"
+
+    def test_null_item_in_collection_fails(self) -> None:
+        """A null item fails and is named; the verdict still uses the other items."""
+        fields = {"id": None, "name": {"primaryKey": True}}
+        results = self.check.execute("models.orders.fields", [fields], {"primaryKey": True})
+
+        assert [r.passed for r in results] == [False, True]
+        assert results[0].message == "Attribute 'models.orders.fields' contains 1 null element(s): id"
 
     def test_multi_key_check_value_rejected(self) -> None:
         """Multi-key mapping as check_value is rejected with a failing result."""
@@ -518,3 +575,43 @@ class TestExactlyOneCheck:
         assert len(results) == 1
         assert results[0].passed is True
         assert "exactly one" in results[0].message
+
+
+# A valid check_value for every registered check. Adding a check to the
+# registry without adding it here fails test_every_check_is_covered, so every
+# new check is held to the missing-vs-null rule below.
+CHECK_VALUES: dict[str, Any] = {
+    "required": True,
+    "pattern": r"^x$",
+    "accepted_values": ["x"],
+    "min_items": 1,
+    "max_items": 5,
+    "at_least_one": {"key": True},
+    "exactly_one": {"key": True},
+}
+
+
+class TestMissingVsNullRule:
+    """Every check: absent is skipped (except required), present-but-null fails."""
+
+    def test_every_check_is_covered(self) -> None:
+        assert set(CheckRegistry().list_available()) == set(CHECK_VALUES)
+
+    @pytest.mark.parametrize("check_type", sorted(set(CHECK_VALUES) - {"required"}))
+    def test_absent_attribute_produces_no_results(self, check_type: str) -> None:
+        check = CheckRegistry().get(check_type)
+        assert check.execute("a.b", [], CHECK_VALUES[check_type]) == []
+
+    def test_absent_attribute_fails_required(self) -> None:
+        results = CheckRegistry().get("required").execute("a.b", [], True)
+        assert [r.passed for r in results] == [False]
+        assert "is missing" in results[0].message
+
+    @pytest.mark.parametrize("check_type", sorted(CHECK_VALUES))
+    def test_null_attribute_fails(self, check_type: str) -> None:
+        check = CheckRegistry().get(check_type)
+        results = check.execute("a.b", [None], CHECK_VALUES[check_type])
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "is null" in results[0].message

@@ -52,22 +52,15 @@ class PatternCheck(Check):
             converted to a string before pattern matching.
         :param pattern: The regular expression pattern to match against.
         :return: A list of :class:`ValidationResult` objects, one for each value
-            in the input list. Null values are skipped and reported as passed;
-            presence is enforced by the ``required`` check.
+            in the input list. A null value fails; an absent attribute
+            (empty ``values``) produces no results, since presence is
+            enforced by the ``required`` check.
         """
         results = []
 
-        for idx, value in enumerate(values):
+        for value in values:
             if value is None:
-                results.append(
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        True,
-                        f"Attribute '{attribute_path}' is null (pattern check skipped)",
-                    )
-                )
+                results.append(self.null_result(attribute_path))
                 continue
 
             value_str = str(value)
