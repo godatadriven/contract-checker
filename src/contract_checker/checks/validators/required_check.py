@@ -41,22 +41,24 @@ class RequiredCheck(Check):
             (e.g., ``"info.title"`` or ``"models.*.fields.*.name"``).
         :param values: List of values found at the attribute path.
         :param check_value: If ``True``, the attribute must exist and be non-null.
-            If ``False``, the check is skipped (attribute is optional).
+            If ``False`` (or null), the check does nothing and returns no results.
         :return: A list containing a single :class:`ValidationResult` indicating
-            whether the check passed or failed.
+            whether the check passed or failed, or an empty list when
+            ``check_value`` is falsy.
         """
-        if check_value:
-            if not values:
-                passed = False
-                message = f"Required attribute '{attribute_path}' is missing"
-            elif any(v is None for v in values):
-                passed = False
-                message = f"Required attribute '{attribute_path}' is null"
-            else:
-                passed = True
-                message = f"Attribute '{attribute_path}' is present"
+        if not check_value:
+            # required: false documents that a field is optional; it checks
+            # nothing, so it must not add a (misleading) passing result.
+            return []
+
+        if not values:
+            passed = False
+            message = f"Required attribute '{attribute_path}' is missing"
+        elif any(v is None for v in values):
+            passed = False
+            message = f"Required attribute '{attribute_path}' is null"
         else:
             passed = True
-            message = f"Attribute '{attribute_path}' is optional"
+            message = f"Attribute '{attribute_path}' is present"
 
         return [ValidationResult("", attribute_path, self.check_type, passed, message)]

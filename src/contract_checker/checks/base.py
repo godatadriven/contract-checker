@@ -1,7 +1,7 @@
 """Abstract base classes for validation checks."""
 
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Any, List, Optional
 
 from .models import ValidationResult
 
@@ -12,6 +12,17 @@ class Check(ABC):
     This class defines the interface that all validation checks must implement.
     Custom checks can be created by subclassing this class and implementing
     the required abstract methods.
+
+    **Missing vs null.** Every check follows the same rule:
+
+    - An attribute that is *absent* (``values == []``) is skipped by every
+      check except ``required``: return no results. Presence is enforced
+      only by ``required``, so a field can be present in some contracts and
+      absent in others.
+    - An attribute that is *present but null* (``None`` in ``values``) fails
+      every check. Use :meth:`null_result` so the message is consistent.
+    - ``None`` elements inside a list or mapping value also fail. Use
+      :meth:`null_elements_result`.
 
     To create a custom check:
 
@@ -70,3 +81,36 @@ class Check(ABC):
             files (e.g., ``"required"``, ``"pattern"``, ``"accepted_values"``).
         """
         pass
+
+    def null_result(self, attribute_path: str) -> ValidationResult:
+        """Return the standard failing result for a present-but-null attribute.
+
+        :param attribute_path: The dot-notation path to the attribute being checked.
+        :return: A failing :class:`ValidationResult` saying the attribute is null.
+        """
+        return ValidationResult(
+            "",
+            attribute_path,
+            self.check_type,
+            False,
+            f"Attribute '{attribute_path}' is null",
+        )
+
+    def null_elements_result(
+        self,
+        attribute_path: str,
+        count: int,
+        keys: Optional[List[str]] = None,
+    ) -> ValidationResult:
+        """Return the standard failing result for null elements inside a value.
+
+        :param attribute_path: The dot-notation path to the attribute being checked.
+        :param count: How many ``None`` elements were found.
+        :param keys: For mappings, the keys whose values are ``None``; these
+            are listed in the message.
+        :return: A failing :class:`ValidationResult`.
+        """
+        message = f"Attribute '{attribute_path}' contains {count} null element(s)"
+        if keys:
+            message += f": {', '.join(keys)}"
+        return ValidationResult("", attribute_path, self.check_type, False, message)

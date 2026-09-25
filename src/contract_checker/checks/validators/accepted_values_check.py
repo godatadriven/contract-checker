@@ -62,19 +62,13 @@ class AcceptedValuesCheck(Check):
         :param accepted_values: The list of values that are considered valid.
         :return: A list of :class:`ValidationResult` objects. When the attribute
             contains a list, a result is generated for each item in that list.
+            A null value, or null elements in a list, fail. An absent attribute
+            (empty ``value_list``) produces no results.
         """
         results = []
         for value in value_list:
             if value is None:
-                results.append(
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        True,
-                        f"Attribute '{attribute_path}' is null (accepted_values check skipped)",
-                    )
-                )
+                results.append(self.null_result(attribute_path))
                 continue
 
             if isinstance(value, str):
@@ -84,15 +78,7 @@ class AcceptedValuesCheck(Check):
                 items = [v for v in value if v is not None]
                 null_count = len(value) - len(items)
                 if null_count:
-                    results.append(
-                        ValidationResult(
-                            "",
-                            attribute_path,
-                            self.check_type,
-                            False,
-                            f"Attribute '{attribute_path}' contains {null_count} null element(s)",
-                        )
-                    )
+                    results.append(self.null_elements_result(attribute_path, null_count))
             else:
                 items = [value]
 
