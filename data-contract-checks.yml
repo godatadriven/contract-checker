@@ -3,14 +3,12 @@
 data_contracts_path:
   path: ./tests/fixtures/dcs/
   include_paths:
-    - 0.9.3/**
   include_custom:
     - field: info.status
       value: active
     - field: info.status
       value: active
   exclude_paths:
-    - 1.2.1/**
   exclude_custom:
     - field: info.deprecated
       value: true

@@ -1,15 +1,17 @@
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
 import typer
 from typing_extensions import Annotated
 
+from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, github_annotations
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
 from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, parse_yml_to_dict
-from contract_checker.version import version
+from contract_checker.version import version as get_version
 
 app = typer.Typer(
     name="contract-checker",
@@ -27,7 +29,7 @@ def version_callback(value: bool) -> None:
         typer.Exit: Always raised when value is True to terminate the CLI.
     """
     if value:
-        print(f"{version()}")
+        print(f"{get_version()}")
         raise typer.Exit()
 
 
@@ -38,9 +40,35 @@ def main(
     ),
     severity: Annotated[
         str,
-        typer.Option(help="The severity level of the checks. Can be 'error' or 'warn'"),
+        typer.Option(
+            help="The severity level of the checks. 'error' exits with code 1 when checks fail "
+            "(fails CI); 'warn' prints the same report but always exits 0."
+        ),
     ] = "error",
-    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose output.")] = False,
+    output_mode: Annotated[
+        str,
+        typer.Option(
+            help="How much of the report to print. 'summary': verdict plus the failed-checks "
+            "summary table; 'failures': per-contract failure details (default); "
+            "'full': also show passing checks."
+        ),
+    ] = "failures",
+    output_format: Annotated[
+        str,
+        typer.Option(
+            "--format",
+            help="Output format. 'text': human-readable report (default); "
+            "'json': machine-readable JSON document on stdout.",
+        ),
+    ] = "text",
+    no_annotations: Annotated[
+        bool,
+        typer.Option(
+            "--no-annotations",
+            help="Disable GitHub Actions error annotations (emitted automatically when running in GitHub Actions).",
+        ),
+    ] = False,
+    verbosity: Annotated[bool, typer.Option("--verbose", "-v", help="Enables verbose (debug) logging.")] = False,
     contract_path: Annotated[
         Optional[Path],
         typer.Option(
@@ -82,7 +110,10 @@ def main(
     Args:
         config_path: Path to the YAML file containing data contract check definitions.
         severity: Severity level for validation issues ('error' or 'warn').
-        verbosity: Enable verbose/debug output when True.
+        output_mode: How much of the report to print ('summary', 'failures', or 'full').
+        output_format: 'text' for the human-readable report, 'json' for machine output.
+        no_annotations: Disable the GitHub Actions error annotations.
+        verbosity: Enable verbose (debug) logging when True.
         contract_path: Optional override for the contract file or directory configured
         via 'data_contracts_path' in the checks config.
         version: Display version information and exit.
@@ -97,10 +128,23 @@ def main(
     setup_console_logger(verbosity)
     if verbosity:
         logging.debug("Verbose mode is enabled.")
-    logging.info(f"Running contract-checker version: {version}")
+    # get_version(), not the shadowing --version flag parameter (always None here).
+    logging.info(f"Running contract-checker version: {get_version()}")
     logging.debug(f"Checks configuration path: {checks_config_path}")
     logging.debug(f"Contract path: {contract_path}")
     logging.debug(f"Severity level: {severity}")
+
+    if severity not in ("error", "warn"):
+        logging.error(f"Invalid severity '{severity}'. Use 'error' or 'warn'.")
+        raise typer.Exit(code=2)
+
+    if output_mode not in OUTPUT_MODES:
+        logging.error(f"Invalid output mode '{output_mode}'. Use one of: {', '.join(OUTPUT_MODES)}.")
+        raise typer.Exit(code=2)
+
+    if output_format not in OUTPUT_FORMATS:
+        logging.error(f"Invalid format '{output_format}'. Use one of: {', '.join(OUTPUT_FORMATS)}.")
+        raise typer.Exit(code=2)
 
     checks_dict = parse_yml_to_dict(checks_config_path)
 
@@ -157,8 +201,23 @@ def main(
     except (ValueError, FileNotFoundError) as e:
         logging.error(str(e))
         raise typer.Exit(code=1)
+        
+    reports = validate_contracts(contracts, checks_dict, output_mode=output_mode, output_format=output_format, lint=resolved_lint)
 
-    validate_contracts(contracts, checks_dict, verbose=verbosity, lint=resolved_lint)
+    # Inside GitHub Actions (detected via the GITHUB_ACTIONS env var the runner
+    # always sets), also emit workflow-command lines so failures show up as
+    # inline annotations on the PR diff. Text format only: JSON consumers get
+    # the same information structured in the document itself.
+    if output_format == "text" and not no_annotations and os.environ.get("GITHUB_ACTIONS") == "true":
+        for line in github_annotations(reports):
+            print(line)
+
+    # All checks have run and the full report has been printed above; the exit
+    # code only signals the overall outcome to the shell/CI. With severity
+    # 'warn' the run always exits 0, keeping the check advisory.
+    failed_checks = sum(report.failed_checks for report in reports)
+    if failed_checks > 0 and severity == "error":
+        raise typer.Exit(code=1)
 
     raise typer.Exit()
 
