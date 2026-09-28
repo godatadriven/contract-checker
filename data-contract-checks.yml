@@ -40,7 +40,7 @@ data_contract_checks:
 
   - attribute: info.version
     checks:
-      - accepted_values: 1.0.0
+      - accepted_values: 0.0.1
 
   - attribute: tags
     checks:
@@ -48,7 +48,7 @@ data_contract_checks:
         - example
         - test
 
-  - attribute: servers.type
+  - attribute: servers.*.type
     checks:
       - accepted_values:
           - s3
@@ -73,11 +73,10 @@ data_contract_checks:
 #       - min_items: 1
 
 # Model field checks
-  - attribute: models.*.fields.*.unique
+  - attribute: models.*.fields.*.description
     checks:
       - required: true
 
-  - attribute: models.*.fields.*.examples
+  - attribute: models.*.fields.*.type
     checks:
       - required: true
-      - min_items: 2
