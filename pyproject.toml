@@ -40,6 +40,9 @@ contract-checker = "contract_checker.cli:app"
 requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.package-data]
+contract_checker = ["contract_schemas/**/*.json"]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
