@@ -164,7 +164,7 @@ class TestOutputModes:
         # No per-contract detail tables, no consolidated message table, no messages.
         assert "Contract 1" not in result.output
         assert "Failed Checks Summary" not in result.output
-        assert "missing or null" not in result.output
+        assert "is missing" not in result.output
 
     def test_summary_mode_lists_passing_contracts(self, tmp_path: Path) -> None:
         """The scoreboard includes passing contracts so the checked scope is visible."""
@@ -225,7 +225,7 @@ class TestOutputFormat:
         failed = [r for r in document["contracts"][0]["results"] if not r["passed"]]
         assert failed[0]["attribute"] == "info.thisdoesnotexist"
         assert failed[0]["check_type"] == "required"
-        assert "missing or null" in failed[0]["message"]
+        assert "is missing" in failed[0]["message"]
         # The human-readable report must not pollute the JSON stdout.
         assert "Data Contract Checker" not in result.stdout
 
