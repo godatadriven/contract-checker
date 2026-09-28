@@ -439,8 +439,8 @@ class TestStandardSchemaLintCli:
             app,
             ["--lint", "--contract-path", str(INVALID_DCS_CONTRACT), "--checks-config-path", str(config)],
         )
-        # The CLI itself exits cleanly; the failure surfaces in the reported summary.
-        assert result.exit_code == 0
+        # Default severity is 'error', so a failing lint check exits 1.
+        assert result.exit_code == 1
         assert "failing" in result.output
         assert "All checks passed" not in result.output
 
