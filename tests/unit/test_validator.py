@@ -52,10 +52,13 @@ class TestGetAttributeValues:
         data = {"info": {"title": "Orders"}}
         assert self.v._get_attribute_values(data, "info.nonexistent.deep") == []
 
-    def test_none_value_returns_empty(self) -> None:
-        """Explicitly None leaf returns empty (filtered by _traverse_path)."""
+    def test_none_value_preserved(self) -> None:
+        """Explicitly None leaf is preserved as [None] (not collapsed to []).
+
+        This lets required_check distinguish missing (=[]) from null (=[None]).
+        """
         data = {"info": {"title": None}}
-        assert self.v._get_attribute_values(data, "info.title") == []
+        assert self.v._get_attribute_values(data, "info.title") == [None]
 
     def test_boolean_value(self) -> None:
         """Boolean values are returned as-is."""
