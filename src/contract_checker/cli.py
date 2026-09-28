@@ -201,8 +201,10 @@ def main(
     except (ValueError, FileNotFoundError) as e:
         logging.error(str(e))
         raise typer.Exit(code=1)
-        
-    reports = validate_contracts(contracts, checks_dict, output_mode=output_mode, output_format=output_format, lint=resolved_lint)
+
+    reports = validate_contracts(
+        contracts, checks_dict, output_mode=output_mode, output_format=output_format, lint=resolved_lint
+    )
 
     # Inside GitHub Actions (detected via the GITHUB_ACTIONS env var the runner
     # always sets), also emit workflow-command lines so failures show up as

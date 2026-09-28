@@ -1,6 +1,5 @@
-
 from typing import Optional
-from contract_checker.checks import DataContractValidator
+
 from contract_checker.checks.models import ContractValidationReport
 from contract_checker.contract.contract_base import Contract
 
@@ -43,4 +42,3 @@ def validate_contracts(
     else:
         validator.print_results(reports, output_mode=output_mode)
     return reports
-  
