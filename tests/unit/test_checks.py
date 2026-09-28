@@ -235,6 +235,16 @@ class TestMinItemsCheck:
         assert self.check.execute("models.orders.fields", [fields], 2)[0].passed is True
         assert self.check.execute("models.orders.fields", [fields], 3)[0].passed is False
 
+    def test_min_items_check_mapping_with_null_entry(self) -> None:
+        """Test a null mapping entry is reported by key and not counted."""
+        fields = {"id": {"type": "int"}, "name": None}
+        results = self.check.execute("models.orders.fields", [fields], 2)
+
+        assert len(results) == 2
+        assert results[0].passed is False
+        assert "contains 1 null element(s): name" in results[0].message
+        assert results[1].passed is False
+
     def test_min_items_check_mixed_list_and_non_list(self) -> None:
         """Test min items check fails when any value is not a collection."""
         results = self.check.execute("test.field", [[1, 2, 3], 42], 1)
