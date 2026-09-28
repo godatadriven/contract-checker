@@ -1,6 +1,6 @@
 """List length validation checks."""
 
-from typing import Any, List
+from typing import Any, Dict, List, Tuple, Union
 
 from ..base import Check
 from ..models import ValidationResult
@@ -20,6 +20,27 @@ def _not_a_collection_result(attribute_path: str, check_type: str) -> Validation
         False,
         f"Attribute '{attribute_path}' is not a list or mapping, cannot apply {check_type}",
     )
+
+
+def _count_items(
+    check: Check, attribute_path: str, value: Union[List[Any], Dict[Any, Any]]
+) -> Tuple[int, List[ValidationResult]]:
+    """Count the non-null items in a list or mapping, reporting null elements.
+
+    :param check: The check reporting any null elements.
+    :param attribute_path: The dot-notation path to the attribute being checked.
+    :param value: A list, or a mapping of named items (e.g. DCS ``fields``).
+    :return: The number of non-null items, and a failing result if any items
+        are null (empty otherwise).
+    """
+    if isinstance(value, dict):
+        null_keys = [str(key) for key, item in value.items() if item is None]
+        null_results = [check.null_elements_result(attribute_path, len(null_keys), null_keys)] if null_keys else []
+        return len(value) - len(null_keys), null_results
+
+    null_count = sum(1 for item in value if item is None)
+    null_results = [check.null_elements_result(attribute_path, null_count)] if null_count else []
+    return len(value) - null_count, null_results
 
 
 class MinItemsCheck(Check):
@@ -60,25 +81,23 @@ class MinItemsCheck(Check):
             be a list, or a mapping of named items (e.g. DCS ``fields``).
         :param min_count: The minimum number of items required in the list.
         :return: A list of :class:`ValidationResult` objects: one failing result
-            per list with null elements, plus a single count result. Null
-            elements are not counted. An absent attribute (empty ``values``)
+            per list or mapping with null elements, plus a single count result.
+            Null elements are not counted. A value that is not a list or
+            mapping fails. An absent attribute (empty ``values``)
             produces no results. Null values are reported by the validator.
         """
         if not values:
             return []
 
+        if not all(isinstance(value, (list, dict)) for value in values):
+            return [_not_a_collection_result(attribute_path, self.check_type)]
+
         results = []
         all_passed = True
         for value in values:
-            if isinstance(value, list):
-                items = [v for v in value if v is not None]
-                null_count = len(value) - len(items)
-                if null_count:
-                    results.append(self.null_elements_result(attribute_path, null_count))
-                if len(items) < min_count:
-                    all_passed = False
-            else:
-                # If it's not a list but we expect min_items, that's a failure
+            count, null_results = _count_items(self, attribute_path, value)
+            results.extend(null_results)
+            if count < min_count:
                 all_passed = False
 
         if all_passed:
@@ -127,23 +146,24 @@ class MaxItemsCheck(Check):
             be a list, or a mapping of named items (e.g. DCS ``fields``).
         :param max_count: The maximum number of items allowed in the list.
         :return: A list of :class:`ValidationResult` objects: one failing result
-            per list with null elements, plus a single count result. Null
-            elements are not counted. An absent attribute (empty ``values``)
+            per list or mapping with null elements, plus a single count result.
+            Null elements are not counted. A value that is not a list or
+            mapping fails. An absent attribute (empty ``values``)
             produces no results. Null values are reported by the validator.
         """
         if not values:
             return []
 
+        if not all(isinstance(value, (list, dict)) for value in values):
+            return [_not_a_collection_result(attribute_path, self.check_type)]
+
         results = []
         all_passed = True
         for value in values:
-            if isinstance(value, list):
-                items = [v for v in value if v is not None]
-                null_count = len(value) - len(items)
-                if null_count:
-                    results.append(self.null_elements_result(attribute_path, null_count))
-                if len(items) > max_count:
-                    all_passed = False
+            count, null_results = _count_items(self, attribute_path, value)
+            results.extend(null_results)
+            if count > max_count:
+                all_passed = False
 
         if all_passed:
             message = f"Attribute '{attribute_path}' has at most {max_count} items"
