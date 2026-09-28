@@ -108,8 +108,8 @@ For the full config-file schema — path filtering, severity overrides, and cust
 | Required | `required: true` | Field must exist and be non-null |
 | Pattern | `pattern: "^regex$"` | Value must match a regular expression |
 | Accepted values | `accepted_values: [a, b]` | Value must be one of the listed options |
-| Min items | `min_items: 2` | List must contain at least N items |
-| Max items | `max_items: 10` | List must contain at most N items |
+| Min items | `min_items: 2` | List or mapping must contain at least N items; fails if missing or not a collection |
+| Max items | `max_items: 10` | List or mapping must contain at most N items; skipped if missing, fails if not a collection |
 
 See the [checks reference](https://godatadriven.github.io/contract-checker/checks/) for full details and examples of each check type.
 
