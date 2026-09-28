@@ -32,6 +32,8 @@ class PatternCheck(Check):
             checks:
               - pattern: ^[a-z][a-z0-9_]*$
     ```
+
+    To enforce full-string matching implicitly, switch this to ``re.fullmatch``.
     """
 
     @property
@@ -50,23 +52,13 @@ class PatternCheck(Check):
             converted to a string before pattern matching.
         :param pattern: The regular expression pattern to match against.
         :return: A list of :class:`ValidationResult` objects, one for each value
-            in the input list. Null values will result in a failed check.
+            in the input list. An absent attribute (empty ``values``)
+            produces no results, since presence is enforced by the
+            ``required`` check. Null values are reported by the validator.
         """
         results = []
 
-        for idx, value in enumerate(values):
-            if value is None:
-                results.append(
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot match pattern {pattern}",
-                    )
-                )
-                continue
-
+        for value in values:
             value_str = str(value)
             passed = re.match(pattern, value_str) is not None
 
