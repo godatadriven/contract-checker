@@ -37,6 +37,8 @@ class PatternCheck(Check):
             checks:
               - pattern: ^[a-z]+$
     ```
+
+    To enforce full-string matching implicitly, switch this to ``re.fullmatch``.
     """
 
     @property
@@ -57,30 +59,24 @@ class PatternCheck(Check):
         :param pattern: The regular expression pattern to match against.
         :return: A list of :class:`ValidationResult` objects, one for each scalar
             value. When the attribute contains a list, a result is generated for
-            each item in that list. Null values will result in a failed check.
+            each item in that list. An absent attribute (empty ``values``)
+            produces no results, since presence is enforced by the
+            ``required`` check. Top-level null values are reported by the
+            validator; null items inside a list produce one failed result.
         """
         results = []
 
         items: List[Any] = []
         for value in values:
             if isinstance(value, list):
-                items.extend(value)
+                null_count = sum(1 for item in value if item is None)
+                if null_count:
+                    results.append(self.null_elements_result(attribute_path, null_count))
+                items.extend(item for item in value if item is not None)
             else:
                 items.append(value)
 
         for value in items:
-            if value is None:
-                results.append(
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot match pattern {pattern}",
-                    )
-                )
-                continue
-
             value_str = str(value)
             passed = re.match(pattern, value_str) is not None
 
