@@ -62,16 +62,20 @@ class AcceptedValuesCheck(Check):
         :param accepted_values: The list of values that are considered valid.
         :return: A list of :class:`ValidationResult` objects. When the attribute
             contains a list, a result is generated for each item in that list.
+            Null elements in a list fail. An absent attribute (empty
+            ``value_list``) produces no results. Null values are reported by
+            the validator.
         """
         results = []
         for value in value_list:
-            if value is None:
-                continue
-
             if isinstance(value, str):
                 items = [value]
             elif isinstance(value, list):
-                items = value
+                # Filter out null elements and report them explicitly
+                items = [v for v in value if v is not None]
+                null_count = len(value) - len(items)
+                if null_count:
+                    results.append(self.null_elements_result(attribute_path, null_count))
             else:
                 items = [value]
 
