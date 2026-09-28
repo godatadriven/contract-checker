@@ -6,6 +6,22 @@ from ..base import Check
 from ..models import ValidationResult
 
 
+def _not_a_collection_result(attribute_path: str, check_type: str) -> ValidationResult:
+    """Build the failing result for an attribute that is not a collection.
+
+    :param attribute_path: The dot-notation path to the attribute being checked.
+    :param check_type: The identifier of the check reporting the failure.
+    :return: A failed :class:`ValidationResult`.
+    """
+    return ValidationResult(
+        "",
+        attribute_path,
+        check_type,
+        False,
+        f"Attribute '{attribute_path}' is not a list or mapping, cannot apply {check_type}",
+    )
+
+
 class MinItemsCheck(Check):
     """Check if a list attribute has at least a minimum number of items.
 
@@ -41,10 +57,11 @@ class MinItemsCheck(Check):
 
         :param attribute_path: The dot-notation path to the attribute being checked.
         :param values: List of values found at the attribute path. Each value should
-            be a list to be validated.
+            be a list, or a mapping of named items (e.g. DCS ``fields``).
         :param min_count: The minimum number of items required in the list.
         :return: A list containing a single :class:`ValidationResult` indicating
-            whether all lists meet the minimum items requirement.
+            whether all lists meet the minimum items requirement. A missing
+            attribute or a value that is not a list or mapping fails.
         """
         if not values:
             return [
@@ -57,19 +74,10 @@ class MinItemsCheck(Check):
                 )
             ]
 
-        # Check if any value is a list and validate its length
-        all_passed = True
-        for value in values:
-            if isinstance(value, list):
-                if len(value) < min_count:
-                    all_passed = False
-                    break
-            else:
-                # If it's not a list but we expect min_items, that's a failure
-                all_passed = False
-                break
+        if not all(isinstance(value, (list, dict)) for value in values):
+            return [_not_a_collection_result(attribute_path, self.check_type)]
 
-        passed = all_passed and len(values) > 0
+        passed = all(len(value) >= min_count for value in values)
 
         if passed:
             message = f"Attribute '{attribute_path}' has at least {min_count} items"
@@ -113,10 +121,12 @@ class MaxItemsCheck(Check):
 
         :param attribute_path: The dot-notation path to the attribute being checked.
         :param values: List of values found at the attribute path. Each value should
-            be a list to be validated.
+            be a list, or a mapping of named items (e.g. DCS ``fields``).
         :param max_count: The maximum number of items allowed in the list.
         :return: A list containing a single :class:`ValidationResult` indicating
-            whether all lists are within the maximum items limit.
+            whether all lists are within the maximum items limit. A missing
+            attribute passes (skipped); a value that is not a list or mapping
+            fails.
         """
         if not values:
             return [
@@ -129,14 +139,10 @@ class MaxItemsCheck(Check):
                 )
             ]
 
-        all_passed = True
-        for value in values:
-            if isinstance(value, list):
-                if len(value) > max_count:
-                    all_passed = False
-                    break
+        if not all(isinstance(value, (list, dict)) for value in values):
+            return [_not_a_collection_result(attribute_path, self.check_type)]
 
-        passed = all_passed
+        passed = all(len(value) <= max_count for value in values)
 
         if passed:
             message = f"Attribute '{attribute_path}' has at most {max_count} items"
