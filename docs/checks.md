@@ -35,6 +35,44 @@ Wildcards can appear at any level and can be combined freely within the same pat
 
 **Lists without wildcards.** A non-wildcard segment applied to a list is transparent: it applies to each item, and the matched values are merged under a single path (e.g. `servers.type` collects the `type` of every server). Use `*` when you want checks to run per item instead.
 
+## Missing vs null values
+
+All checks follow the same rule for attributes that are absent or empty:
+
+- **Absent key**: skipped by every check except `required`. The check produces no result, so a field can be present in some contracts and not in others.
+- **Key present but null** (`owner:` with no value, `owner: null`, or `owner: ~`): fails every check with `Attribute '<path>' is null`.
+- **Null elements inside a value** (`tags: [a, null]`, or a `null` entry in a `fields` mapping): fail with `Attribute '<path>' contains N null element(s)`. Null elements are not counted by `min_items` / `max_items`.
+
+| Contract | `required: true` | Any other check |
+|---|---|---|
+| `info: {title: X}` (no `owner`) | FAIL: is missing | no result |
+| `info: {owner: null}` | FAIL: is null | FAIL: is null |
+| `info: {owner: alice}` | PASS | checked normally |
+
+To make a field mandatory, add `required: true`. The other checks never enforce presence:
+
+```yaml
+data_contract_checks:
+  # Optional: if tags are present, there must be at least one
+  - attribute: info.tags
+    checks:
+      - min_items: 1
+
+  # Mandatory: tags must be present and have at least one item
+  - attribute: info.tags
+    checks:
+      - required: true
+      - min_items: 1
+```
+
+`required: false` produces no result. You can still write it to document that a field is optional.
+
+A null *parent* (e.g. `info: null`) makes every path below it absent, so `info.owner` is reported as missing by `required` and skipped by the other checks. Add a check on `info` itself to report it as null.
+
+Empty values (`""`, `[]`, `{}`) are not null. They count as present.
+
+See [Pass and fail examples](check_examples.md) for every check run against real contracts.
+
 ## Available checks
 
 ::: contract_checker.checks.validators

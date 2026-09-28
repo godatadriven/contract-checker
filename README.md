@@ -111,6 +111,8 @@ For the full config-file schema — path filtering, severity overrides, and cust
 | Min items | `min_items: 2` | List must contain at least N items |
 | Max items | `max_items: 10` | List must contain at most N items |
 
+Only `required` checks whether a field exists: every other check skips an absent field, and every check fails a field that is present but null. See [missing vs null values](https://godatadriven.github.io/contract-checker/checks/#missing-vs-null-values).
+
 See the [checks reference](https://godatadriven.github.io/contract-checker/checks/) for full details and examples of each check type.
 
 ---

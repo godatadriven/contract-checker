@@ -39,7 +39,9 @@ nav:
     - Installation: usage.md
     - GitHub Actions: ci.md
   - Config File: config.md
-  - Checks: checks.md
+  - Checks:
+    - Reference: checks.md
+    - Pass and fail examples: check_examples.md
   - Custom Schemas: custom_schemas.md
   - CLI: cli.md
   - Contributing: contributing.md

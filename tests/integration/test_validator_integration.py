@@ -274,12 +274,11 @@ class TestWildcardRequiredCheck:
         assert report.passed_checks == 3
         assert report.failed_checks == 2
 
-    def test_required_false_always_passes(self) -> None:
+    def test_required_false_produces_no_results(self) -> None:
         v = _make_validator([{"attribute": "models.*.fields.*.unique", "checks": [{"required": False}]}])
         report = v.run_checks(_FakeContract(SAMPLE_DATA))
 
-        assert report.failed_checks == 0
-        assert report.passed_checks == 5
+        assert report.total_checks == 0
 
     def test_required_all_present(self) -> None:
         v = _make_validator([{"attribute": "models.*.fields.*.type", "checks": [{"required": True}]}])
@@ -348,23 +347,23 @@ class TestWildcardMinMaxItemsCheck:
         assert results_by_path["models.orders.fields.order_id.examples"] is False
         assert results_by_path["models.orders.fields.order_timestamp.examples"] is True
 
-    def test_missing_examples_min_items_fails(self) -> None:
+    def test_missing_examples_min_items_skipped(self) -> None:
         v = _make_validator([{"attribute": "models.*.fields.*.examples", "checks": [{"min_items": 1}]}])
         report = v.run_checks(_FakeContract(SAMPLE_DATA))
 
-        results_by_path = {r.attribute: r.passed for r in report.results}
+        checked_paths = {r.attribute for r in report.results}
 
-        assert results_by_path["models.orders.fields.order_total.examples"] is False
-        assert results_by_path["models.line_items.fields.sku.examples"] is False
+        assert "models.orders.fields.order_total.examples" not in checked_paths
+        assert "models.line_items.fields.sku.examples" not in checked_paths
 
     def test_missing_examples_max_items_skipped(self) -> None:
         v = _make_validator([{"attribute": "models.*.fields.*.examples", "checks": [{"max_items": 5}]}])
         report = v.run_checks(_FakeContract(SAMPLE_DATA))
 
-        results_by_path = {r.attribute: r.passed for r in report.results}
+        checked_paths = {r.attribute for r in report.results}
 
-        assert results_by_path["models.orders.fields.order_total.examples"] is True
-        assert results_by_path["models.line_items.fields.sku.examples"] is True
+        assert "models.orders.fields.order_total.examples" not in checked_paths
+        assert "models.line_items.fields.sku.examples" not in checked_paths
 
 
 # ===================================================================
@@ -404,7 +403,9 @@ class TestWildcardEdgeCases:
         )
         report = v.run_checks(_FakeContract(SAMPLE_DATA))
 
-        assert len(report.results) == 10  # 5 fields x 2 checks
+        # 5 fields x required + 3 fields that have examples x min_items.
+        # min_items skips the 2 fields without examples; required fails them.
+        assert len(report.results) == 8
 
     def test_concrete_paths_no_wildcards_in_output(self) -> None:
         v = _make_validator([{"attribute": "models.*.fields.*.unique", "checks": [{"required": True}]}])
@@ -668,3 +669,74 @@ class TestOdcsListStyleContracts:
         assert report.results, "expected per-property results"
         for result in report.results:
             assert "*" not in result.attribute
+
+
+# ===================================================================
+# Missing vs null through the full pipeline
+# ===================================================================
+
+
+MISSING_VS_NULL_DATA = {
+    "models": {
+        "orders": {
+            "fields": {
+                "id": {"owner": None},  # present but null
+                "name": {},  # owner absent
+                "amount": {"owner": "bob"},
+            }
+        }
+    }
+}
+
+
+class TestMissingVsNull:
+    """Absent keys are skipped by every check except required; nulls fail every check."""
+
+    def test_wildcard_null_fails_and_absent_is_skipped(self) -> None:
+        v = _make_validator(
+            [
+                {
+                    "attribute": "models.*.fields.*.owner",
+                    "checks": [{"pattern": "^[a-z]+$"}, {"accepted_values": ["bob"]}],
+                }
+            ]
+        )
+        report = v.run_checks(_FakeContract(MISSING_VS_NULL_DATA))
+
+        by_path: dict[str, list[bool]] = {}
+        for r in report.results:
+            by_path.setdefault(r.attribute, []).append(r.passed)
+
+        assert by_path["models.orders.fields.id.owner"] == [False, False]
+        assert "models.orders.fields.name.owner" not in by_path
+        assert by_path["models.orders.fields.amount.owner"] == [True, True]
+
+    def test_required_still_fails_absent(self) -> None:
+        v = _make_validator([{"attribute": "models.*.fields.*.owner", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(MISSING_VS_NULL_DATA))
+
+        messages = {r.attribute: r.message for r in report.results if not r.passed}
+
+        assert "is null" in messages["models.orders.fields.id.owner"]
+        assert "is missing" in messages["models.orders.fields.name.owner"]
+
+    def test_null_collection_fails_collection_checks(self) -> None:
+        data = {"models": {"orders": {"fields": None}, "items": {}}}
+        v = _make_validator(
+            [
+                {
+                    "attribute": "models.*.fields",
+                    "checks": [
+                        {"min_items": 1},
+                        {"at_least_one": {"primaryKey": True}},
+                        {"exactly_one": {"primaryKey": True}},
+                    ],
+                }
+            ]
+        )
+        report = v.run_checks(_FakeContract(data))
+
+        # orders.fields is null: all three fail. items.fields is absent: skipped.
+        assert {r.attribute for r in report.results} == {"models.orders.fields"}
+        assert report.failed_checks == 3
+        assert all("is null" in r.message for r in report.results)
