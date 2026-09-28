@@ -14,7 +14,7 @@ import pytest
 
 from contract_checker.checks.validator import DataContractValidator, _to_json_compatible
 from contract_checker.contract.contract_base import Contract
-from contract_checker.utils.utils import parse_yml_to_dict
+from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 VALID_DCS = FIXTURES / "dcs" / "1.2.1" / "time_data_type_example.yaml"
@@ -100,9 +100,10 @@ def test_standard_schema_not_checked_when_lint_disabled() -> None:
 
 
 def test_lint_from_config_enables_standard_schema_validation() -> None:
-    """The 'lint' key in the checks config enables standard-schema validation."""
+    """The 'lint' key in the checks config, resolved by resolve_lint, enables standard-schema validation."""
+    checks_config = {"lint": True, "data_contract_checks": []}
     contract = _load_standard_contract(INVALID_DCS, "dcs", "1.2.1")
-    report = DataContractValidator({"lint": True, "data_contract_checks": []}).run_checks(contract)
+    report = DataContractValidator(checks_config, lint=resolve_lint(None, checks_config)).run_checks(contract)
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results if not r.passed)

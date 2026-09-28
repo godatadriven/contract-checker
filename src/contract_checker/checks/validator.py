@@ -39,7 +39,7 @@ class DataContractValidator:
         self,
         checks_dict: dict,
         check_registry: Optional[CheckRegistry] = None,
-        lint: Optional[bool] = None,
+        lint: bool = False,
     ) -> None:
         """
         Initialize validator with checks configuration and reporter
@@ -49,14 +49,11 @@ class DataContractValidator:
             check_registry: Optional custom CheckRegistry instance
             lint: Whether to validate the whole contract against its JSON Schema
                 (the custom schema when one is supplied, otherwise the vendored
-                standard schema). When ``None``, falls back to the ``lint`` key in
-                ``checks_dict`` and defaults to ``False`` (off) if unset.
+                standard schema). Already resolved by the caller (see
+                ``resolve_lint``); the ``lint`` key in ``checks_dict`` is not read here.
         """
         self.checks_config = checks_dict
-
-        # Schema validation ("lint") is opt-in. An explicit argument wins;
-        # otherwise honour the config file, defaulting to off.
-        self.lint = lint if lint is not None else bool((checks_dict or {}).get("lint", False))
+        self.lint = lint
 
         self.registry = check_registry or CheckRegistry()
         # Initialize the reporter for output formatting and summary generation

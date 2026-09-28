@@ -10,7 +10,12 @@ from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, gith
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
-from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, parse_yml_to_dict
+from contract_checker.utils.utils import (
+    CustomSchemaError,
+    load_and_validate_json_schema,
+    parse_yml_to_dict,
+    resolve_lint,
+)
 from contract_checker.version import version as get_version
 
 app = typer.Typer(
@@ -159,16 +164,19 @@ def main(
         )
         raise typer.Exit(code=1)
 
-    # Resolve schema validation ("lint"): the CLI flag wins, otherwise fall back
-    # to the 'lint' key in the checks config file (default off).
-    config_lint = bool(checks_dict.get("lint", False)) if checks_dict else False
-    resolved_lint = lint if lint is not None else config_lint
-    logging.debug(f"Schema validation (lint): {resolved_lint}")
-
     # Resolve the custom schema path: the CLI flag wins, otherwise fall back to the
     # 'custom_schema_path' key in the checks config file.
     config_schema_path = checks_dict.get("custom_schema_path") if checks_dict else None
     resolved_schema_path = custom_schema_path or (Path(config_schema_path) if config_schema_path else None)
+
+    # Resolve schema validation ("lint") once, here; the validator just receives
+    # the resulting bool. Off by default.
+    try:
+        resolved_lint = resolve_lint(lint, checks_dict)
+    except ValueError as e:
+        logging.error(str(e))
+        raise typer.Exit(code=2)
+    logging.debug(f"Schema validation (lint): {resolved_lint}")
 
     if resolved_schema_path is not None and not resolved_lint:
         logging.info(

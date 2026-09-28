@@ -45,6 +45,30 @@ def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
     return schema
 
 
+def resolve_lint(cli_lint: Optional[bool], checks_dict: Optional[dict]) -> bool:
+    """Decide whether schema validation ("lint") runs. The single place lint is resolved.
+
+    Precedence: the ``--lint/--no-lint`` CLI flag, then the ``lint`` key in the
+    checks config, then the default (off), also when a custom schema is supplied.
+
+    :param cli_lint: The CLI flag value, or ``None`` when the flag was not passed.
+    :param checks_dict: The parsed checks config (may be ``None``).
+    :returns: ``True`` when contracts should be validated against their JSON Schema.
+    :raises ValueError: If the config ``lint`` key is present but not a boolean
+        (e.g. the quoted string ``"false"``, which ``bool()`` would treat as true).
+    """
+    if cli_lint is not None:
+        return cli_lint
+
+    config_lint = (checks_dict or {}).get("lint")
+    if config_lint is not None:
+        if not isinstance(config_lint, bool):
+            raise ValueError(f"'lint' in the checks config must be true or false, got {config_lint!r}.")
+        return config_lint
+
+    return False
+
+
 def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
     """Parse a data contract from a YAML string."""
     try:

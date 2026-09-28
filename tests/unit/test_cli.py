@@ -368,6 +368,13 @@ class TestCustomSchemaCli:
         # Linting is off, so the invalid schema is never loaded — no fail-fast.
         assert result.exit_code == 0
 
+    def test_non_boolean_lint_config_exits_2(self, tmp_path: Path) -> None:
+        """A quoted 'lint: "false"' is rejected rather than silently treated as true."""
+        config = _write_checks_config(tmp_path, 'lint: "false"\ndata_contract_checks: []\n')
+        result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
+        assert result.exit_code == 2
+        assert "must be true or false" in result.output
+
     def test_schema_path_from_config(self, tmp_path: Path) -> None:
         """The custom schema path can be supplied via the checks config file."""
         config = _write_checks_config(
