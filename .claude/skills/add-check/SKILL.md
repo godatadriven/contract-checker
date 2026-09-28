@@ -108,11 +108,18 @@ class Test<ClassName>:
         assert results[0].passed is False
 
     def test_missing_attribute(self) -> None:
-        """Test check fails when attribute is missing."""
-        results = self.check.execute("test.field", [], <check_value>)
+        """An absent attribute is skipped: presence is required's job."""
+        assert self.check.execute("test.field", [], <check_value>) == []
+
+    def test_null_attribute(self) -> None:
+        """A present-but-null attribute fails with the standard message."""
+        results = self.check.execute("test.field", [None], <check_value>)
         assert len(results) == 1
         assert results[0].passed is False
+        assert results[0].message == "Attribute 'test.field' is null"
 ```
+
+   - Add `"<check_name>": <check_value>,` to the `CHECK_VALUES` dict in `tests/unit/test_checks.py`. `TestMissingVsNullRule` fails until you do, and then enforces the missing-vs-null rule (see the `Check` docstring in `checks/base.py`) on the new check.
 
 7. Edit `docs/checks.md` — insert before the final `::: contract_checker.checks.validators` autodoc line:
 

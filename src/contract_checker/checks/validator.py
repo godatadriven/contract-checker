@@ -9,6 +9,7 @@ import jsonschema
 from contract_checker.contract.contract_base import Contract, get_standard_schema_path
 from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema
 
+from .base import Check
 from .models import ContractValidationReport, ValidationResult
 from .registry import CheckRegistry
 from .reporting import ValidationReporter
@@ -97,7 +98,7 @@ class DataContractValidator:
                         check_type = next(iter(check_config.keys()))
                         check_value = check_config[check_type]
                         check_handler = self.registry.get(check_type)
-                        check_results = check_handler.execute(concrete_path, values, check_value)
+                        check_results = self._run_check(check_handler, concrete_path, values, check_value)
                         for result in check_results:
                             result.contract_file = data_contract.contract_path
                         results.extend(check_results)
@@ -109,7 +110,7 @@ class DataContractValidator:
                     check_type = next(iter(check_config.keys()))
                     check_value = check_config[check_type]
                     check_handler = self.registry.get(check_type)
-                    check_results = check_handler.execute(attribute_path, values, check_value)
+                    check_results = self._run_check(check_handler, attribute_path, values, check_value)
                     for result in check_results:
                         result.contract_file = data_contract.contract_path
                     results.extend(check_results)
@@ -125,6 +126,40 @@ class DataContractValidator:
             failed_checks=failed,
             results=results,
         )
+
+    def _run_check(
+        self,
+        check_handler: Check,
+        attribute_path: str,
+        values: List[Any],
+        check_value: Any,  # noqa: ANN401
+    ) -> List[ValidationResult]:
+        """
+        Run one check, reporting top-level nulls before the check sees them
+
+        Every ``None`` in ``values`` gets the standard null failure, and only
+        the non-null values reach ``execute()``. This keeps custom checks from
+        receiving ``None``. An absent attribute (``values == []``) still
+        reaches ``execute()`` so ``required`` can report it as missing. Checks
+        with ``handles_nulls = True`` receive ``values`` unchanged.
+
+        Args:
+            check_handler: The check to run
+            attribute_path: Concrete attribute path being checked
+            values: Values found at the path ([] if absent, None if null)
+            check_value: Configuration value for the check
+
+        Returns:
+            List of ValidationResult objects
+        """
+        if check_handler.handles_nulls:
+            return check_handler.execute(attribute_path, values, check_value)
+
+        non_null = [v for v in values if v is not None]
+        results = [check_handler.null_result(attribute_path) for v in values if v is None]
+        if non_null or not values:
+            results.extend(check_handler.execute(attribute_path, non_null, check_value))
+        return results
 
     def _resolve_schema_path(self, data_contract: Contract) -> Path:
         """Return the JSON Schema path to validate a contract against.
@@ -330,7 +365,7 @@ class DataContractValidator:
         """
         if not parts:
             path_str = ".".join(current_path)
-            return {path_str: [data] if data is not None else []}
+            return {path_str: [data]}
 
         current_part = parts[0]
         remaining = parts[1:]
@@ -382,7 +417,7 @@ class DataContractValidator:
             List of values found
         """
         if not parts:
-            return [data] if data is not None else []
+            return [data]
 
         current_part = parts[0]
         remaining_parts = parts[1:]
