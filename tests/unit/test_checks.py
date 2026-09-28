@@ -226,6 +226,32 @@ class TestMinItemsCheck:
 
         assert len(results) == 1
         assert results[0].passed is False
+        assert "is not a list" in results[0].message
+
+    def test_min_items_check_mapping_counts_items(self) -> None:
+        """Test min items check counts the entries of a mapping (e.g. DCS fields)."""
+        fields = {"id": {"type": "int"}, "name": {"type": "text"}}
+
+        assert self.check.execute("models.orders.fields", [fields], 2)[0].passed is True
+        assert self.check.execute("models.orders.fields", [fields], 3)[0].passed is False
+
+    def test_min_items_check_mapping_with_null_entry(self) -> None:
+        """Test a null mapping entry is reported by key and not counted."""
+        fields = {"id": {"type": "int"}, "name": None}
+        results = self.check.execute("models.orders.fields", [fields], 2)
+
+        assert len(results) == 2
+        assert results[0].passed is False
+        assert "contains 1 null element(s): name" in results[0].message
+        assert results[1].passed is False
+
+    def test_min_items_check_mixed_list_and_non_list(self) -> None:
+        """Test min items check fails when any value is not a collection."""
+        results = self.check.execute("test.field", [[1, 2, 3], 42], 1)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "is not a list" in results[0].message
 
 
 class TestMaxItemsCheck:
@@ -268,6 +294,28 @@ class TestMaxItemsCheck:
 
         assert [r.passed for r in results] == [False, True]
         assert "contains 2 null element(s)" in results[0].message
+
+    def test_max_items_check_non_list_value(self) -> None:
+        """Test max items check fails with non-list value, consistent with min_items."""
+        results = self.check.execute("test.field", ["not a list"], 5)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "is not a list" in results[0].message
+
+    def test_max_items_check_mapping_counts_items(self) -> None:
+        """Test max items check counts the entries of a mapping (e.g. DCS fields)."""
+        fields = {"id": {"type": "int"}, "name": {"type": "text"}}
+
+        assert self.check.execute("models.orders.fields", [fields], 2)[0].passed is True
+        assert self.check.execute("models.orders.fields", [fields], 1)[0].passed is False
+
+    def test_max_items_check_mixed_list_and_non_list(self) -> None:
+        """Test max items check fails when any value is not a collection."""
+        results = self.check.execute("test.field", [[1], "not a list"], 5)
+
+        assert len(results) == 1
+        assert results[0].passed is False
 
 
 class TestAcceptedValuesCheck:
