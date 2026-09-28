@@ -13,7 +13,7 @@ from pathlib import Path
 
 from contract_checker.checks.validator import DataContractValidator
 from contract_checker.contract.contract_base import Contract
-from contract_checker.utils.utils import parse_yml_to_dict
+from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
 
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
 ECOMMERCE_SCHEMA = CUSTOM_FIXTURES / "ecommerce-product-schema.json"
@@ -51,9 +51,10 @@ def test_custom_schema_skipped_when_lint_disabled() -> None:
 
 
 def test_lint_from_config_enables_custom_schema_validation() -> None:
-    """The 'lint' key in the checks config enables schema validation without an explicit arg."""
+    """The 'lint' key in the checks config, resolved by resolve_lint, enables schema validation."""
+    checks_config = {"lint": True, "data_contract_checks": []}
     contract = _load_contract(CUSTOM_FIXTURES / "invalid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
-    report = DataContractValidator({"lint": True, "data_contract_checks": []}).run_checks(contract)
+    report = DataContractValidator(checks_config, lint=resolve_lint(None, checks_config)).run_checks(contract)
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)

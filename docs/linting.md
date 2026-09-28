@@ -33,7 +33,8 @@ on when you also want full structural validation.
     lint: true
     ```
 
-The CLI flag always wins over the config value.
+The CLI flag always wins over the config value. The config value must be a YAML boolean; a quoted
+`"false"` (or any other non-boolean) is rejected with an error instead of being guessed at.
 
 !!! note "A custom schema alone does not enable linting"
     Providing `custom_schema_path` (or `--custom-schema-path`) does **not** turn on validation by

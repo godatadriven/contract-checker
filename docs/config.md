@@ -61,6 +61,9 @@ CLI option overrides this value.
 lint: true   # default: false
 ```
 
+The value must be a YAML boolean (`true` / `false`). Anything else — including the quoted string
+`"false"` — is rejected with an error (exit code 2) rather than silently interpreted.
+
 When enabled, schema validation runs **in addition** to any `data_contract_checks` — both run and
 every failure is reported. When disabled (the default), no JSON Schema validation is performed,
 even if a custom schema is configured. See [Schema Validation](linting.md) for full behaviour.
