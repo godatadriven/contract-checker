@@ -1,7 +1,7 @@
 
 # Config
 data_contracts_path:
-  path: ./tests/fixtures/dcs/0.9.3/covid_cases.yaml
+  path: ./tests/fixtures/dcs/
   include_paths:
   include_custom:
     - field: info.status
