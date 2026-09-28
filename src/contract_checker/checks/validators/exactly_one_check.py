@@ -74,18 +74,13 @@ class ExactlyOneCheck(Check):
         :param check_value: A single-key mapping ``{attr: val}`` — exactly one
             child object in the collection must have ``attr == val``. Any other
             shape (multi-key mapping, empty mapping, non-mapping) is rejected.
-        :return: A list containing a single :class:`ValidationResult`.
+        :return: A list of :class:`ValidationResult` objects: a failing result
+            for null items inside the collection, plus a single verdict. An
+            absent attribute (empty ``values``) produces no results. Null
+            collections are reported by the validator.
         """
         if not values:
-            return [
-                ValidationResult(
-                    "",
-                    attribute_path,
-                    self.check_type,
-                    False,
-                    f"Attribute '{attribute_path}' is missing; cannot verify exactly_one condition",
-                )
-            ]
+            return []
 
         if not isinstance(check_value, dict):
             return [
@@ -112,11 +107,24 @@ class ExactlyOneCheck(Check):
             ]
 
         required_attr, required_val = next(iter(check_value.items()))
+        results = []
         count = 0
         for value in values:
+            items: List[Any]
             # A collection is either a dict keyed by item name (DCS style)
             # or a list of named objects (ODCS style).
-            items = value.values() if isinstance(value, dict) else value if isinstance(value, list) else []
+            if isinstance(value, dict):
+                null_keys = [str(key) for key, item in value.items() if item is None]
+                if null_keys:
+                    results.append(self.null_elements_result(attribute_path, len(null_keys), null_keys))
+                items = list(value.values())
+            elif isinstance(value, list):
+                null_count = sum(1 for item in value if item is None)
+                if null_count:
+                    results.append(self.null_elements_result(attribute_path, null_count))
+                items = value
+            else:
+                items = []
             for item in items:
                 if isinstance(item, dict) and item.get(required_attr) == required_val:
                     count += 1
@@ -130,4 +138,5 @@ class ExactlyOneCheck(Check):
                 f"'{required_attr}: {required_val}', expected exactly 1"
             )
 
-        return [ValidationResult("", attribute_path, self.check_type, passed, message)]
+        results.append(ValidationResult("", attribute_path, self.check_type, passed, message))
+        return results

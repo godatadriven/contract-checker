@@ -3,14 +3,12 @@
 data_contracts_path:
   path: ./tests/fixtures/dcs/
   include_paths:
-    - 0.9.3/**
   include_custom:
     - field: info.status
       value: active
     - field: info.status
       value: active
   exclude_paths:
-    - 1.2.1/**
   exclude_custom:
     - field: info.deprecated
       value: true
@@ -38,7 +36,7 @@ data_contract_checks:
 
   - attribute: info.version
     checks:
-      - accepted_values: 1.0.0
+      - accepted_values: 0.0.1
 
   - attribute: tags
     checks:
@@ -46,7 +44,7 @@ data_contract_checks:
         - example
         - test
 
-  - attribute: servers.type
+  - attribute: servers.*.type
     checks:
       - accepted_values:
           - s3
@@ -71,11 +69,10 @@ data_contract_checks:
 #       - min_items: 1
 
 # Model field checks
-  - attribute: models.*.fields.*.unique
+  - attribute: models.*.fields.*.description
     checks:
       - required: true
 
-  - attribute: models.*.fields.*.examples
+  - attribute: models.*.fields.*.type
     checks:
       - required: true
-      - min_items: 2
