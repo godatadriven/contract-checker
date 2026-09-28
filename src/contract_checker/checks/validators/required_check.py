@@ -34,6 +34,10 @@ class RequiredCheck(Check):
         """
         return "required"
 
+    # required reports null values itself ("Required attribute ... is null"),
+    # and required: false must stay a no-op even when the value is null.
+    handles_nulls = True
+
     def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
         """Execute the required field validation.
 

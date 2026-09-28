@@ -6,7 +6,10 @@ from typing import Any
 
 import pytest
 
+from contract_checker.checks.base import Check
+from contract_checker.checks.models import ValidationResult
 from contract_checker.checks.registry import CheckRegistry
+from contract_checker.checks.validator import DataContractValidator
 from contract_checker.checks.validators import (
     AcceptedValuesCheck,
     AtLeastOneCheck,
@@ -133,15 +136,6 @@ class TestPatternCheck:
         assert results[1].passed is False
         assert results[2].passed is True
 
-    def test_pattern_check_with_none(self) -> None:
-        """A present-but-null value fails the pattern check."""
-        pattern = r"^[A-Z]+$"
-        results = self.check.execute("test.field", [None], pattern)
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].message == "Attribute 'test.field' is null"
-
     def test_empty_values_no_results(self) -> None:
         """Empty values list produces no results."""
         results = self.check.execute("test.field", [], r"^.*$")
@@ -218,28 +212,12 @@ class TestMinItemsCheck:
         """An absent attribute is skipped: presence is required's job."""
         assert self.check.execute("test.field", [], 3) == []
 
-    def test_min_items_check_null_value(self) -> None:
-        """A present-but-null list fails."""
-        results = self.check.execute("test.field", [None], 1)
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].message == "Attribute 'test.field' is null"
-
     def test_min_items_check_null_elements_not_counted(self) -> None:
         """Null elements fail and do not count toward the minimum."""
         results = self.check.execute("test.field", [[None, None, None]], 1)
 
         assert [r.passed for r in results] == [False, False]
         assert "contains 3 null element(s)" in results[0].message
-        assert "fewer than 1 items" in results[1].message
-
-    def test_min_items_check_one_null_does_not_hide_other_lists(self) -> None:
-        """A null value fails on its own; the other lists are still counted."""
-        results = self.check.execute("test.field", [["a"], None, []], 1)
-
-        assert [r.passed for r in results] == [False, False]
-        assert "is null" in results[0].message
         assert "fewer than 1 items" in results[1].message
 
     def test_min_items_check_non_list_value(self) -> None:
@@ -283,14 +261,6 @@ class TestMaxItemsCheck:
     def test_max_items_check_missing_attribute(self) -> None:
         """An absent attribute is skipped: presence is required's job."""
         assert self.check.execute("test.field", [], 5) == []
-
-    def test_max_items_check_null_value(self) -> None:
-        """A present-but-null list fails."""
-        results = self.check.execute("test.field", [None], 5)
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].message == "Attribute 'test.field' is null"
 
     def test_max_items_check_null_elements_not_counted(self) -> None:
         """Null elements fail and do not count toward the maximum."""
@@ -338,14 +308,6 @@ class TestAcceptedValuesCheck:
         assert results[0].passed is True
         assert results[1].passed is False
 
-    def test_accepted_values_check_none_fails(self) -> None:
-        """A present-but-null value fails the accepted values check."""
-        results = self.check.execute("test.field", [None], ["active", "inactive"])
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].message == "Attribute 'test.field' is null"
-
     def test_accepted_values_check_missing_no_results(self) -> None:
         """An absent attribute is skipped: presence is required's job."""
         assert self.check.execute("test.field", [], ["active"]) == []
@@ -386,14 +348,6 @@ class TestAtLeastOneCheck:
     def test_missing_attribute(self) -> None:
         """An absent collection is skipped: presence is required's job."""
         assert self.check.execute("models.orders.fields", [], {"unique": True}) == []
-
-    def test_null_collection_fails(self) -> None:
-        """A present-but-null collection fails with the null message, not '0 items'."""
-        results = self.check.execute("models.orders.fields", [None], {"unique": True})
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].message == "Attribute 'models.orders.fields' is null"
 
     def test_null_item_in_collection_fails(self) -> None:
         """A null item fails and is named; the verdict still uses the other items."""
@@ -516,14 +470,6 @@ class TestExactlyOneCheck:
         """An absent collection is skipped: presence is required's job."""
         assert self.check.execute("models.orders.fields", [], {"primaryKey": True}) == []
 
-    def test_null_collection_fails(self) -> None:
-        """A present-but-null collection fails with the null message, not '0 items'."""
-        results = self.check.execute("models.orders.fields", [None], {"primaryKey": True})
-
-        assert len(results) == 1
-        assert results[0].passed is False
-        assert results[0].message == "Attribute 'models.orders.fields' is null"
-
     def test_null_item_in_collection_fails(self) -> None:
         """A null item fails and is named; the verdict still uses the other items."""
         fields = {"id": None, "name": {"primaryKey": True}}
@@ -610,8 +556,84 @@ class TestMissingVsNullRule:
     @pytest.mark.parametrize("check_type", sorted(CHECK_VALUES))
     def test_null_attribute_fails(self, check_type: str) -> None:
         check = CheckRegistry().get(check_type)
-        results = check.execute("a.b", [None], CHECK_VALUES[check_type])
+        results = _validator()._run_check(check, "a.b", [None], CHECK_VALUES[check_type])
 
         assert len(results) == 1
         assert results[0].passed is False
         assert "is null" in results[0].message
+
+    @pytest.mark.parametrize("check_type", sorted(set(CHECK_VALUES) - {"required"}))
+    def test_null_attribute_uses_standard_message(self, check_type: str) -> None:
+        check = CheckRegistry().get(check_type)
+        results = _validator()._run_check(check, "a.b", [None], CHECK_VALUES[check_type])
+
+        assert results[0].message == "Attribute 'a.b' is null"
+        assert results[0].check_type == check_type
+
+    def test_one_null_does_not_hide_other_values(self) -> None:
+        """A null value fails on its own; the other values are still checked."""
+        check = CheckRegistry().get("min_items")
+        results = _validator()._run_check(check, "a.b", [["a"], None, []], 1)
+
+        assert [r.passed for r in results] == [False, False]
+        assert "is null" in results[0].message
+        assert "fewer than 1 items" in results[1].message
+
+    def test_required_false_ignores_null(self) -> None:
+        """required: false stays a no-op, even for a null value."""
+        check = CheckRegistry().get("required")
+        assert _validator()._run_check(check, "a.b", [None], False) == []
+
+
+class _LengthCheck(Check):
+    """Custom check that, like many user checks, assumes values are not None."""
+
+    @property
+    def check_type(self) -> str:
+        return "max_length"
+
+    def execute(self, attribute_path: str, values: list[Any], check_value: int) -> list[ValidationResult]:
+        return [ValidationResult("", attribute_path, self.check_type, len(v) <= check_value, "checked") for v in values]
+
+
+class _FakeContract:
+    """Lightweight stand-in for Contract to avoid on-disk schema validation."""
+
+    def __init__(self, content: dict) -> None:
+        self.contract_path = "test-contract.yaml"
+        self.contract_content = content
+        self.custom_schema_path = None
+
+
+class TestCustomCheckNeverSeesNull:
+    """Custom checks registered through CheckRegistry never receive a top-level None."""
+
+    def _validate(self, content: dict, attribute: str) -> list[ValidationResult]:
+        registry = CheckRegistry()
+        registry.register(_LengthCheck())
+        config = {"data_contract_checks": [{"attribute": attribute, "checks": [{"max_length": 5}]}]}
+        validator = DataContractValidator(config, registry)
+        contract: Any = _FakeContract(content)
+        results: list[ValidationResult] = validator.validate([contract])[0].results
+        return results
+
+    def test_null_attribute(self) -> None:
+        results = self._validate({"info": {"title": None}}, "info.title")
+
+        assert [(r.check_type, r.passed, r.message) for r in results] == [
+            ("max_length", False, "Attribute 'info.title' is null")
+        ]
+
+    def test_null_attribute_in_wildcard_path(self) -> None:
+        content = {"models": {"a": {"name": None}, "b": {"name": "ok"}}}
+        results = self._validate(content, "models.*.name")
+
+        by_path = {r.attribute: (r.passed, r.message) for r in results}
+        assert by_path == {
+            "models.a.name": (False, "Attribute 'models.a.name' is null"),
+            "models.b.name": (True, "checked"),
+        }
+
+
+def _validator() -> DataContractValidator:
+    return DataContractValidator({"data_contract_checks": []})
