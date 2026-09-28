@@ -106,10 +106,10 @@ For the full config-file schema — path filtering, severity overrides, and cust
 | Check | YAML key | Description |
 |---|---|---|
 | Required | `required: true` | Field must exist and be non-null |
-| Pattern | `pattern: "^regex$"` | Value must match a regular expression |
+| Pattern | `pattern: "^regex$"` | Value must match a regular expression (for list attributes, every item must match) |
 | Accepted values | `accepted_values: [a, b]` | Value must be one of the listed options |
-| Min items | `min_items: 2` | List must contain at least N items |
-| Max items | `max_items: 10` | List must contain at most N items |
+| Min items | `min_items: 2` | List or mapping must contain at least N items; skipped if missing, fails if not a collection |
+| Max items | `max_items: 10` | List or mapping must contain at most N items; skipped if missing, fails if not a collection |
 
 Only `required` checks whether a field exists: every other check skips an absent field, and every check fails a field that is present but null. See [missing vs null values](https://godatadriven.github.io/contract-checker/checks/#missing-vs-null-values).
 

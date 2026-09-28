@@ -177,6 +177,56 @@ class TestPatternCheck:
         assert len(results) == 1
         assert results[0].passed is True
 
+    def test_pattern_check_list_value_all_match(self) -> None:
+        """Test pattern check validates each item of a list attribute."""
+        pattern = r"^[a-z]+$"
+        results = self.check.execute("tags", [["abc", "def"]], pattern)
+
+        assert len(results) == 2
+        assert all(r.passed for r in results)
+        assert "'abc'" in results[0].message
+        assert "'def'" in results[1].message
+
+    def test_pattern_check_list_value_partial_match(self) -> None:
+        """Test pattern check fails only the list items that do not match."""
+        pattern = r"^[a-z]+$"
+        results = self.check.execute("tags", [["abc", "XYZ"]], pattern)
+
+        assert len(results) == 2
+        assert results[0].passed is True
+        assert results[1].passed is False
+        assert "'XYZ'" in results[1].message
+
+    def test_pattern_check_list_value_not_matched_as_string(self) -> None:
+        """Test a pattern matching the list's string form does not pass the check."""
+        pattern = r"^\['abc'"
+        results = self.check.execute("tags", [["abc", "XYZ"]], pattern)
+
+        assert all(r.passed is False for r in results)
+
+    def test_pattern_check_mixed_scalar_and_list_values(self) -> None:
+        """Test pattern check handles scalars and lists found via wildcard paths."""
+        pattern = r"^[a-z]+$"
+        results = self.check.execute("models.*.tags", ["abc", ["def", "GHI"]], pattern)
+
+        assert [r.passed for r in results] == [True, True, False]
+
+    def test_pattern_check_list_with_none_item(self) -> None:
+        """Test a null item inside a list fails the check."""
+        pattern = r"^[a-z]+$"
+        results = self.check.execute("tags", [["abc", None]], pattern)
+
+        assert len(results) == 2
+        assert results[0].passed is False
+        assert "contains 1 null element(s)" in results[0].message
+        assert results[1].passed is True
+
+    def test_pattern_check_empty_list(self) -> None:
+        """Test an empty list attribute produces no results."""
+        results = self.check.execute("tags", [[]], r"^[a-z]+$")
+
+        assert results == []
+
 
 class TestMinItemsCheck:
     """Test MinItemsCheck functionality."""
@@ -226,6 +276,32 @@ class TestMinItemsCheck:
 
         assert len(results) == 1
         assert results[0].passed is False
+        assert "is not a list" in results[0].message
+
+    def test_min_items_check_mapping_counts_items(self) -> None:
+        """Test min items check counts the entries of a mapping (e.g. DCS fields)."""
+        fields = {"id": {"type": "int"}, "name": {"type": "text"}}
+
+        assert self.check.execute("models.orders.fields", [fields], 2)[0].passed is True
+        assert self.check.execute("models.orders.fields", [fields], 3)[0].passed is False
+
+    def test_min_items_check_mapping_with_null_entry(self) -> None:
+        """Test a null mapping entry is reported by key and not counted."""
+        fields = {"id": {"type": "int"}, "name": None}
+        results = self.check.execute("models.orders.fields", [fields], 2)
+
+        assert len(results) == 2
+        assert results[0].passed is False
+        assert "contains 1 null element(s): name" in results[0].message
+        assert results[1].passed is False
+
+    def test_min_items_check_mixed_list_and_non_list(self) -> None:
+        """Test min items check fails when any value is not a collection."""
+        results = self.check.execute("test.field", [[1, 2, 3], 42], 1)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "is not a list" in results[0].message
 
 
 class TestMaxItemsCheck:
@@ -268,6 +344,28 @@ class TestMaxItemsCheck:
 
         assert [r.passed for r in results] == [False, True]
         assert "contains 2 null element(s)" in results[0].message
+
+    def test_max_items_check_non_list_value(self) -> None:
+        """Test max items check fails with non-list value, consistent with min_items."""
+        results = self.check.execute("test.field", ["not a list"], 5)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert "is not a list" in results[0].message
+
+    def test_max_items_check_mapping_counts_items(self) -> None:
+        """Test max items check counts the entries of a mapping (e.g. DCS fields)."""
+        fields = {"id": {"type": "int"}, "name": {"type": "text"}}
+
+        assert self.check.execute("models.orders.fields", [fields], 2)[0].passed is True
+        assert self.check.execute("models.orders.fields", [fields], 1)[0].passed is False
+
+    def test_max_items_check_mixed_list_and_non_list(self) -> None:
+        """Test max items check fails when any value is not a collection."""
+        results = self.check.execute("test.field", [[1], "not a list"], 5)
+
+        assert len(results) == 1
+        assert results[0].passed is False
 
 
 class TestAcceptedValuesCheck:
