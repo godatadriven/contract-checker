@@ -1,5 +1,6 @@
 """Core data contract validation logic with integrated reporting."""
 
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -11,6 +12,23 @@ from contract_checker.utils.utils import CustomSchemaError, load_and_validate_js
 from .models import ContractValidationReport, ValidationResult
 from .registry import CheckRegistry
 from .reporting import ValidationReporter
+
+
+def _to_json_compatible(value: Any) -> Any:  # noqa: ANN401
+    """Convert YAML-parsed values back to JSON types before schema validation.
+
+    ``yaml.safe_load`` turns unquoted dates (``2022-10-03``) into ``date`` and
+    ``datetime`` objects, which JSON has no type for, so a ``"type": "string"``
+    schema rejects them. Render them as ISO strings (``datetime`` uses the ``T``
+    separator that JSON Schema's ``date-time`` format expects).
+    """
+    if isinstance(value, dict):
+        return {key: _to_json_compatible(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_to_json_compatible(item) for item in value]
+    if isinstance(value, date):  # also matches datetime, a subclass of date
+        return value.isoformat()
+    return value
 
 
 class DataContractValidator:
@@ -161,7 +179,7 @@ class DataContractValidator:
             # Create a validator to get all errors
             validatorClass = jsonschema.validators.validator_for(schema)
             validator = validatorClass(schema)
-            errors = list(validator.iter_errors(data_contract.contract_content))
+            errors = list(validator.iter_errors(_to_json_compatible(data_contract.contract_content)))
 
             if not errors:
                 # No validation errors - success
