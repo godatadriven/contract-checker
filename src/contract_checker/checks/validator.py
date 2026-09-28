@@ -143,7 +143,8 @@ class DataContractValidator:
         # the validator is driven directly. A bad schema surfaces as a single,
         # clear failure instead of a generic runtime error.
         try:
-            schema = load_and_validate_json_schema(self._resolve_schema_path(data_contract))
+            schema_path = self._resolve_schema_path(data_contract)
+            schema = load_and_validate_json_schema(schema_path)
         except CustomSchemaError as e:
             results.append(
                 ValidationResult(
@@ -170,7 +171,7 @@ class DataContractValidator:
                         attribute="schema",
                         check_type="json_schema",
                         passed=True,
-                        message="Contract validates against custom schema",
+                        message=f"Contract validates against JSON Schema ({schema_path})",
                     )
                 )
             else:
