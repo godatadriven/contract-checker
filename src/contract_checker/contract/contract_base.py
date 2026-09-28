@@ -37,6 +37,11 @@ class Contract(BaseModel):
         if self.custom_schema_path is not None:
             return self
 
-        if not get_standard_schema_path(self.contract_specification, self.contract_specification_version).exists():
-            raise ValueError(f"Contract version {self.contract_specification} is not supported.")
+        schema_file = get_standard_schema_path(self.contract_specification, self.contract_specification_version)
+
+        if not schema_file.is_file():
+            raise ValueError(
+                f"Contract specification '{self.contract_specification}' "
+                f"version '{self.contract_specification_version}' is not supported."
+            )
         return self
