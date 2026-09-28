@@ -12,13 +12,13 @@ class CustomSchemaError(Exception):
 
 
 def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
-    """Load a custom JSON Schema and verify it is itself a valid JSON Schema.
+    """Load a JSON Schema (custom or built-in) and verify it is itself a valid JSON Schema.
 
     Unlike :func:`load_json_schema`, this does not swallow errors: it raises
     :class:`CustomSchemaError` with a clear, user-facing message for each failure
     mode so the CLI can fail fast before validating any contracts.
 
-    :param schema_path: Path to the custom JSON Schema file.
+    :param schema_path: Path to the JSON Schema file.
     :returns: The parsed schema as a dict.
     :raises CustomSchemaError: If the file is missing, not valid JSON, or not a
         valid JSON Schema (checked against its meta-schema).
@@ -27,12 +27,12 @@ def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
         with open(schema_path, "r") as file:
             schema = json.load(file)
     except FileNotFoundError as e:
-        raise CustomSchemaError(f"Custom schema file not found: {schema_path}") from e
+        raise CustomSchemaError(f"Schema file not found: {schema_path}") from e
     except json.JSONDecodeError as e:
-        raise CustomSchemaError(f"Custom schema is not valid JSON ({schema_path}): {e}") from e
+        raise CustomSchemaError(f"Schema is not valid JSON ({schema_path}): {e}") from e
 
     if not isinstance(schema, dict):
-        raise CustomSchemaError(f"Custom schema must be a JSON object ({schema_path}).")
+        raise CustomSchemaError(f"Schema must be a JSON object ({schema_path}).")
 
     # Validate the schema itself against its meta-schema. The draft is auto-detected
     # from the schema's "$schema" key (falling back to the latest supported draft).
@@ -40,7 +40,7 @@ def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
     try:
         validator_class.check_schema(schema)
     except jsonschema.exceptions.SchemaError as e:
-        raise CustomSchemaError(f"Custom schema is not a valid JSON Schema ({schema_path}): {e.message}") from e
+        raise CustomSchemaError(f"Schema is not a valid JSON Schema ({schema_path}): {e.message}") from e
 
     return schema
 

@@ -56,7 +56,7 @@ valid JSON, or is not a valid JSON Schema, the checker **fails fast** with a cle
 non-zero exit code — no contracts are validated.
 
 ```text
-Custom schema is not a valid JSON Schema (./schemas/my-contract-schema.json): 'not-a-valid-type' is not valid under any of the given schemas
+Schema is not a valid JSON Schema (./schemas/my-contract-schema.json): 'not-a-valid-type' is not valid under any of the given schemas
 ```
 
 ## How contracts are validated
