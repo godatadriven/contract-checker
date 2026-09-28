@@ -1,7 +1,7 @@
 """Abstract base classes for validation checks."""
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, ClassVar, List, Optional
 
 from .models import ValidationResult
 
@@ -13,14 +13,18 @@ class Check(ABC):
     Custom checks can be created by subclassing this class and implementing
     the required abstract methods.
 
-    **Missing vs null.** Every check follows the same rule:
+    **Missing vs null.** The validator applies the same rule to every check:
 
     - An attribute that is *absent* (``values == []``) is skipped by every
       check except ``required``: return no results. Presence is enforced
       only by ``required``, so a field can be present in some contracts and
       absent in others.
-    - An attribute that is *present but null* (``None`` in ``values``) fails
-      every check. Use :meth:`null_result` so the message is consistent.
+    - An attribute that is *present but null* fails every check. The
+      validator handles this before calling :meth:`execute`: it records
+      :meth:`null_result` for each ``None`` and passes only the non-null
+      values on, so :meth:`execute` never receives a top-level ``None``.
+      A check that must inspect nulls itself (such as ``required``) sets
+      :attr:`handles_nulls` to ``True`` and receives ``values`` unchanged.
     - ``None`` elements inside a list or mapping value also fail. Use
       :meth:`null_elements_result`.
 
@@ -52,6 +56,11 @@ class Check(ABC):
                 ]
     """
 
+    #: If ``True``, :meth:`execute` receives top-level ``None`` values as-is
+    #: and is responsible for reporting them. If ``False`` (the default), the
+    #: validator reports them with :meth:`null_result` and filters them out.
+    handles_nulls: ClassVar[bool] = False
+
     @abstractmethod
     def execute(
         self,
@@ -63,7 +72,9 @@ class Check(ABC):
 
         :param field_path: The dot-notation path to the attribute being checked
             (e.g., ``"info.title"`` or ``"models.*.fields"``).
-        :param values: List of values found at the attribute path in the data contract.
+        :param values: List of values found at the attribute path in the data
+            contract. Top-level ``None`` values are removed by the validator
+            unless :attr:`handles_nulls` is ``True``.
         :param check_value: The configuration value for this check, as specified
             in the checks configuration file.
         :return: List of :class:`ValidationResult` objects representing the

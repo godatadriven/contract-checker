@@ -44,22 +44,16 @@ class MinItemsCheck(Check):
             be a list to be validated.
         :param min_count: The minimum number of items required in the list.
         :return: A list of :class:`ValidationResult` objects: one failing result
-            per null value or list with null elements, plus a single count
-            result covering the non-null values. Null elements are not counted.
-            An absent attribute (empty ``values``) produces no results.
+            per list with null elements, plus a single count result. Null
+            elements are not counted. An absent attribute (empty ``values``)
+            produces no results. Null values are reported by the validator.
         """
         if not values:
             return []
 
         results = []
-        counted = False
         all_passed = True
         for value in values:
-            if value is None:
-                results.append(self.null_result(attribute_path))
-                continue
-
-            counted = True
             if isinstance(value, list):
                 items = [v for v in value if v is not None]
                 null_count = len(value) - len(items)
@@ -71,12 +65,11 @@ class MinItemsCheck(Check):
                 # If it's not a list but we expect min_items, that's a failure
                 all_passed = False
 
-        if counted:
-            if all_passed:
-                message = f"Attribute '{attribute_path}' has at least {min_count} items"
-            else:
-                message = f"Attribute '{attribute_path}' has fewer than {min_count} items"
-            results.append(ValidationResult("", attribute_path, self.check_type, all_passed, message))
+        if all_passed:
+            message = f"Attribute '{attribute_path}' has at least {min_count} items"
+        else:
+            message = f"Attribute '{attribute_path}' has fewer than {min_count} items"
+        results.append(ValidationResult("", attribute_path, self.check_type, all_passed, message))
 
         return results
 
@@ -118,22 +111,16 @@ class MaxItemsCheck(Check):
             be a list to be validated.
         :param max_count: The maximum number of items allowed in the list.
         :return: A list of :class:`ValidationResult` objects: one failing result
-            per null value or list with null elements, plus a single count
-            result covering the non-null values. Null elements are not counted.
-            An absent attribute (empty ``values``) produces no results.
+            per list with null elements, plus a single count result. Null
+            elements are not counted. An absent attribute (empty ``values``)
+            produces no results. Null values are reported by the validator.
         """
         if not values:
             return []
 
         results = []
-        counted = False
         all_passed = True
         for value in values:
-            if value is None:
-                results.append(self.null_result(attribute_path))
-                continue
-
-            counted = True
             if isinstance(value, list):
                 items = [v for v in value if v is not None]
                 null_count = len(value) - len(items)
@@ -142,11 +129,10 @@ class MaxItemsCheck(Check):
                 if len(items) > max_count:
                     all_passed = False
 
-        if counted:
-            if all_passed:
-                message = f"Attribute '{attribute_path}' has at most {max_count} items"
-            else:
-                message = f"Attribute '{attribute_path}' has more than {max_count} items"
-            results.append(ValidationResult("", attribute_path, self.check_type, all_passed, message))
+        if all_passed:
+            message = f"Attribute '{attribute_path}' has at most {max_count} items"
+        else:
+            message = f"Attribute '{attribute_path}' has more than {max_count} items"
+        results.append(ValidationResult("", attribute_path, self.check_type, all_passed, message))
 
         return results

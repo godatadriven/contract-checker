@@ -61,9 +61,9 @@ class AtLeastOneCheck(Check):
             Multi-key mappings, empty mappings, and non-mapping values are
             rejected with a failing result.
         :return: A list of :class:`ValidationResult` objects: a failing result
-            for a null collection or for null items inside it, plus a single
-            verdict for the non-null collections. An absent attribute (empty
-            ``values``) produces no results.
+            for null items inside the collection, plus a single verdict. An
+            absent attribute (empty ``values``) produces no results. Null
+            collections are reported by the validator.
         """
         if not values:
             return []
@@ -82,14 +82,8 @@ class AtLeastOneCheck(Check):
 
         required_attr, required_val = next(iter(check_value.items()))
         results = []
-        checked = False
         found = False
         for value in values:
-            if value is None:
-                results.append(self.null_result(attribute_path))
-                continue
-
-            checked = True
             if isinstance(value, dict):
                 null_keys = [str(key) for key, item in value.items() if item is None]
                 if null_keys:
@@ -97,9 +91,6 @@ class AtLeastOneCheck(Check):
                 for item in value.values():
                     if isinstance(item, dict) and item.get(required_attr) == required_val:
                         found = True
-
-        if not checked:
-            return results
 
         if found:
             message = f"Attribute '{attribute_path}' contains at least one item with '{required_attr}: {required_val}'"
