@@ -670,6 +670,35 @@ class TestOdcsListStyleContracts:
         for result in report.results:
             assert "*" not in result.attribute
 
+    def test_duplicate_property_names_checked_separately(self) -> None:
+        """A duplicate property missing its leaf fails instead of hiding behind its twin."""
+        content = {
+            "schema": [{"name": "orders", "properties": [{"name": "id", "logicalType": "string"}, {"name": "id"}]}]
+        }
+        v = _make_validator([{"attribute": "schema.*.properties.*.logicalType", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(content))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path == {
+            "schema.orders.properties.id[0].logicalType": True,
+            "schema.orders.properties.id[1].logicalType": False,
+        }
+
+    def test_exactly_one_per_duplicate_named_schema(self) -> None:
+        """exactly_one counts per schema object, even when two share a name."""
+        content = {
+            "schema": [
+                {"name": "t", "properties": [{"name": "a", "primaryKey": True}]},
+                {"name": "t", "properties": [{"name": "b", "primaryKey": True}]},
+            ]
+        }
+        v = _make_validator([{"attribute": "schema.*.properties", "checks": [{"exactly_one": {"primaryKey": True}}]}])
+        report = v.run_checks(_FakeContract(content))
+
+        assert report.failed_checks == 0
+        assert {r.attribute for r in report.results} == {"schema.t[0].properties", "schema.t[1].properties"}
+
 
 # ===================================================================
 # Missing vs null through the full pipeline

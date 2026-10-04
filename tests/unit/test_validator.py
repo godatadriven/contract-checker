@@ -305,6 +305,38 @@ class TestExpandWildcardPathsListStyle:
         result = self.v._expand_wildcard_paths({"schema": []}, "schema.*.name")
         assert result == {}
 
+    def test_duplicate_names_are_not_merged(self) -> None:
+        """Items sharing a name get `name[index]` labels and are checked separately."""
+        data = {
+            "schema": [
+                {
+                    "name": "orders",
+                    "properties": [{"name": "id", "logicalType": "string"}, {"name": "amount"}, {"name": "id"}],
+                }
+            ]
+        }
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties.*.logicalType")
+        assert result == {
+            "schema.orders.properties.id[0].logicalType": ["string"],
+            "schema.orders.properties.amount.logicalType": [],
+            "schema.orders.properties.id[2].logicalType": [],
+        }
+
+    def test_duplicate_parent_names_keep_collections_apart(self) -> None:
+        """Two schema objects with the same name each yield their own collection."""
+        data = {"schema": [{"name": "t", "properties": [{"name": "a"}]}, {"name": "t", "properties": [{"name": "b"}]}]}
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties")
+        assert result == {
+            "schema.t[0].properties": [[{"name": "a"}]],
+            "schema.t[1].properties": [[{"name": "b"}]],
+        }
+
+    def test_name_equal_to_other_items_index(self) -> None:
+        """A name that equals an unnamed item's index does not merge the two."""
+        data = {"schema": [{"x": 1}, {"name": "0", "x": 2}]}
+        result = self.v._expand_wildcard_paths(data, "schema.*.x")
+        assert result == {"schema.0[0].x": [1], "schema.0[1].x": [2]}
+
 
 # ===================================================================
 # _expand_and_collect: key-as-name for DCS-style dicts

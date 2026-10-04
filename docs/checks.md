@@ -9,7 +9,7 @@ Checks are applied to attributes identified by dot-notation paths, e.g. `info.ti
 Use `*` as a wildcard segment to match every repeated item at that level. Contract standards represent repeatable objects differently, and `*` handles both:
 
 - **Dicts keyed by name** (DCS style): `*` expands over the dict entries.
-- **Lists of named objects** (ODCS style): `*` expands over the list items. Each concrete path is labeled with the item's `name` when it has one, falling back to the item's index.
+- **Lists of named objects** (ODCS style): `*` expands over the list items. Each concrete path is labeled with the item's `name` when it has one, falling back to the item's index. When two items would get the same label (for example duplicate names), each is labeled `label[index]`, e.g. `schema.orders.properties.id[0]` and `schema.orders.properties.id[2]`, so every item is checked on its own.
 
 ```yaml
 data_contract_checks:
