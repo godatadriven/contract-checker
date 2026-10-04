@@ -1,5 +1,6 @@
 """Core data contract validation logic with integrated reporting."""
 
+from collections import Counter
 from typing import Any, Dict, List, Optional, Union
 
 import jsonschema
@@ -291,6 +292,10 @@ class DataContractValidator:
         - list of objects (ODCS style): ``*`` expands over the list items,
           e.g. ``schema.*.properties.*.logicalType``
 
+        List items are labeled by their ``name``, falling back to their index.
+        Items whose label is not unique (duplicate names) are labeled
+        ``label[index]`` so each one is checked separately.
+
         A trailing ``name`` segment after a dict ``*`` resolves to the dict key
         itself when the entry has no explicit ``name`` value, so
         ``models.*.fields.*.name`` yields field names for both standards.
@@ -359,14 +364,9 @@ class DataContractValidator:
             results: Dict[str, List[Any]] = {}
             if current_part == "*":
                 # Wildcard: expand into each item of the list (ODCS-style
-                # repeatable objects are lists of named objects). Label each
-                # concrete path with the item's `name` when available,
-                # falling back to the item's index.
-                for index, item in enumerate(data):
-                    if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"]:
-                        label = item["name"]
-                    else:
-                        label = str(index)
+                # repeatable objects are lists of named objects). Each item
+                # gets a unique label so items are never merged.
+                for label, item in zip(self._list_item_labels(data), data):
                     sub = self._expand_and_collect(item, remaining, [*current_path, label])
                     for k, v in sub.items():
                         results.setdefault(k, []).extend(v)
@@ -381,6 +381,30 @@ class DataContractValidator:
 
         path_str = ".".join(current_path + parts)
         return {path_str: []}
+
+    @staticmethod
+    def _list_item_labels(items: List[Any]) -> List[str]:
+        """
+        Build a unique path label for each item of a list.
+
+        An item is labeled with its ``name`` when it is a non-empty string,
+        falling back to its index. When a label occurs more than once
+        (duplicate names, or a name equal to another item's index), each of
+        those items is labeled ``label[index]`` instead, so they are checked
+        separately rather than merged under one path.
+
+        Args:
+            items: The list being expanded by a ``*`` segment
+
+        Returns:
+            One label per item, in list order
+        """
+        labels = []
+        for index, item in enumerate(items):
+            name = item.get("name") if isinstance(item, dict) else None
+            labels.append(name if isinstance(name, str) and name else str(index))
+        counts = Counter(labels)
+        return [f"{label}[{index}]" if counts[label] > 1 else label for index, label in enumerate(labels)]
 
     def _traverse_path(
         self,
