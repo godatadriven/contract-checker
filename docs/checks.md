@@ -31,7 +31,7 @@ data_contract_checks:
 
 Wildcards can appear at any level and can be combined freely within the same path.
 
-**Resolving `name`.** A `name` leaf directly after a `*` works for both styles: in list-style contracts it reads the item's explicit `name` value, and in dict-style contracts — where the item's name is the key itself — it resolves to the key (an explicit `name` value inside the entry wins over the key). So `models.*.fields.*.name` yields field names regardless of the standard.
+**Resolving `name`.** A `name` leaf directly after a `*` works for both styles: in list-style contracts it reads the item's explicit `name` value, and in dict-style contracts — where the item's name is the key itself — it resolves to the key (an explicit `name` value inside the entry wins over the key). This only applies to entries that are objects: a null or scalar entry (e.g. `fields: {id: null}` or `info.title`) has no name and is reported as missing. So `models.*.fields.*.name` yields field names regardless of the standard.
 
 **Lists without wildcards.** A non-wildcard segment applied to a list is transparent: it applies to each item, and the matched values are merged under a single path (e.g. `servers.type` collects the `type` of every server). Use `*` when you want checks to run per item instead.
 

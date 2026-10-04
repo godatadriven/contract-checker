@@ -701,6 +701,28 @@ class TestOdcsListStyleContracts:
 
 
 # ===================================================================
+# 11. DCS-style contracts: key-as-name
+# ===================================================================
+
+
+class TestDcsKeyAsName:
+    """Full pipeline for `*.name` on DCS-style dicts, where the key is the name."""
+
+    def test_null_field_name_is_missing(self) -> None:
+        """A null field entry fails `required` on its name instead of borrowing the key."""
+        content = {"models": {"orders": {"fields": {"order_id": None, "amount": {"type": "long"}}}}}
+        v = _make_validator([{"attribute": "models.*.fields.*.name", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(content))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path == {
+            "models.orders.fields.order_id.name": False,
+            "models.orders.fields.amount.name": True,
+        }
+
+
+# ===================================================================
 # Missing vs null through the full pipeline
 # ===================================================================
 
