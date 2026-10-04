@@ -17,7 +17,7 @@ dependencies = [
 [dependency-groups]
 lint = [
     "ruff==0.16.5",
-    "mypy==2.3.0",
+    "mypy==2.3.1",
 ]
 
 docs = [
