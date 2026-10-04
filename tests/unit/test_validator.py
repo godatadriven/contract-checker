@@ -337,6 +337,12 @@ class TestExpandWildcardPathsListStyle:
         result = self.v._expand_wildcard_paths(data, "schema.*.x")
         assert result == {"schema.0[0].x": [1], "schema.0[1].x": [2]}
 
+    def test_null_item_name_is_missing(self) -> None:
+        """A null list item has no name and is labeled by its index."""
+        data = {"schema": [{"name": "orders", "properties": [None]}]}
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties.*.name")
+        assert result == {"schema.orders.properties.0.name": []}
+
 
 # ===================================================================
 # _expand_and_collect: key-as-name for DCS-style dicts
@@ -408,3 +414,15 @@ class TestExpandWildcardKeyAsName:
         data = {"models": {"orders": {"fields": {"order_id": {"type": "text"}}}}}
         result = self.v._expand_wildcard_paths(data, "models.*.fields.*.description")
         assert result == {"models.orders.fields.order_id.description": []}
+
+    def test_null_entry_is_missing_not_named(self) -> None:
+        """A null entry is not a named object, so its `name` is missing."""
+        data = {"models": {"orders": {"fields": {"order_id": None}}}}
+        result = self.v._expand_wildcard_paths(data, "models.*.fields.*.name")
+        assert result == {"models.orders.fields.order_id.name": []}
+
+    def test_scalar_entries_are_not_named(self) -> None:
+        """`*.name` over an object with scalar values does not invent names."""
+        data = {"info": {"title": "Orders", "version": "1.0"}}
+        result = self.v._expand_wildcard_paths(data, "info.*.name")
+        assert result == {"info.title.name": [], "info.version.name": []}

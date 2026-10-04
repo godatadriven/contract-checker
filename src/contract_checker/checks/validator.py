@@ -297,8 +297,9 @@ class DataContractValidator:
         ``label[index]`` so each one is checked separately.
 
         A trailing ``name`` segment after a dict ``*`` resolves to the dict key
-        itself when the entry has no explicit ``name`` value, so
-        ``models.*.fields.*.name`` yields field names for both standards.
+        itself when the entry is a dict without an explicit ``name`` value, so
+        ``models.*.fields.*.name`` yields field names for both standards. Null
+        or scalar entries are not named objects and resolve to missing.
 
         Args:
             data: The data dictionary
@@ -345,10 +346,11 @@ class DataContractValidator:
                 # repeatable objects are dicts keyed by name).
                 results_wildcard: Dict[str, List[Any]] = {}
                 for key, value in data.items():
-                    if remaining == ["name"] and not (isinstance(value, dict) and "name" in value):
+                    if remaining == ["name"] and isinstance(value, dict) and "name" not in value:
                         # Key-as-name: in dict-style contracts the entry name
                         # is the key itself (e.g. DCS `fields:`). An explicit
-                        # `name` value inside the entry wins over the key.
+                        # `name` value inside the entry wins over the key, and
+                        # null or scalar entries are not named objects.
                         results_wildcard[".".join([*current_path, key, "name"])] = [key]
                     else:
                         sub = self._expand_and_collect(value, remaining, [*current_path, key])
