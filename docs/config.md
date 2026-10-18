@@ -128,7 +128,8 @@ The following are rejected:
 - A check is not a single-key mapping (`- pattern: ^a` and `required: true` in the same
   item would silently drop one of them, so it is an error instead)
 - An unknown check type (the message lists the available ones)
-- A check value its check cannot use: `required` must be `true`/`false`, `pattern` must be
+- A check value its check cannot use: `required` must be `true`/`false` (a bare `required:`
+  with no value is rejected, since it is almost always a forgotten `true`), `pattern` must be
   a string that compiles as a regular expression, `accepted_values` a non-empty list (or a
   single string), `min_items` / `max_items` a non-negative integer, and `at_least_one` /
   `exactly_one` a single-key mapping
