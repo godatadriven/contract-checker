@@ -33,7 +33,10 @@ class Check(ABC):
     1. Subclass :class:`Check`
     2. Implement the :meth:`execute` method with your validation logic
     3. Implement the :attr:`check_type` property to return a unique identifier
-    4. Register the check with the :class:`CheckRegistry`
+    4. Optionally override :meth:`validate_config` to reject malformed
+       configuration up front, so it is reported once as a config error
+       rather than against every contract
+    5. Register the check with the :class:`CheckRegistry`
 
     Example custom check implementation::
 
@@ -92,6 +95,21 @@ class Check(ABC):
             files (e.g., ``"required"``, ``"pattern"``, ``"accepted_values"``).
         """
         pass
+
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Validate this check's configuration value before any contract is read.
+
+        The validator calls this once per check entry in the configuration.
+        A malformed value is a configuration error, so it is reported once,
+        naming the entry, instead of failing every contract file. The default
+        accepts anything; override it to reject values :meth:`execute` cannot
+        handle.
+
+        :param check_value: The configuration value for this check, as specified
+            in the checks configuration file.
+        :raises ValueError: With a message describing what is wrong with the value.
+        """
+        return None
 
     def null_result(self, attribute_path: str) -> ValidationResult:
         """Return the standard failing result for a present-but-null attribute.

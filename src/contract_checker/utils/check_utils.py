@@ -1,3 +1,5 @@
+from typing import Optional
+
 from contract_checker.checks.models import ContractValidationReport
 from contract_checker.contract.contract_base import Contract
 
@@ -7,6 +9,7 @@ def validate_contracts(
     checks_dict: dict,
     output_mode: str = "failures",
     output_format: str = "text",
+    load_failures: Optional[list[ContractValidationReport]] = None,
 ) -> list[ContractValidationReport]:
     """
     Validate data contracts against the provided checks configuration.
@@ -19,6 +22,9 @@ def validate_contracts(
             applies to the 'text' format.
         output_format (str): 'text' (default) prints the human-readable report;
             'json' prints a machine-readable JSON document to stdout instead.
+        load_failures (list[ContractValidationReport] | None): Reports for files
+            that could not be loaded (see load_contracts); printed and counted
+            alongside the validation reports, listed first.
     Returns:
         list[ContractValidationReport]: One report per validated contract, so
         callers (e.g. the CLI) can act on the outcome after results are printed.
@@ -29,7 +35,7 @@ def validate_contracts(
     from contract_checker.checks.validator import DataContractValidator
 
     validator = DataContractValidator(checks_dict)
-    reports: list[ContractValidationReport] = validator.validate(contracts)
+    reports: list[ContractValidationReport] = [*(load_failures or []), *validator.validate(contracts)]
     if output_format == "json":
         # Plain print, not rich: stdout must stay clean, unwrapped JSON for
         # piping into jq, files, or other tools.

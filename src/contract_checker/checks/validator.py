@@ -14,6 +14,61 @@ from .registry import CheckRegistry
 from .reporting import ValidationReporter
 
 
+class ChecksConfigError(ValueError):
+    """Raised when the 'data_contract_checks' configuration is malformed."""
+
+
+def validate_checks_config(checks_dict: Optional[dict], registry: Optional[CheckRegistry] = None) -> None:
+    """Validate the ``data_contract_checks`` configuration before any contract is read.
+
+    Each entry must be a mapping with a non-empty string ``attribute`` and a
+    ``checks`` list; each check must be a single-key mapping whose key is a
+    registered check type and whose value passes that check's
+    :meth:`Check.validate_config`. A problem here is a configuration error,
+    so it is raised once, naming the entry, rather than being reported
+    against every contract file.
+
+    Args:
+        checks_dict: Parsed checks configuration (may be None).
+        registry: Registry used to resolve check types (the default registry if None).
+
+    Raises:
+        ChecksConfigError: Describing the first offending entry.
+    """
+    registry = registry or CheckRegistry()
+    available = registry.list_available()
+    rules = (checks_dict or {}).get("data_contract_checks") or []
+    if not isinstance(rules, list):
+        raise ChecksConfigError("'data_contract_checks' must be a list of attribute/checks entries.")
+
+    for index, rule in enumerate(rules, 1):
+        where = f"data_contract_checks entry {index}"
+        if not isinstance(rule, dict):
+            raise ChecksConfigError(f"{where} must be a mapping with 'attribute' and 'checks' keys.")
+        attribute = rule.get("attribute")
+        if not isinstance(attribute, str) or not attribute:
+            raise ChecksConfigError(f"{where} is missing a non-empty 'attribute'.")
+        checks = rule.get("checks")
+        if not isinstance(checks, list):
+            raise ChecksConfigError(f"{where} ('{attribute}') must have a 'checks' list.")
+
+        for check in checks:
+            if not isinstance(check, dict) or len(check) != 1:
+                raise ChecksConfigError(
+                    f"{where} ('{attribute}'): each check must be a single-key mapping "
+                    f"such as '- required: true', got {check!r}."
+                )
+            check_type, check_value = next(iter(check.items()))
+            if check_type not in available:
+                raise ChecksConfigError(
+                    f"{where} ('{attribute}'): unknown check type '{check_type}'. Available: {', '.join(available)}."
+                )
+            try:
+                registry.get(check_type).validate_config(check_value)
+            except ValueError as e:
+                raise ChecksConfigError(f"{where} ('{attribute}'): {e}") from e
+
+
 class DataContractValidator:
     """Validates data contract YAML files against defined checks"""
 
@@ -216,7 +271,11 @@ class DataContractValidator:
 
         Returns:
             List of ContractValidationReport objects
+
+        Raises:
+            ChecksConfigError: If the checks configuration is malformed.
         """
+        validate_checks_config(self.checks_config, self.registry)
         reports = []
 
         for contract in data_contracts:

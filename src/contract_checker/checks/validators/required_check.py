@@ -38,6 +38,14 @@ class RequiredCheck(Check):
     # and required: false must stay a no-op even when the value is null.
     handles_nulls = True
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only a boolean (or null, which means ``false``).
+
+        :raises ValueError: If ``check_value`` is anything else.
+        """
+        if check_value is not None and not isinstance(check_value, bool):
+            raise ValueError(f"'required' expects true or false, got {check_value!r}")
+
     def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
         """Execute the required field validation.
 

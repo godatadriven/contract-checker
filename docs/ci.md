@@ -46,3 +46,8 @@ A failing check also makes the step exit non-zero (see
 [exit codes](cli.md#exit-codes)), so the workflow fails and can block the merge.
 Use `--severity warn` while rolling out new checks to keep the report visible
 without failing the pipeline.
+
+Two things fail the step even with `--severity warn`: a contract file that cannot be
+loaded at all (not valid YAML, unsupported specification version, …), which is also
+annotated on the file with the title `load`, and a run that finds no contracts to check.
+Both mean the checker could not do its job, which should never look like a green build.
