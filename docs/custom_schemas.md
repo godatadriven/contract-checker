@@ -45,7 +45,8 @@ You can point the checker at your schema in two ways. The CLI option always wins
 Before any contract is checked, the supplied schema is validated against its own meta-schema (the
 draft is auto-detected from the schema's `$schema` field). If the schema itself is missing, is not
 valid JSON, or is not a valid JSON Schema, the checker **fails fast** with a clear error and a
-non-zero exit code — no contracts are validated.
+non-zero exit code — no contracts are validated. The checks config file is validated the same
+way (see [How the config file is validated](config.md#how-the-config-file-is-validated)).
 
 ```text
 Custom schema is not a valid JSON Schema (./schemas/my-contract-schema.json): 'not-a-valid-type' is not valid under any of the given schemas

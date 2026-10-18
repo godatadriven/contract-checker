@@ -7,10 +7,16 @@ import typer
 from typing_extensions import Annotated
 
 from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, github_annotations
+from contract_checker.checks.validator import ChecksConfigError, validate_checks_config
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
-from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, parse_yml_to_dict
+from contract_checker.utils.utils import (
+    CustomSchemaError,
+    YamlMappingError,
+    load_and_validate_json_schema,
+    load_yaml_mapping,
+)
 from contract_checker.version import version as get_version
 
 app = typer.Typer(
@@ -99,7 +105,7 @@ def main(
     data contracts do not meet the specified criteria.
 
     Args:
-        config_path: Path to the YAML file containing data contract check definitions.
+        checks_config_path: Path to the YAML file containing data contract check definitions.
         severity: Severity level for validation issues ('error' or 'warn').
         output_mode: How much of the report to print ('summary', 'failures', or 'full').
         output_format: 'text' for the human-readable report, 'json' for machine output.
@@ -134,7 +140,18 @@ def main(
         logging.error(f"Invalid format '{output_format}'. Use one of: {', '.join(OUTPUT_FORMATS)}.")
         raise typer.Exit(code=2)
 
-    checks_dict = parse_yml_to_dict(checks_config_path)
+    # Fail fast on the configuration: a missing or malformed checks file, or a
+    # malformed check entry, is a setup error that is reported once, before any
+    # contract is read, rather than attributed to every contract file.
+    if not checks_config_path.is_file():
+        logging.error(f"Checks config file not found: {checks_config_path}")
+        raise typer.Exit(code=1)
+    try:
+        checks_dict = load_yaml_mapping(checks_config_path)
+        validate_checks_config(checks_dict)
+    except (YamlMappingError, ChecksConfigError) as e:
+        logging.error(f"Invalid checks config: {e}")
+        raise typer.Exit(code=1)
 
     # Resolve the contract path: the CLI flag wins, otherwise fall back to the
     # 'data_contracts_path' block in the checks config file (which may also carry
@@ -149,7 +166,7 @@ def main(
 
     # Resolve the custom schema path: the CLI flag wins, otherwise fall back to the
     # 'custom_schema_path' key in the checks config file.
-    config_schema_path = checks_dict.get("custom_schema_path") if checks_dict else None
+    config_schema_path = checks_dict.get("custom_schema_path")
     resolved_schema_path = custom_schema_path or (Path(config_schema_path) if config_schema_path else None)
 
     # Fail fast: a custom schema must itself be a valid JSON Schema before we
@@ -162,14 +179,13 @@ def main(
             logging.error(str(e))
             raise typer.Exit(code=1)
 
-    # Load the contract -> internally identify type of contract -> validate contract.
-    # Misconfiguration (e.g. a 'custom' spec with no schema, or a missing contract
-    # path) surfaces as a clear error and a non-zero exit, matching the fail-fast
-    # handling above rather than leaking a stack trace.
+    # Load the contracts. Misconfiguration (unknown spec, missing contract path)
+    # exits with a clear error; a single unreadable or unsupported contract file
+    # does not abort the run but is reported as a failed contract below.
     try:
-        contracts = load_contracts(
+        loaded = load_contracts(
             contract_path=resolved_contract_path,
-            contract_specification=checks_dict.get("data_contract_specification") if checks_dict else None,
+            contract_specification=checks_dict.get("data_contract_specification"),
             custom_schema_path=resolved_schema_path,
             include_paths=include_paths,
             exclude_paths=exclude_paths,
@@ -178,7 +194,19 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
-    reports = validate_contracts(contracts, checks_dict, output_mode=output_mode, output_format=output_format)
+    # Nothing to check is a misconfiguration, not a pass: a wrong path or an
+    # over-eager filter must not turn a CI gate green.
+    if not loaded.contracts and not loaded.failed_reports:
+        logging.error(f"No data contracts (*.yaml, *.yml) found under: {resolved_contract_path}")
+        raise typer.Exit(code=1)
+
+    reports = validate_contracts(
+        loaded.contracts,
+        checks_dict,
+        output_mode=output_mode,
+        output_format=output_format,
+        load_failures=loaded.failed_reports,
+    )
 
     # Inside GitHub Actions (detected via the GITHUB_ACTIONS env var the runner
     # always sets), also emit workflow-command lines so failures show up as
@@ -190,9 +218,11 @@ def main(
 
     # All checks have run and the full report has been printed above; the exit
     # code only signals the overall outcome to the shell/CI. With severity
-    # 'warn' the run always exits 0, keeping the check advisory.
+    # 'warn' failed checks are advisory and the run exits 0. A contract file
+    # that could not be loaded is not a policy violation but an unusable
+    # file, so it fails the run regardless of severity.
     failed_checks = sum(report.failed_checks for report in reports)
-    if failed_checks > 0 and severity == "error":
+    if loaded.failed_reports or (failed_checks > 0 and severity == "error"):
         raise typer.Exit(code=1)
 
     raise typer.Exit()

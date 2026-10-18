@@ -91,8 +91,9 @@ ignored):
 - `exclude_paths` is applied after `include_paths` and always wins
 - A pattern ending in a bare `/` is rejected with a hint (use `domain/**`, not `domain/`)
 
-If the filters exclude every discovered contract, a warning is logged so a
-misconfigured pattern cannot silently produce a passing run.
+If the filters exclude every discovered contract, a warning is logged and the run
+exits 1 (no contracts found), so a misconfigured pattern cannot silently produce a
+passing run.
 
 A short form is also supported when no filtering is needed:
 
@@ -109,3 +110,27 @@ in the config but not yet implemented; they are ignored with a debug log message
 ## Available Checks
 
 For detailed information about available checks and their configuration, see the [Checks](checks.md) page.
+
+## How the config file is validated
+
+The checks file is validated **before any contract is read**. A problem is reported
+once, naming the offending entry, and the run exits 1:
+
+```text
+ERROR: Invalid checks config: data_contract_checks entry 2 ('info.version'): 'pattern' is not a valid regular expression ('^\d+(.\d+$'): missing ), unterminated subpattern at position 3
+```
+
+The following are rejected:
+
+- The file is missing, not valid YAML, empty, or not a mapping at the top level
+- `data_contract_checks` is not a list; an entry is not a mapping; an entry has no
+  `attribute` or no `checks` list
+- A check is not a single-key mapping (`- pattern: ^a` and `required: true` in the same
+  item would silently drop one of them, so it is an error instead)
+- An unknown check type (the message lists the available ones)
+- A check value its check cannot use: `required` must be `true`/`false`, `pattern` must be
+  a string that compiles as a regular expression, `accepted_values` a non-empty list (or a
+  single string), `min_items` / `max_items` a non-negative integer, and `at_least_one` /
+  `exactly_one` a single-key mapping
+- `data_contract_specification` missing or not one of `dcs`, `odcs` — unless a custom
+  schema is given, in which case it is not needed
