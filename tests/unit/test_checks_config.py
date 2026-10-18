@@ -79,6 +79,7 @@ class TestBuiltinValidateConfig:
     @pytest.mark.parametrize(
         ("check", "message"),
         [
+            ({"required": None}, r"'required' has no value \(did you mean 'required: true'\?\)"),
             ({"required": "yes"}, "'required' expects true or false"),
             ({"required": 1}, "'required' expects true or false"),
             ({"pattern": "^Orders("}, "'pattern' is not a valid regular expression"),
@@ -106,7 +107,6 @@ class TestBuiltinValidateConfig:
         [
             {"required": True},
             {"required": False},
-            {"required": None},
             {"pattern": r"^\d+\.\d+\.\d+$"},
             {"accepted_values": ["a", "b"]},
             {"accepted_values": "0.0.1"},  # single-value shorthand, as documented

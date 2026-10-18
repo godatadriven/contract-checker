@@ -39,11 +39,17 @@ class RequiredCheck(Check):
     handles_nulls = True
 
     def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
-        """Accept only a boolean (or null, which means ``false``).
+        """Accept only ``true`` or ``false``.
+
+        A bare ``required:`` (YAML null) is rejected rather than treated as
+        ``false``: it is almost always a forgotten ``true``, and ``required:
+        false`` exists for the intentional case.
 
         :raises ValueError: If ``check_value`` is anything else.
         """
-        if check_value is not None and not isinstance(check_value, bool):
+        if check_value is None:
+            raise ValueError("'required' has no value (did you mean 'required: true'?)")
+        if not isinstance(check_value, bool):
             raise ValueError(f"'required' expects true or false, got {check_value!r}")
 
     def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
