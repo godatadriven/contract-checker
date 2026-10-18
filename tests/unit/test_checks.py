@@ -731,6 +731,12 @@ class TestMissingVsNullRule:
         check = CheckRegistry().get("required")
         assert _validator()._run_check(check, "a.b", [None], False) == []
 
+    def test_required_none_config_is_rejected_not_ignored(self) -> None:
+        """A missing config value must not silently behave like required: false."""
+        check = CheckRegistry().get("required")
+        with pytest.raises(ValueError, match="'required' has no value"):
+            check.execute("a.b", ["present"], None)
+
 
 class _LengthCheck(Check):
     """Custom check that, like many user checks, assumes values are not None."""
