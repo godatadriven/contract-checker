@@ -621,6 +621,55 @@ class TestExactlyOneCheck:
         assert "exactly one" in results[0].message
 
 
+# ===================================================================
+# at_least_one / exactly_one over list-style (ODCS) collections
+# ===================================================================
+
+
+class TestCollectionChecksListStyle:
+    """Collection checks accept ODCS-style lists as well as DCS-style dicts."""
+
+    def setup_method(self) -> None:
+        from contract_checker.checks.validators import AtLeastOneCheck, ExactlyOneCheck
+
+        self.at_least_one = AtLeastOneCheck()
+        self.exactly_one = ExactlyOneCheck()
+        # ODCS-style: the collection is a list of named objects
+        self.properties = [
+            {"name": "id", "primaryKey": True, "logicalType": "string"},
+            {"name": "amount", "primaryKey": False, "logicalType": "number"},
+        ]
+
+    def test_at_least_one_over_list_pass(self) -> None:
+        results = self.at_least_one.execute("schema.*.properties", [self.properties], {"primaryKey": True})
+        assert results[0].passed is True
+
+    def test_at_least_one_over_list_fail(self) -> None:
+        results = self.at_least_one.execute("schema.*.properties", [self.properties], {"partitioned": True})
+        assert results[0].passed is False
+
+    def test_exactly_one_over_list_pass(self) -> None:
+        results = self.exactly_one.execute("schema.*.properties", [self.properties], {"primaryKey": True})
+        assert results[0].passed is True
+
+    def test_exactly_one_over_list_fail_two_matches(self) -> None:
+        props = [*self.properties, {"name": "dup", "primaryKey": True}]
+        results = self.exactly_one.execute("schema.*.properties", [props], {"primaryKey": True})
+        assert results[0].passed is False
+        assert "2 items" in results[0].message
+
+    def test_list_of_scalars_does_not_crash(self) -> None:
+        results = self.at_least_one.execute("tags", [["a", "b"]], {"primaryKey": True})
+        assert results[0].passed is False
+
+    def test_null_items_in_list_are_reported(self) -> None:
+        props = [*self.properties, None]
+        for check in (self.at_least_one, self.exactly_one):
+            results = check.execute("schema.*.properties", [props], {"primaryKey": True})
+            assert [r.passed for r in results] == [False, True]
+            assert "contains 1 null element(s)" in results[0].message
+
+
 # A valid check_value for every registered check. Adding a check to the
 # registry without adding it here fails test_every_check_is_covered, so every
 # new check is held to the missing-vs-null rule below.
