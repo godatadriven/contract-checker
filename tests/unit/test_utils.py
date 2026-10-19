@@ -7,7 +7,12 @@ from typing import Optional
 
 import pytest
 
-from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, resolve_lint
+from contract_checker.utils.utils import (
+    CustomSchemaError,
+    load_and_validate_json_schema,
+    load_yaml_mapping,
+    resolve_lint,
+)
 
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
 
@@ -76,3 +81,36 @@ class TestLoadAndValidateJsonSchema:
         """A document that is valid JSON but not a valid JSON Schema is rejected."""
         with pytest.raises(CustomSchemaError, match="not a valid JSON Schema"):
             load_and_validate_json_schema(CUSTOM_FIXTURES / "invalid-json-schema.json")
+
+
+_DATES_YAML = (
+    "date: 2024-01-01\n"
+    "timestamp: 2024-01-01T00:00:00Z\n"
+    'quoted: "2024-01-01T00:00:00Z"\n'
+    "integer: 255\n"
+    "number: 1.5\n"
+    "boolean: true\n"
+    "empty: null\n"
+)
+_DATES_EXPECTED = {
+    "date": "2024-01-01",
+    "timestamp": "2024-01-01T00:00:00Z",
+    "quoted": "2024-01-01T00:00:00Z",
+    "integer": 255,
+    "number": 1.5,
+    "boolean": True,
+    "empty": None,
+}
+
+
+class TestYamlLoadingKeepsDatesAsStrings:
+    """Contracts and checks configs keep unquoted dates as the text that was written.
+
+    JSON (and so DCS/ODCS) has no date type, so a date is a string, as in
+    datacontract-cli. Every other YAML type is parsed as usual.
+    """
+
+    def test_load_yaml_mapping(self, tmp_path: Path) -> None:
+        path = tmp_path / "contract.yaml"
+        path.write_text(_DATES_YAML)
+        assert load_yaml_mapping(path) == _DATES_EXPECTED

@@ -110,10 +110,9 @@ ignored):
 - `exclude_paths` is applied after `include_paths` and always wins
 - A pattern ending in a bare `/` is rejected with a hint (use `domain/**`, not `domain/`)
 
-If the filters exclude every discovered contract, the run exits 1 with an error
-saying how many files were excluded, so a misconfigured pattern cannot silently
-produce a passing run. A directory that exists but contains no contracts at all is
-only a warning (exit 0).
+If the filters exclude every discovered contract, a warning is logged and the run
+exits 0 with nothing checked, since selecting no contracts can be a deliberate choice.
+Check the warning if you expected contracts to be validated.
 
 A short form is also supported when no filtering is needed:
 
@@ -151,7 +150,7 @@ The following are rejected:
 - A check value its check cannot use: `required` must be `true`/`false` (a bare `required:`
   with no value is rejected, since it is almost always a forgotten `true`), `pattern` must be
   a string that compiles as a regular expression, `accepted_values` a non-empty list of
-  strings, numbers or booleans (or a single such value), `min_items` / `max_items` a non-negative integer, and `at_least_one` /
+  strings, numbers or booleans (or a single such value; an unquoted date counts as a string), `min_items` / `max_items` a non-negative integer, and `at_least_one` /
   `exactly_one` a single-key mapping
 - `data_contract_specification` missing or not one of `dcs`, `odcs` — unless a custom
   schema is given, in which case it is not needed

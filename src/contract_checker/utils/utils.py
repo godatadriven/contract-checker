@@ -7,6 +7,23 @@ import jsonschema
 import yaml
 
 
+class _NoTimestampSafeLoader(yaml.SafeLoader):
+    """``SafeLoader`` that keeps unquoted dates and timestamps as strings.
+
+    YAML 1.1 turns ``2024-01-01`` into a ``date`` and ``2024-01-01T00:00:00Z``
+    into a ``datetime``, but JSON (and so DCS/ODCS) has no date type: the
+    contract schemas type these values as strings. Dropping the timestamp
+    resolver keeps them as the text that was written, the same way
+    datacontract-cli loads contracts.
+    """
+
+
+_NoTimestampSafeLoader.yaml_implicit_resolvers = {
+    first_char: [(tag, regexp) for tag, regexp in resolvers if tag != "tag:yaml.org,2002:timestamp"]
+    for first_char, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+
+
 class CustomSchemaError(Exception):
     """Raised when a JSON Schema is missing, unparseable, or itself invalid."""
 
@@ -22,6 +39,8 @@ def load_yaml_mapping(file_path: Path) -> dict:
     :class:`YamlMappingError` with a message that names the file, so a broken
     file is reported rather than silently skipped.
 
+    Unquoted dates and timestamps stay strings; see :class:`_NoTimestampSafeLoader`.
+
     :param file_path: Path to the YAML file.
     :returns: The parsed mapping.
     :raises YamlMappingError: If the file cannot be read, is not valid YAML,
@@ -29,7 +48,7 @@ def load_yaml_mapping(file_path: Path) -> dict:
     """
     try:
         with open(file_path, "r") as file:
-            content = yaml.safe_load(file)
+            content = yaml.load(file, Loader=_NoTimestampSafeLoader)
     except OSError as e:
         raise YamlMappingError(f"Cannot read {file_path}: {e.strerror}") from e
     except yaml.YAMLError as e:
