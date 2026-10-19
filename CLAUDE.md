@@ -72,7 +72,10 @@ Null/missing semantics (see the `Check` docstring) apply to every check:
 
 - `pull_request_ai_review.yml` runs via `workflow_run` after the `CI` workflow passes on a PR (so fork PRs
   can be commented on), resolves the PR with `.github/actions/resolve-pr-from-workflow-run`, and has
-  Claude Code review the diff with read-only tools. It upserts a single PR comment marked
+  Claude Code review the diff with read-only tools. The job checks out the default branch and fetches the PR
+  head as git objects only (never into the working tree), because Claude Code would otherwise load the PR's
+  own `.claude/` hooks/settings/skills, `.mcp.json` and `CLAUDE.md`. Keep it that way: do not add a checkout
+  of the PR head or `allow-unsafe-pr-checkout`. It upserts a single PR comment marked
   `<!-- ai-pr-review-marker -->`. Claude only runs when the PR author and triggering actor are in the
   `ALLOWED_USERS` allowlist in the workflow. Otherwise, or if Claude fails, the comment just says the
   agent is not available.
@@ -82,6 +85,7 @@ Null/missing semantics (see the `Check` docstring) apply to every check:
 - `workflow_run` workflows always run from the default branch: changes to the review workflow only take
   effect after merge to `main`.
 - The review criteria live in the `review-pr` skill (`.claude/skills/review-pr/SKILL.md`); the workflow just
-  invokes `/review-pr <base> <head> <output-file>`. Update the skill when conventions above change. Run
+  invokes `/review-pr <base> <head> <output-file>`. CI uses the skill from the default branch, so skill changes
+  only affect reviews after merge. Update the skill when conventions above change. Run
   `/review-pr` locally to review the current branch against `origin/main`. Renaming
   the `CI` workflow breaks the trigger.
