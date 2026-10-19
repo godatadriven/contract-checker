@@ -78,8 +78,9 @@ Null/missing semantics (see the `Check` docstring) apply to every check:
   of the PR head or `allow-unsafe-pr-checkout`. It upserts a single PR comment marked
   `<!-- ai-pr-review-marker -->`; runs are queued per PR branch (`concurrency`, no cancelling) and skip
   posting if the PR head moved during the review. Claude only runs when the PR author and triggering actor are in the
-  `ALLOWED_USERS` allowlist in the workflow. Otherwise, or if Claude fails, the comment just says the
-  agent is not available.
+  `ALLOWED_USERS` allowlist in the workflow. Otherwise the comment just says the agent is not available.
+  If Claude fails or writes no review (retried once), an earlier real review is kept with a note that it
+  is of an earlier commit. Only comments by `github-actions[bot]` count as the review comment.
 - `CLAUDE_CODE_OAUTH_TOKEN` is a secret of the `claude-review` environment, restricted to the `main`
   branch. Never move it to a repo-level secret or reference that environment from other workflows.
   `.github/CODEOWNERS` makes `.github/` changes require approval from the token owners.
