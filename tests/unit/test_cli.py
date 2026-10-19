@@ -634,6 +634,19 @@ class TestLoadFailures:
         assert broken["results"][0]["check_type"] == "load"
         assert "is not valid YAML" in broken["results"][0]["message"]
 
+    def test_reports_stay_in_file_order_with_a_broken_file_in_the_middle(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "a_good.yaml")
+        _write_contract(contracts, "b_broken.yaml", "info: [not, closed\n")
+        _write_contract(contracts, "c_good.yaml")
+        result = self._invoke(tmp_path, contracts, "--format", "json")
+
+        document = json.loads(result.stdout)
+        assert [Path(c["file"]).name for c in document["contracts"]] == ["a_good.yaml", "b_broken.yaml", "c_good.yaml"]
+        text = self._invoke(tmp_path, contracts, "--output-mode", "full").output
+        assert text.index("Contract 1: ") < text.index("a_good.yaml") < text.index("Contract 2: ")
+        assert text.index("Contract 2: ") < text.index("b_broken.yaml") < text.index("Contract 3: ")
+
     def test_load_failure_shows_in_text_report(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
         _write_contract(contracts, "broken.yaml", "")
