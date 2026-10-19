@@ -29,8 +29,8 @@ class TestGetSpecificationVersion:
     def test_custom_returns_custom(self) -> None:
         assert get_specification_version({}, "custom") == "custom"
 
-    def test_unknown_standard_raises(self) -> None:
-        with pytest.raises(ValueError):
+    def test_unknown_standard_is_a_programming_error(self) -> None:
+        with pytest.raises(KeyError):
             get_specification_version({"apiVersion": "v3.0.2"}, "unknown")
 
 
@@ -47,6 +47,6 @@ class TestParseSpecificationFromContract:
         )
         assert (version, spec) == ("1.2.1", "dcs")
 
-    def test_unknown_standard_raises(self) -> None:
-        with pytest.raises(ValueError, match="Unsupported data_contract_specification 'nope'"):
+    def test_unknown_standard_is_a_programming_error(self) -> None:
+        with pytest.raises(KeyError):
             parse_specification_from_contract({"apiVersion": "v3.0.2"}, {"data_contract_standard": "nope"})
