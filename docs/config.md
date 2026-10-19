@@ -128,3 +128,23 @@ in the config but not yet implemented; they are ignored with a debug log message
 ## Available Checks
 
 For detailed information about available checks and their configuration, see the [Checks](checks.md) page.
+
+## How the config file is validated
+
+The checks file is validated **before any contract is read**. A problem is reported
+once, naming the offending entry, and the run exits 1:
+
+```text
+ERROR: Invalid checks config: data_contract_checks entry 2 ('info.version'): 'pattern' is not a valid regular expression ('^\d+(.\d+$'): missing ), unterminated subpattern at position 3
+```
+
+The following are rejected:
+
+- The file is missing, not valid YAML, empty, or not a mapping at the top level
+- `data_contract_checks` is not a list; an entry is not a mapping; an entry has no
+  `attribute` or no `checks` list
+- A check is not a single-key mapping (`- pattern: ^a` and `required: true` in the same
+  item would silently drop one of them, so it is an error instead)
+- An unknown check type (the message lists the available ones)
+- A check value that the check itself rejects (see `Check.validate_config`)
+- `lint` present but not `true`/`false` (a quoted `"false"` is a string, not a boolean)

@@ -140,6 +140,10 @@ To add a new check follow the below steps:
     - Implement the `check_type` property that returns a unique string identifier (e.g., `"my_custom_check"`).
     - Implement the `execute` method that performs the validation and returns a list of `ValidationResult` objects.
     - Have a clear message in the event of a failure.
+    - Optionally override `validate_config` to reject configuration values your `execute` cannot handle.
+      It is called once per config entry before any contract is read; raise `ValueError` with a
+      message saying what is wrong. The error is then reported once as a configuration error
+      (naming the entry) instead of failing every contract. Without an override, any value is accepted.
 
     Example:
 
@@ -152,6 +156,10 @@ To add a new check follow the below steps:
         @property
         def check_type(self) -> str:
             return "my_custom_check"
+
+        def validate_config(self, check_value: Any) -> None:
+            if not isinstance(check_value, bool):
+                raise ValueError(f"'my_custom_check' expects true or false, got {check_value!r}")
 
         def execute(
             self,

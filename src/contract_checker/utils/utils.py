@@ -11,6 +11,37 @@ class CustomSchemaError(Exception):
     """Raised when a JSON Schema is missing, unparseable, or itself invalid."""
 
 
+class YamlMappingError(ValueError):
+    """Raised when a YAML file cannot be read as a single top-level mapping."""
+
+
+def load_yaml_mapping(file_path: Path) -> dict:
+    """Load a YAML file whose root must be a mapping.
+
+    Unlike :func:`parse_yml_to_dict`, this does not swallow errors: every
+    failure mode raises :class:`YamlMappingError` with a message that names
+    the file, so a broken file is reported rather than silently skipped.
+
+    :param file_path: Path to the YAML file.
+    :returns: The parsed mapping.
+    :raises YamlMappingError: If the file cannot be read, is not valid YAML,
+        is empty, or its root is not a mapping.
+    """
+    try:
+        with open(file_path, "r") as file:
+            content = yaml.safe_load(file)
+    except OSError as e:
+        raise YamlMappingError(f"Cannot read {file_path}: {e.strerror}") from e
+    except yaml.YAMLError as e:
+        raise YamlMappingError(f"{file_path} is not valid YAML: {e}") from e
+
+    if content is None:
+        raise YamlMappingError(f"{file_path} is empty.")
+    if not isinstance(content, dict):
+        raise YamlMappingError(f"{file_path} must contain a mapping at the top level, got {type(content).__name__}.")
+    return content
+
+
 def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
     """Load a JSON Schema (custom or built-in) and verify it is itself a valid JSON Schema.
 
