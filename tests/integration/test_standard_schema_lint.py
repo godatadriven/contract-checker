@@ -48,6 +48,7 @@ def test_valid_dcs_contract_passes_standard_schema() -> None:
     [
         (VALID_ODCS, "3.0.2"),
         # Since 3.1.0, `exclusiveMaximum`/`exclusiveMinimum` are numbers, not booleans.
+        (FIXTURES / "odcs" / "3.1.0" / "all-data-types.odcs.yaml", "3.1.0"),
         (FIXTURES / "odcs" / "3.2.0" / "all-data-types.odcs.yaml", "3.2.0"),
     ],
 )
