@@ -21,7 +21,7 @@ It supports the two major open data contract standards out of the box, with cust
 | Standard | Versions |
 |---|---|
 | [DCS — Data Contract Specification](https://datacontract.com) | 0.9.0 – 1.2.1 |
-| [ODCS — Open Data Contract Standard](https://bitol-io.github.io/open-data-contract-standard/) | 2.2.1 – 3.0.2 |
+| [ODCS — Open Data Contract Standard](https://bitol-io.github.io/open-data-contract-standard/) | 2.2.1 – 3.2.0 |
 | Custom JSON Schema | any |
 
 See the [documentation](https://godatadriven.github.io/contract-checker/) for the full version-compatibility detail per standard.
@@ -39,7 +39,7 @@ pip install contract-checker
 uv add contract-checker
 ```
 
-Requires Python 3.10+.
+Requires Python 3.11–3.15.
 
 ---
 
@@ -49,6 +49,11 @@ Requires Python 3.10+.
 
 ```yaml
 data_contract_specification: dcs   # or "odcs" / "custom"
+
+data_contracts_path:
+  path: ./contracts/               # where your contracts live
+  exclude_paths:
+    - archive/**                   # optional glob filters
 
 data_contract_checks:
   - attribute: info.title
@@ -76,16 +81,29 @@ data_contract_checks:
 **2. Run the checker** against your contracts:
 
 ```bash
-contract-checker --contract-path ./contracts/
+contract-checker
 ```
 
 With verbose output (shows passing checks too):
 
 ```bash
-contract-checker --contract-path ./contracts/ --verbose
+contract-checker --verbose
 ```
 
-For the full config-file schema — path filtering, severity overrides, and custom schemas — see the [configuration guide](https://godatadriven.github.io/contract-checker/config/).
+To validate a different location (or a single contract) ad hoc, override the
+configured path with `--contract-path`:
+
+```bash
+contract-checker --contract-path ./contracts/orders.yaml
+```
+
+To also validate each contract against its full JSON Schema (the built-in DCS/ODCS schema, or your custom one) — the equivalent of `datacontract lint` — enable linting. It's off by default:
+
+```bash
+contract-checker --lint
+```
+
+For the full config-file schema — path filtering, severity overrides, linting, and custom schemas — see the [configuration guide](https://godatadriven.github.io/contract-checker/config/).
 
 ---
 
@@ -94,10 +112,12 @@ For the full config-file schema — path filtering, severity overrides, and cust
 | Check | YAML key | Description |
 |---|---|---|
 | Required | `required: true` | Field must exist and be non-null |
-| Pattern | `pattern: "^regex$"` | Value must match a regular expression |
+| Pattern | `pattern: "^regex$"` | Value must match a regular expression (for list attributes, every item must match) |
 | Accepted values | `accepted_values: [a, b]` | Value must be one of the listed options |
-| Min items | `min_items: 2` | List must contain at least N items |
-| Max items | `max_items: 10` | List must contain at most N items |
+| Min items | `min_items: 2` | List or mapping must contain at least N items; skipped if missing, fails if not a collection |
+| Max items | `max_items: 10` | List or mapping must contain at most N items; skipped if missing, fails if not a collection |
+
+Only `required` checks whether a field exists: every other check skips an absent field, and every check fails a field that is present but null. See [missing vs null values](https://godatadriven.github.io/contract-checker/checks/#missing-vs-null-values).
 
 See the [checks reference](https://godatadriven.github.io/contract-checker/checks/) for full details and examples of each check type.
 
@@ -107,8 +127,9 @@ See the [checks reference](https://godatadriven.github.io/contract-checker/check
 
 - **Wildcard path support** — apply checks across all models and fields with `models.*.fields.*.unique`
 - **Severity levels** — configure checks as `error`, `warn`, or `info`, either globally or per field
-- **Contract filtering** — include or exclude contracts by directory path or field value (e.g. only `status: active` contracts)
-- **Custom JSON Schema** — validate contracts against your own schema in addition to built-in standard validation
+- **Contract filtering** — include or exclude contracts with glob patterns (`domain/**`, `**/draft_*.yaml`); filtering by field value (e.g. only `status: active` contracts) is planned
+- **Schema validation (lint)** — opt into full JSON Schema validation with `--lint`, against the built-in DCS/ODCS schema or your own custom schema (like `datacontract lint`)
+- **Custom JSON Schema** — validate contracts against your own schema, on top of your configured checks
 - **Rich output** — colour-coded pass/fail tables per contract plus a summary across all contracts
 - **Extensible** — implement the `Check` abstract base class to add your own check types via the Python API
 

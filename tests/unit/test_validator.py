@@ -52,10 +52,13 @@ class TestGetAttributeValues:
         data = {"info": {"title": "Orders"}}
         assert self.v._get_attribute_values(data, "info.nonexistent.deep") == []
 
-    def test_none_value_returns_empty(self) -> None:
-        """Explicitly None leaf returns empty (filtered by _traverse_path)."""
+    def test_none_value_preserved(self) -> None:
+        """Explicitly None leaf is preserved as [None] (not collapsed to []).
+
+        This lets required_check distinguish missing (=[]) from null (=[None]).
+        """
         data = {"info": {"title": None}}
-        assert self.v._get_attribute_values(data, "info.title") == []
+        assert self.v._get_attribute_values(data, "info.title") == [None]
 
     def test_boolean_value(self) -> None:
         """Boolean values are returned as-is."""
@@ -197,3 +200,229 @@ class TestExpandWildcardPaths:
             "a.y.b.q.val": [2],
             "a.y.b.r.val": [3],
         }
+
+
+# ===================================================================
+# _expand_and_collect: ODCS-style lists of named objects
+# ===================================================================
+
+
+class TestExpandWildcardPathsListStyle:
+    """Wildcard expansion over ODCS-style lists (repeatable objects as lists)."""
+
+    def setup_method(self) -> None:
+        self.v = _validator()
+        self.data = {
+            "schema": [
+                {
+                    "name": "tbl",
+                    "physicalType": "table",
+                    "properties": [
+                        {"name": "rcvr_cntry_code", "logicalType": "string", "primaryKey": True},
+                        {"name": "amount", "logicalType": "number"},
+                    ],
+                },
+            ]
+        }
+
+    def test_single_wildcard_over_list(self) -> None:
+        """schema.* expands to each list item, labeled by its name."""
+        result = self.v._expand_wildcard_paths(self.data, "schema.*.name")
+        assert result == {"schema.tbl.name": ["tbl"]}
+
+    def test_double_wildcard_over_lists(self) -> None:
+        """Wildcards expand through nested lists of named objects."""
+        result = self.v._expand_wildcard_paths(self.data, "schema.*.properties.*.logicalType")
+        assert result == {
+            "schema.tbl.properties.rcvr_cntry_code.logicalType": ["string"],
+            "schema.tbl.properties.amount.logicalType": ["number"],
+        }
+
+    def test_name_leaf_over_list(self) -> None:
+        """The explicit `name` value of each list item is returned."""
+        result = self.v._expand_wildcard_paths(self.data, "schema.*.properties.*.name")
+        assert result == {
+            "schema.tbl.properties.rcvr_cntry_code.name": ["rcvr_cntry_code"],
+            "schema.tbl.properties.amount.name": ["amount"],
+        }
+
+    def test_leaf_missing_on_some_items(self) -> None:
+        """Items lacking the leaf map to empty lists (per-item, not merged)."""
+        result = self.v._expand_wildcard_paths(self.data, "schema.*.properties.*.primaryKey")
+        assert result["schema.tbl.properties.rcvr_cntry_code.primaryKey"] == [True]
+        assert result["schema.tbl.properties.amount.primaryKey"] == []
+
+    def test_nested_repeatable_objects(self) -> None:
+        """ODCS nests repeatable objects as `properties` inside `properties`."""
+        data = {
+            "schema": [
+                {
+                    "name": "t",
+                    "properties": [
+                        {
+                            "name": "cost_breakdown",
+                            "logicalType": "object",
+                            "properties": [
+                                {"name": "slot_cost", "logicalType": "number"},
+                                {"name": "storage_cost", "logicalType": "number"},
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties.*.properties.*.name")
+        assert result == {
+            "schema.t.properties.cost_breakdown.properties.slot_cost.name": ["slot_cost"],
+            "schema.t.properties.cost_breakdown.properties.storage_cost.name": ["storage_cost"],
+        }
+
+    def test_unnamed_items_labeled_by_index(self) -> None:
+        """List items without a `name` are labeled by their index."""
+        data = {"servers": [{"type": "s3"}, {"type": "gcs"}]}
+        result = self.v._expand_wildcard_paths(data, "servers.*.type")
+        assert result == {"servers.0.type": ["s3"], "servers.1.type": ["gcs"]}
+
+    def test_wildcard_over_list_of_scalars(self) -> None:
+        """A wildcard over scalar items yields the items themselves."""
+        data = {"tags": ["a", "b"]}
+        result = self.v._expand_wildcard_paths(data, "tags.*")
+        assert result == {"tags.0": ["a"], "tags.1": ["b"]}
+
+    def test_wildcard_over_list_of_scalars_with_leaf(self) -> None:
+        """A leaf segment on scalar items resolves to empty, not a crash."""
+        data = {"tags": ["a", "b"]}
+        result = self.v._expand_wildcard_paths(data, "tags.*.name")
+        assert result == {"tags.0.name": [], "tags.1.name": []}
+
+    def test_list_transparent_without_wildcard(self) -> None:
+        """Non-wildcard segments still iterate list items transparently."""
+        result = self.v._expand_wildcard_paths(self.data, "schema.properties.name")
+        assert result == {"schema.properties.name": ["rcvr_cntry_code", "amount"]}
+
+    def test_empty_list(self) -> None:
+        """Wildcard on an empty list returns an empty result."""
+        result = self.v._expand_wildcard_paths({"schema": []}, "schema.*.name")
+        assert result == {}
+
+    def test_duplicate_names_are_not_merged(self) -> None:
+        """Items sharing a name get `name[index]` labels and are checked separately."""
+        data = {
+            "schema": [
+                {
+                    "name": "orders",
+                    "properties": [{"name": "id", "logicalType": "string"}, {"name": "amount"}, {"name": "id"}],
+                }
+            ]
+        }
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties.*.logicalType")
+        assert result == {
+            "schema.orders.properties.id[0].logicalType": ["string"],
+            "schema.orders.properties.amount.logicalType": [],
+            "schema.orders.properties.id[2].logicalType": [],
+        }
+
+    def test_duplicate_parent_names_keep_collections_apart(self) -> None:
+        """Two schema objects with the same name each yield their own collection."""
+        data = {"schema": [{"name": "t", "properties": [{"name": "a"}]}, {"name": "t", "properties": [{"name": "b"}]}]}
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties")
+        assert result == {
+            "schema.t[0].properties": [[{"name": "a"}]],
+            "schema.t[1].properties": [[{"name": "b"}]],
+        }
+
+    def test_name_equal_to_other_items_index(self) -> None:
+        """A name that equals an unnamed item's index does not merge the two."""
+        data = {"schema": [{"x": 1}, {"name": "0", "x": 2}]}
+        result = self.v._expand_wildcard_paths(data, "schema.*.x")
+        assert result == {"schema.0[0].x": [1], "schema.0[1].x": [2]}
+
+    def test_null_item_name_is_missing(self) -> None:
+        """A null list item has no name and is labeled by its index."""
+        data = {"schema": [{"name": "orders", "properties": [None]}]}
+        result = self.v._expand_wildcard_paths(data, "schema.*.properties.*.name")
+        assert result == {"schema.orders.properties.0.name": []}
+
+
+# ===================================================================
+# _expand_and_collect: key-as-name for DCS-style dicts
+# ===================================================================
+
+
+class TestExpandWildcardKeyAsName:
+    """DCS-style dicts carry the entry name as the key; `name` resolves to it."""
+
+    def setup_method(self) -> None:
+        self.v = _validator()
+
+    def test_field_names_from_keys(self) -> None:
+        data = {
+            "models": {
+                "orders": {
+                    "fields": {
+                        "order_id": {"type": "text"},
+                        "amount": {"type": "long"},
+                    }
+                }
+            }
+        }
+        result = self.v._expand_wildcard_paths(data, "models.*.fields.*.name")
+        assert result == {
+            "models.orders.fields.order_id.name": ["order_id"],
+            "models.orders.fields.amount.name": ["amount"],
+        }
+
+    def test_model_names_from_keys(self) -> None:
+        data = {"models": {"orders": {"type": "table"}, "items": {"type": "table"}}}
+        result = self.v._expand_wildcard_paths(data, "models.*.name")
+        assert result == {
+            "models.orders.name": ["orders"],
+            "models.items.name": ["items"],
+        }
+
+    def test_explicit_name_value_wins_over_key(self) -> None:
+        """DCS `definitions` entries can carry a real `name` value."""
+        data = {"definitions": {"order_id": {"name": "order_identifier", "type": "text"}}}
+        result = self.v._expand_wildcard_paths(data, "definitions.*.name")
+        assert result == {"definitions.order_id.name": ["order_identifier"]}
+
+    def test_nested_records(self) -> None:
+        """Key-as-name applies at any depth (nested DCS records)."""
+        data = {
+            "models": {
+                "orders": {
+                    "fields": {
+                        "cost_breakdown": {
+                            "type": "record",
+                            "fields": {
+                                "slot_cost": {"type": "number"},
+                                "storage_cost": {"type": "number"},
+                            },
+                        }
+                    }
+                }
+            }
+        }
+        result = self.v._expand_wildcard_paths(data, "models.*.fields.*.fields.*.name")
+        assert result == {
+            "models.orders.fields.cost_breakdown.fields.slot_cost.name": ["slot_cost"],
+            "models.orders.fields.cost_breakdown.fields.storage_cost.name": ["storage_cost"],
+        }
+
+    def test_other_missing_leaf_stays_empty(self) -> None:
+        """Only `name` resolves to the key; other missing leaves stay empty."""
+        data = {"models": {"orders": {"fields": {"order_id": {"type": "text"}}}}}
+        result = self.v._expand_wildcard_paths(data, "models.*.fields.*.description")
+        assert result == {"models.orders.fields.order_id.description": []}
+
+    def test_null_entry_is_missing_not_named(self) -> None:
+        """A null entry is not a named object, so its `name` is missing."""
+        data = {"models": {"orders": {"fields": {"order_id": None}}}}
+        result = self.v._expand_wildcard_paths(data, "models.*.fields.*.name")
+        assert result == {"models.orders.fields.order_id.name": []}
+
+    def test_scalar_entries_are_not_named(self) -> None:
+        """`*.name` over an object with scalar values does not invent names."""
+        data = {"info": {"title": "Orders", "version": "1.0"}}
+        result = self.v._expand_wildcard_paths(data, "info.*.name")
+        assert result == {"info.title.name": [], "info.version.name": []}

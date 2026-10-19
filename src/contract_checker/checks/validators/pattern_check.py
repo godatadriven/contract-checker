@@ -31,7 +31,14 @@ class PatternCheck(Check):
           - attribute: models.*.fields.*.name
             checks:
               - pattern: ^[a-z][a-z0-9_]*$
+
+          # Ensure every tag is lowercase (list attribute: each item is checked)
+          - attribute: tags
+            checks:
+              - pattern: ^[a-z]+$
     ```
+
+    To enforce full-string matching implicitly, switch this to ``re.fullmatch``.
     """
 
     @property
@@ -42,31 +49,46 @@ class PatternCheck(Check):
         """
         return "pattern"
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only a string that compiles as a regular expression.
+
+        :raises ValueError: If ``check_value`` is not a string or is not a valid regex.
+        """
+        if not isinstance(check_value, str):
+            raise ValueError(f"'pattern' expects a regular expression string, got {type(check_value).__name__}")
+        try:
+            re.compile(check_value)
+        except re.error as e:
+            raise ValueError(f"'pattern' is not a valid regular expression ({check_value!r}): {e}") from e
+
     def execute(self, attribute_path: str, values: List[Any], pattern: str) -> List[ValidationResult]:
         """Execute the pattern matching validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked.
-        :param values: List of values found at the attribute path. Each value is
-            converted to a string before pattern matching.
+        :param values: List of values found at the attribute path. Each value can
+            be a scalar or a list of scalars; items are converted to a string
+            before pattern matching.
         :param pattern: The regular expression pattern to match against.
-        :return: A list of :class:`ValidationResult` objects, one for each value
-            in the input list. Null values will result in a failed check.
+        :return: A list of :class:`ValidationResult` objects, one for each scalar
+            value. When the attribute contains a list, a result is generated for
+            each item in that list. An absent attribute (empty ``values``)
+            produces no results, since presence is enforced by the
+            ``required`` check. Top-level null values are reported by the
+            validator; null items inside a list produce one failed result.
         """
         results = []
 
-        for idx, value in enumerate(values):
-            if value is None:
-                results.append(
-                    ValidationResult(
-                        "",
-                        attribute_path,
-                        self.check_type,
-                        False,
-                        f"Attribute '{attribute_path}' is null, cannot match pattern {pattern}",
-                    )
-                )
-                continue
+        items: List[Any] = []
+        for value in values:
+            if isinstance(value, list):
+                null_count = sum(1 for item in value if item is None)
+                if null_count:
+                    results.append(self.null_elements_result(attribute_path, null_count))
+                items.extend(item for item in value if item is not None)
+            else:
+                items.append(value)
 
+        for value in items:
             value_str = str(value)
             passed = re.match(pattern, value_str) is not None
 

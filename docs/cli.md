@@ -4,14 +4,60 @@ This page provides documentation for the ```data-contract-checker``` CLI.
 
 ## Output behaviour
 
-By default, `contract-checker` shows all contracts with only their **failing checks** — passing
-checks are hidden to reduce noise. A summary table of all failures is printed at the end.
+How much of the report is printed is controlled by `--output-mode`:
 
-Use `--verbose` / `-v` to also show passing checks for each contract:
+| Mode | What is printed |
+| ---- | --------------- |
+| `failures` (default) | A verdict line, then one table per failing contract with its failing checks. When **more than one** contract fails, a consolidated failed-checks summary table is added at the end (for a single failing contract it would just duplicate the detail table, so it is skipped). |
+| `summary` | A scoreboard: one line per contract, failing contracts first with their failed check *types* (no messages), passing contracts dimmed below. Answers "which contracts are broken, and roughly how?" at a glance — handy for large contract sets. |
+| `full` | Like `failures`, but passing checks and fully passing contracts are shown too. |
+
+```bash
+contract-checker --output-mode summary
+```
+
+Use `--verbose` / `-v` to enable debug logging (this no longer affects the report itself):
 
 ```bash
 contract-checker --verbose
 ```
+
+## Machine-readable output
+
+`--format json` replaces the human-readable report with a JSON document on stdout,
+including per-check results for every contract. Logging goes to stderr, so stdout
+stays clean for piping. Exit codes work exactly as in text mode.
+
+```bash
+# list all failing contract files
+contract-checker --format json | jq -r '.contracts[] | select(.success | not) .file'
+```
+
+When running inside GitHub Actions (auto-detected via the `GITHUB_ACTIONS` env var),
+failed checks are additionally emitted as `::error` workflow commands, which GitHub
+renders as inline annotations on the PR diff. Disable with `--no-annotations`.
+See [GitHub Actions](ci.md) for details.
+
+## Exit codes
+
+All checks always run and the full report is always printed; the exit code signals the
+overall outcome so CI pipelines can pass or fail on it:
+
+| Code | Meaning |
+| ---- | ------- |
+| 0 | All checks passed, or failures occurred with `--severity warn` |
+| 1 | One or more checks failed with `--severity error` (the default), or a config/load error |
+| 2 | Usage error (e.g. an invalid `--severity` value) |
+
+Use `--severity warn` to keep the checker advisory: the same report is printed, but the
+run always exits 0 so the pipeline stays green.
+
+## Contract discovery
+
+Contracts are loaded from `data_contracts_path` in the checks config, including any
+`include_paths` / `exclude_paths` glob filters (see [Configuration](config.md)).
+The `--contract-path` option overrides the configured path — handy for validating a
+single contract file ad hoc; filters are skipped when it points to a single file.
 
 ::: mkdocs-typer2
     :module: contract_checker.cli

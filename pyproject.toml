@@ -2,50 +2,71 @@
 name = "contract_checker"
 description = "Data contract checker"
 readme = "README.md"
-requires-python = ">= 3.10.0"
+requires-python = ">=3.11,<3.16"
 dynamic = ["version"]
 authors = [
-    {name = "Thom van Engelenburg, Sonu Jacob"},
+    {name = "Thom van Engelenburg"},
+    {name = "Sonu Jacob"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 dependencies = [
-    "typer>=0.20.0",
+    "typer>=0.26.8",
     "pydantic>=2.13.3",
     "pyyaml>=6",
-    "types-PyYAML",
     "jsonschema>=4.0",
 ]
 
 [dependency-groups]
 lint = [
-    "ruff==0.15.16",
-    "mypy==1.20.2",
+    "ruff==0.16.9",
+    "mypy==2.3.1",
+    "types-PyYAML",
 ]
 
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.4.0",
-    "mkdocs-typer2>=0.2.0",
+    "mkdocs-typer2>=0.4.1",
     "mkdocstrings[python]>=1.0.4",
-    "pymdown-extensions>=10.0.0",
+    "pymdown-extensions>=11.0.1",
 ]
 
 dev = [
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pre-commit>=4.6.0,<5",
 ]
+
+[tool.uv]
+default-groups = ["dev", "lint"]
 
 [project.scripts]
 contract-checker = "contract_checker.cli:app"
 
 [build-system]
-requires = ["setuptools==82.0.1", "setuptools-scm>=8"]
+requires = ["setuptools==84.0.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 # Derive the version from the latest `vX.Y.Z` git tag (single source of truth).
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+# Ship the vendored standard schemas (DCS / ODCS) so schema validation ("lint")
+# works from a pip-installed package, not just from the repo checkout.
+contract_checker = ["contract_schemas/**/*.json"]
+
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 warn_return_any = true
 disallow_untyped_defs = true
 
@@ -84,13 +105,6 @@ exclude = [
 line-length = 120
 indent-width = 4
 
-# Allow fix for all enabled rules (when `--fix`) is provided.
-fixable = ["ALL"]
-unfixable = []
-
-# Allow unused variables when underscore-prefixed.
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
@@ -126,10 +140,11 @@ select = [
     "ANN", # flake8 type annotations
     "RUF", # ruff-specific rules
 ]
+# Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
+unfixable = []
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

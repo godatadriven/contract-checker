@@ -53,6 +53,17 @@ class AcceptedValuesCheck(Check):
         """
         return "accepted_values"
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept a non-empty list of values, or a single string value.
+
+        :raises ValueError: If ``check_value`` is anything else (a mapping, a
+            number, or null).
+        """
+        if isinstance(check_value, str):
+            return
+        if not isinstance(check_value, list) or not check_value:
+            raise ValueError(f"'accepted_values' expects a non-empty list of values, got {check_value!r}")
+
     def execute(self, attribute_path: str, value_list: List[Any], accepted_values: List[str]) -> List[ValidationResult]:
         """Execute the accepted values validation.
 
@@ -62,16 +73,26 @@ class AcceptedValuesCheck(Check):
         :param accepted_values: The list of values that are considered valid.
         :return: A list of :class:`ValidationResult` objects. When the attribute
             contains a list, a result is generated for each item in that list.
+            Null elements in a list fail. An absent attribute (empty
+            ``value_list``) produces no results. Null values are reported by
+            the validator.
         """
+        # validate_config allows a single string as shorthand for a one-item
+        # list; normalise it here so ``in`` is a membership test, not a
+        # substring test ('act' must not pass against accepted_values: active).
+        if isinstance(accepted_values, str):
+            accepted_values = [accepted_values]
+
         results = []
         for value in value_list:
-            if value is None:
-                continue
-
             if isinstance(value, str):
                 items = [value]
             elif isinstance(value, list):
-                items = value
+                # Filter out null elements and report them explicitly
+                items = [v for v in value if v is not None]
+                null_count = len(value) - len(items)
+                if null_count:
+                    results.append(self.null_elements_result(attribute_path, null_count))
             else:
                 items = [value]
 
