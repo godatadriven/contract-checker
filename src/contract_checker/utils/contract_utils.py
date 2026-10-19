@@ -216,7 +216,10 @@ def load_contracts(
         logging.debug(
             f"Discovered {discovered_count} contract file(s), {len(contract_paths)} remaining after filtering."
         )
-        if discovered_count > 0 and not contract_paths:
+        # Exactly one warning when nothing is left to check, naming the actual cause.
+        if discovered_count == 0:
+            logging.warning(f"No data contracts (*.yaml, *.yml) found under: {contract_path}. Nothing was checked.")
+        elif not contract_paths:
             logging.warning(
                 "include_paths/exclude_paths filtered out ALL discovered contracts, nothing will be validated. "
                 "Check your patterns in 'data_contracts_path'."
