@@ -643,9 +643,10 @@ class TestLoadFailures:
 
         document = json.loads(result.stdout)
         assert [Path(c["file"]).name for c in document["contracts"]] == ["a_good.yaml", "b_broken.yaml", "c_good.yaml"]
+        # Rich folds long paths mid-word in the text report (e.g. on Windows runners),
+        # so locate the broken file by its LOAD row rather than by its name.
         text = self._invoke(tmp_path, contracts, "--output-mode", "full").output
-        assert text.index("Contract 1: ") < text.index("a_good.yaml") < text.index("Contract 2: ")
-        assert text.index("Contract 2: ") < text.index("b_broken.yaml") < text.index("Contract 3: ")
+        assert text.index("Contract 1: ") < text.index("Contract 2: ") < text.index("LOAD") < text.index("Contract 3: ")
 
     def test_load_failure_shows_in_text_report(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
