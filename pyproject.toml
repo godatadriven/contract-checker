@@ -1,11 +1,20 @@
 [project]
 name = "contract_checker"
 description = "Data contract checker"
-requires-python = ">= 3.10.0"
+requires-python = ">=3.11,<3.16"
 version = "0.1.0"
 authors = [
     {name = "Thom van Engelenburg"},
     {name = "Sonu Jacob"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 dependencies = [
     "typer>=0.26.8",
@@ -53,7 +62,7 @@ where = ["src"]
 contract_checker = ["contract_schemas/**/*.json"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = true
 disallow_untyped_defs = true
 
