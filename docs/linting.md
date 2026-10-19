@@ -38,8 +38,8 @@ The CLI flag always wins over the config value. The config value must be a YAML 
 
 !!! note "A custom schema alone does not enable linting"
     Providing `custom_schema_path` (or `--custom-schema-path`) does **not** turn on validation by
-    itself — `lint` must be enabled. When linting is off, the custom schema is ignored and a note
-    is logged.
+    itself — `lint` must be enabled. When linting is off, the custom schema is ignored. If `lint`
+    was left unset, a warning is shown; an explicit `--no-lint` or `lint: false` skips it silently.
 
 ## What gets validated
 

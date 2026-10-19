@@ -19,7 +19,8 @@ it with the built-in DCS/ODCS schemas.
 !!! warning "Enable linting to run schema validation"
     Schema validation is **off by default**. Supplying a custom schema does not by itself validate
     anything — you must also enable [linting](linting.md) with `--lint` or `lint: true`. With
-    linting off, the custom schema is ignored and a note is logged.
+    linting off, the custom schema is ignored; a warning is shown unless you disabled linting
+    explicitly (`--no-lint` or `lint: false`).
 
 ## Providing a schema
 
