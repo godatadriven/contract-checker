@@ -89,8 +89,9 @@ def test_invalid_schema_reports_failure_not_exception() -> None:
 def test_custom_schema_with_no_checks_config() -> None:
     """A custom schema validates even when the checks config is absent (None).
 
-    This is the schema-only case driven entirely by --custom-schema-path with no
-    (or an empty/unparseable) checks file, which must not crash.
+    This is the schema-only case when the validator is driven programmatically
+    without a checks config, which must not crash. (The CLI itself rejects a
+    missing, empty or unparseable checks file up front; see validate_checks_config.)
     """
     contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
     report = DataContractValidator(None, lint=True).run_checks(contract)  # type: ignore[arg-type]
