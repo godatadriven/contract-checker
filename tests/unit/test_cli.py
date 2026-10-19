@@ -603,7 +603,7 @@ class TestZeroContracts:
         )
         result = self.runner.invoke(app, ["--checks-config-path", str(config)])
         assert result.exit_code == 0
-        assert "filtered out ALL discovered contracts" in result.output
+        assert "filtered out ALL 1 discovered contracts" in result.output
         # One warning naming the cause: contracts were found, so not "none found".
         assert "No data contracts" not in result.output
 

@@ -221,8 +221,8 @@ def load_contracts(
             logging.warning(f"No data contracts (*.yaml, *.yml) found under: {contract_path}. Nothing was checked.")
         elif not contract_paths:
             logging.warning(
-                "include_paths/exclude_paths filtered out ALL discovered contracts, nothing will be validated. "
-                "Check your patterns in 'data_contracts_path'."
+                f"include_paths/exclude_paths filtered out ALL {discovered_count} discovered contracts, "
+                "nothing will be validated. Check your patterns in 'data_contracts_path'."
             )
 
     loaded = LoadedContracts()
