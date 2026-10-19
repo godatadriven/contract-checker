@@ -129,6 +129,16 @@ uv run pytest ./tests/unit/test_cli.py::test_specific_function
 
 * Append `# type: ignore` to the end of a line if you need to disable `mypy` on that line, preferably with the specific rule to ignore such as `# type: ignore[union-attr]`.
 
+### Benchmarking
+
+`scripts/benchmark.py` generates synthetic DCS contracts and times each phase the CLI goes through: loading (YAML parsing), running the checks with and without lint, and rendering each report format. Run it before and after a change that could affect speed:
+
+```shell
+make benchmark                                                     # 100 contracts x 5 models x 20 fields
+uv run python scripts/benchmark.py --contracts 500 --fields 40     # scale it up
+uv run python scripts/benchmark.py --profile                       # add a cProfile top 25
+```
+
 ## Adding a new check
 
 To add a new check follow the below steps:

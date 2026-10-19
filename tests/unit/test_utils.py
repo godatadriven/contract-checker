@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
+import yaml
 
-from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, resolve_lint
+from contract_checker.utils.utils import CustomSchemaError, SafeLoader, load_and_validate_json_schema, resolve_lint
 
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
 
@@ -76,3 +77,14 @@ class TestLoadAndValidateJsonSchema:
         """A document that is valid JSON but not a valid JSON Schema is rejected."""
         with pytest.raises(CustomSchemaError, match="not a valid JSON Schema"):
             load_and_validate_json_schema(CUSTOM_FIXTURES / "invalid-json-schema.json")
+
+
+class TestYamlLoader:
+    """The fast (libyaml) loader must build the same objects as the pure-Python one."""
+
+    def test_c_loader_matches_pure_python_loader_on_fixtures(self) -> None:
+        fixtures = sorted((Path(__file__).parent.parent / "fixtures").rglob("*.y*ml"))
+        assert fixtures
+        for fixture in fixtures:
+            text = fixture.read_text()
+            assert yaml.load(text, Loader=SafeLoader) == yaml.load(text, Loader=yaml.SafeLoader), fixture
