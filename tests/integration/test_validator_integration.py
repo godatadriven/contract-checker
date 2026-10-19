@@ -8,6 +8,8 @@ contracts, error handling, and summary generation.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from contract_checker.checks.validator import DataContractValidator
@@ -791,3 +793,49 @@ class TestMissingVsNull:
         assert {r.attribute for r in report.results} == {"models.orders.fields"}
         assert report.failed_checks == 3
         assert all("is null" in r.message for r in report.results)
+
+
+# ===================================================================
+# 10. contract_file is always a str
+# ===================================================================
+
+
+class TestContractFileIsStr:
+    """``Contract.contract_path`` is a ``Path``; reports must carry it as a ``str``.
+
+    The real loader hands the validator a ``Path``; the fakes above use a
+    ``str``, which is why the ``Path`` leaking into ``contract_file`` went
+    unnoticed. ``display_path`` and the JSON output want a ``str``, and a
+    ``Path`` compares unequal to the same text as a ``str``.
+    """
+
+    @staticmethod
+    def _validator() -> DataContractValidator:
+        return _make_validator(
+            [
+                {"attribute": "info.title", "checks": [{"required": True}]},
+                {"attribute": "models.*.fields.*.type", "checks": [{"required": True}]},
+            ]
+        )
+
+    def test_run_checks_converts_path_to_str(self) -> None:
+        v = self._validator()
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=Path("contracts/orders.yaml")))  # type: ignore[arg-type]
+
+        assert report.contract_file == "contracts/orders.yaml"
+        assert report.results, "wildcard and plain rules both ran"
+        assert all(r.contract_file == "contracts/orders.yaml" for r in report.results)
+
+    def test_processing_error_report_converts_path_to_str(self) -> None:
+        class _BrokenContract:
+            contract_path = Path("broken.yaml")
+            custom_schema_path = None
+
+            @property
+            def contract_content(self) -> None:
+                raise RuntimeError("Simulated file read error")
+
+        reports = self._validator().validate([_BrokenContract()])  # type: ignore[list-item]
+
+        assert reports[0].contract_file == "broken.yaml"
+        assert reports[0].results[0].contract_file == "broken.yaml"

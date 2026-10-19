@@ -8,6 +8,8 @@ from typing import List
 class ValidationResult:
     """Represents the result of a validation check"""
 
+    # The contract's path as a string (what the reports print and the JSON
+    # output carries). Checks leave it "" and the validator fills it in.
     contract_file: str
     attribute: str
     check_type: str
@@ -19,7 +21,7 @@ class ValidationResult:
 class ContractValidationReport:
     """Summary report for a single contract validation"""
 
-    contract_file: str
+    contract_file: str  # the contract's path as a string
     total_checks: int
     passed_checks: int
     failed_checks: int

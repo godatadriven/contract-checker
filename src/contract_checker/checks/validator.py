@@ -126,6 +126,7 @@ class DataContractValidator:
             ContractValidationReport with results
         """
         results = []
+        contract_file = str(data_contract.contract_path)
 
         # When linting is enabled, validate the whole contract against its JSON
         # Schema first. This does not replace the attribute-level checks below:
@@ -153,7 +154,7 @@ class DataContractValidator:
                         check_handler = self.registry.get(check_type)
                         check_results = self._run_check(check_handler, concrete_path, values, check_value)
                         for result in check_results:
-                            result.contract_file = data_contract.contract_path
+                            result.contract_file = contract_file
                         results.extend(check_results)
             else:
                 # Non-wildcard path: original behavior
@@ -165,7 +166,7 @@ class DataContractValidator:
                     check_handler = self.registry.get(check_type)
                     check_results = self._run_check(check_handler, attribute_path, values, check_value)
                     for result in check_results:
-                        result.contract_file = data_contract.contract_path
+                        result.contract_file = contract_file
                     results.extend(check_results)
 
         # Create report
@@ -173,7 +174,7 @@ class DataContractValidator:
         failed = len(results) - passed
 
         return ContractValidationReport(
-            contract_file=data_contract.contract_path,
+            contract_file=contract_file,
             total_checks=len(results),
             passed_checks=passed,
             failed_checks=failed,
@@ -243,6 +244,7 @@ class DataContractValidator:
             List of ValidationResult objects
         """
         results = []
+        contract_file = str(data_contract.contract_path)
 
         # Load and meta-validate the schema here too (not just at the CLI layer),
         # so the "schema is itself a valid JSON Schema" guarantee holds even when
@@ -254,7 +256,7 @@ class DataContractValidator:
         except CustomSchemaError as e:
             results.append(
                 ValidationResult(
-                    contract_file=data_contract.contract_path,
+                    contract_file=contract_file,
                     attribute="schema",
                     check_type="json_schema",
                     passed=False,
@@ -273,7 +275,7 @@ class DataContractValidator:
                 # No validation errors - success
                 results.append(
                     ValidationResult(
-                        contract_file=data_contract.contract_path,
+                        contract_file=contract_file,
                         attribute="schema",
                         check_type="json_schema",
                         passed=True,
@@ -291,7 +293,7 @@ class DataContractValidator:
 
                     results.append(
                         ValidationResult(
-                            contract_file=data_contract.contract_path,
+                            contract_file=contract_file,
                             attribute=attribute_path,
                             check_type="json_schema",
                             passed=False,
@@ -301,7 +303,7 @@ class DataContractValidator:
         except Exception as e:
             results.append(
                 ValidationResult(
-                    contract_file=data_contract.contract_path,
+                    contract_file=contract_file,
                     attribute="schema",
                     check_type="json_schema",
                     passed=False,
@@ -334,7 +336,7 @@ class DataContractValidator:
             except Exception as e:
                 # Create a failed report for files that can't be processed
                 error_result = ValidationResult(
-                    contract_file=contract.contract_path,
+                    contract_file=str(contract.contract_path),
                     attribute="file",
                     check_type="validation",
                     passed=False,
@@ -342,7 +344,7 @@ class DataContractValidator:
                 )
                 reports.append(
                     ContractValidationReport(
-                        contract_file=contract.contract_path,
+                        contract_file=str(contract.contract_path),
                         total_checks=1,
                         passed_checks=0,
                         failed_checks=1,
