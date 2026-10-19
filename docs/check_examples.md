@@ -130,6 +130,8 @@ data_contract_checks:
 
 `accepted_values` fails a value that isn't in the list, a key left blank, or a blank item in a list. A list gets one result per item.
 
+Values are compared by their text, so `accepted_values: [1, 2]` and `accepted_values: ["1", "2"]` are the same check, and `[true, false]` accepts a contract's `required: true`. Write numbers the way the contract writes them: `1.0` does not match `1`.
+
 ```yaml
 data_contract_checks:
   - attribute: info.env
