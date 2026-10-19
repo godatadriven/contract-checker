@@ -1,6 +1,5 @@
 """Core data contract validation logic with integrated reporting."""
 
-
 from collections import Counter
 from datetime import date
 from pathlib import Path
