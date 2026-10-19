@@ -10,10 +10,11 @@ from contract_checker.contract.contract_base import Contract
 from contract_checker.utils.path_filter import filter_contract_paths
 from contract_checker.utils.utils import YamlMappingError, is_dir_or_yaml, load_yaml_mapping
 
-# Specifications with vendored schemas under contract_schemas/, and the
-# contract key that carries the specification version for each.
-SUPPORTED_SPECIFICATIONS = ("dcs", "odcs")
+# Specifications with vendored schemas under contract_schemas/, mapped to the
+# contract key that carries the specification version. Single source of truth:
+# to support a new standard, add it here (and vendor its schemas).
 SPECIFICATION_VERSION_KEYS = {"dcs": "dataContractSpecification", "odcs": "apiVersion"}
+SUPPORTED_SPECIFICATIONS = tuple(SPECIFICATION_VERSION_KEYS)
 
 
 @dataclass
@@ -110,17 +111,7 @@ def parse_specification_from_contract(contract_content: dict, checks_dict: dict)
     else:
         raise ValueError("data_contract_standard not configured.")
 
-    # Maybe we can simplify this with a mapping dict in utils later?
-    if contract_specification == "dcs":
-        version = contract_content["dataContractSpecification"]
-    elif contract_specification == "odcs":
-        # Normalise `vX.Y.Z` to bare semver to match the schema folder names.
-        version = str(contract_content["apiVersion"]).removeprefix("v")
-        return version, contract_specification
-    else:
-        raise ValueError("Specification field not found in data contract.")
-
-    return version, contract_specification
+    return get_specification_version(contract_content, contract_specification), contract_specification
 
 
 def _load_failure_report(contract_path: Path, message: str) -> ContractValidationReport:

@@ -46,3 +46,7 @@ class TestParseSpecificationFromContract:
             {"dataContractSpecification": "1.2.1"}, {"data_contract_standard": "dcs"}
         )
         assert (version, spec) == ("1.2.1", "dcs")
+
+    def test_unknown_standard_raises(self) -> None:
+        with pytest.raises(ValueError, match="Unsupported data_contract_specification 'nope'"):
+            parse_specification_from_contract({"apiVersion": "v3.0.2"}, {"data_contract_standard": "nope"})
