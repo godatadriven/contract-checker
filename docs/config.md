@@ -149,8 +149,8 @@ The following are rejected:
 - An unknown check type (the message lists the available ones)
 - A check value its check cannot use: `required` must be `true`/`false` (a bare `required:`
   with no value is rejected, since it is almost always a forgotten `true`), `pattern` must be
-  a string that compiles as a regular expression, `accepted_values` a non-empty list (or a
-  single string), `min_items` / `max_items` a non-negative integer, and `at_least_one` /
+  a string that compiles as a regular expression, `accepted_values` a non-empty list of
+  strings, numbers or booleans (or a single such value), `min_items` / `max_items` a non-negative integer, and `at_least_one` /
   `exactly_one` a single-key mapping
 - `data_contract_specification` missing or not one of `dcs`, `odcs` — unless a custom
   schema is given, in which case it is not needed

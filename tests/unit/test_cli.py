@@ -536,9 +536,12 @@ class TestFailFastOnConfig:
         [
             ("      - pattern: '^Orders('", "entry 1 ('info.title'): 'pattern' is not a valid regular expression"),
             ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
-            ("      - accepted_values: 1.0", "entry 1 ('info.title'): 'accepted_values' expects a non-empty list"),
+            (
+                "      - accepted_values: [[a]]",
+                "entry 1 ('info.title'): 'accepted_values' entries must be strings, numbers or booleans",
+            ),
         ],
-        ids=["bad-regex", "unknown-check", "float-accepted-values"],
+        ids=["bad-regex", "unknown-check", "nested-accepted-values"],
     )
     def test_bad_check_entry_is_a_config_error_not_a_contract_failure(
         self, tmp_path: Path, check_line: str, expected: str
