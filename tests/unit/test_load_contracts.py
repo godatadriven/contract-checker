@@ -103,6 +103,13 @@ class TestPerFileFailuresAreReported:
         assert report.results[0].attribute == "file"
         assert expected_message in report.results[0].message
 
+    def test_dcs_version_with_v_prefix_is_unsupported(self, tmp_path: Path) -> None:
+        _write(tmp_path, "a.yaml", "dataContractSpecification: v1.1.0\ninfo:\n  title: Orders\n")
+        loaded = load_contracts(tmp_path, contract_specification="dcs")
+        assert loaded.contracts == []
+        assert len(loaded.failed_reports) == 1
+        assert "version 'v1.1.0' is not supported" in loaded.failed_reports[0].results[0].message
+
     def test_unsupported_version_message_has_no_pydantic_noise(self, tmp_path: Path) -> None:
         _write(tmp_path, "bad.yaml", "dataContractSpecification: 9.9.9\n")
         message = load_contracts(tmp_path, contract_specification="dcs").failed_reports[0].results[0].message

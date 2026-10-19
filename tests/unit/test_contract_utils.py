@@ -17,6 +17,11 @@ class TestGetSpecificationVersion:
         content = {"dataContractSpecification": "1.2.1"}
         assert get_specification_version(content, "dcs") == "1.2.1"
 
+    def test_dcs_keeps_v_prefix_so_it_is_rejected_later(self) -> None:
+        """Only ODCS uses a `v` prefix; `dataContractSpecification: v1.2.1` is not a valid DCS version."""
+        content = {"dataContractSpecification": "v1.2.1"}
+        assert get_specification_version(content, "dcs") == "v1.2.1"
+
     def test_odcs_strips_v_prefix(self) -> None:
         """ODCS `apiVersion: vX.Y.Z` must map to the bare-semver schema folder."""
         content = {"apiVersion": "v3.0.2"}
