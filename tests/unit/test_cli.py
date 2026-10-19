@@ -568,7 +568,7 @@ class TestFailFastOnConfig:
 
 
 class TestZeroContracts:
-    """An empty directory is a warning; a missing path or filters that drop everything are errors."""
+    """Nothing to check is a warning and exit 0; only a path that does not exist is an error."""
 
     def setup_method(self) -> None:
         self.runner = CliRunner()
@@ -590,7 +590,7 @@ class TestZeroContracts:
         assert result.exit_code == 1
         assert "Provided contract path does not exist" in result.output
 
-    def test_filters_excluding_everything_exits_one(self, tmp_path: Path) -> None:
+    def test_filters_excluding_everything_warns_and_exits_zero(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
         _write_contract(contracts, "orders.yaml")
         config = _write_checks_config(
@@ -600,10 +600,9 @@ class TestZeroContracts:
             "data_contract_checks: []\n",
         )
         result = self.runner.invoke(app, ["--checks-config-path", str(config)])
-        assert result.exit_code == 1
+        assert result.exit_code == 0
         assert "filtered out ALL discovered contracts" in result.output
-        assert "All 1 contract file(s) under" in result.output
-        assert "were excluded by include_paths/exclude_paths" in result.output
+        assert "Nothing was checked" in result.output
 
 
 class TestLoadFailures:

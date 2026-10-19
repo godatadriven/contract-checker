@@ -110,10 +110,9 @@ ignored):
 - `exclude_paths` is applied after `include_paths` and always wins
 - A pattern ending in a bare `/` is rejected with a hint (use `domain/**`, not `domain/`)
 
-If the filters exclude every discovered contract, the run exits 1 with an error
-saying how many files were excluded, so a misconfigured pattern cannot silently
-produce a passing run. A directory that exists but contains no contracts at all is
-only a warning (exit 0).
+If the filters exclude every discovered contract, a warning is logged and the run
+exits 0 with nothing checked, since selecting no contracts can be a deliberate choice.
+Check the warning if you expected contracts to be validated.
 
 A short form is also supported when no filtering is needed:
 

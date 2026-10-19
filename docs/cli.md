@@ -45,8 +45,8 @@ overall outcome so CI pipelines can pass or fail on it:
 
 | Code | Meaning |
 | ---- | ------- |
-| 0 | All checks passed; checks failed with `--severity warn`; or the contract directory contained no contracts (a warning is logged) |
-| 1 | One or more checks failed with `--severity error` (the default); a contract file could not be loaded; a configuration error; or `include_paths`/`exclude_paths` excluded every contract that was found |
+| 0 | All checks passed; checks failed with `--severity warn`; or there were no contracts to check (a warning is logged) |
+| 1 | One or more checks failed with `--severity error` (the default); a contract file could not be loaded; or a configuration error |
 | 2 | Usage error (e.g. an invalid `--severity` value) |
 
 Use `--severity warn` to keep *checks* advisory: the same report is printed, but failed
