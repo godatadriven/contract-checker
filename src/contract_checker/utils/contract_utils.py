@@ -80,16 +80,16 @@ def parse_data_contracts_path_config(
 
 
 def get_specification_version(contract_content: dict, contract_standard: str) -> str:
-    """Get the version of the provided contract based on its standard."""
+    """Get the version of the provided contract based on its standard.
+
+    ``contract_standard`` must be ``"custom"`` or one of SUPPORTED_SPECIFICATIONS;
+    :func:`load_contracts` validates that before any file is read, so an
+    unknown value here is a programming error and raises ``KeyError``.
+    """
     if contract_standard == "custom":
         return "custom"
 
-    version_key = SPECIFICATION_VERSION_KEYS.get(contract_standard)
-    if version_key is None:
-        raise ValueError(
-            f"Unsupported data_contract_specification '{contract_standard}'. "
-            f"Use one of: {', '.join(SUPPORTED_SPECIFICATIONS)}, or 'custom' with a custom schema."
-        )
+    version_key = SPECIFICATION_VERSION_KEYS[contract_standard]
     if version_key not in contract_content:
         raise ValueError(
             f"Contract is missing the '{version_key}' key, cannot determine its {contract_standard} version."
