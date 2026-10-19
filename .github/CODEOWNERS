@@ -1,0 +1,3 @@
+# Workflows and actions control who can use the Claude OAuth token
+# (see pull_request_ai_review.yml), so changes need approval from its owners.
+/.github/ @Thootje @sonurjacob
