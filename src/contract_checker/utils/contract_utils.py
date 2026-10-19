@@ -95,10 +95,15 @@ def get_specification_version(contract_content: dict, contract_standard: str) ->
             f"Contract is missing the '{version_key}' key, cannot determine its {contract_standard} version."
         )
 
-    # ODCS contracts carry the version as `apiVersion: vX.Y.Z`, but the
-    # vendored schema folders are bare semver (e.g. odcs/3.0.2). Strip the
-    # leading `v` so the version resolves to a supported schema directory.
-    return str(contract_content[version_key]).removeprefix("v")
+    version = str(contract_content[version_key])
+    if contract_standard == "odcs":
+        # ODCS contracts carry the version as `apiVersion: vX.Y.Z`, but the
+        # vendored schema folders are bare semver (e.g. odcs/3.0.2). Strip the
+        # leading `v` so the version resolves to a supported schema directory.
+        # Only ODCS: a DCS `dataContractSpecification: v1.1.0` is invalid and
+        # must be rejected as an unsupported version, not normalised.
+        version = version.removeprefix("v")
+    return version
 
 
 def parse_specification_from_contract(contract_content: dict, checks_dict: dict) -> tuple[str, str]:
