@@ -43,12 +43,20 @@ def test_valid_dcs_contract_passes_standard_schema() -> None:
     assert any(r.check_type == "json_schema" and r.passed for r in report.results)
 
 
-def test_valid_odcs_contract_passes_standard_schema() -> None:
+@pytest.mark.parametrize(
+    ("contract_file", "version"),
+    [
+        (VALID_ODCS, "3.0.2"),
+        # 3.2.0 changed `exclusiveMaximum`/`exclusiveMinimum` from booleans to numbers.
+        (FIXTURES / "odcs" / "3.2.0" / "all-data-types.odcs.yaml", "3.2.0"),
+    ],
+)
+def test_valid_odcs_contract_passes_standard_schema(contract_file: Path, version: str) -> None:
     """A conforming ODCS contract reports no failures when linted."""
-    contract = _load_standard_contract(VALID_ODCS, "odcs", "3.0.2")
+    contract = _load_standard_contract(contract_file, "odcs", version)
     report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
-    assert report.failed_checks == 0
+    assert report.failed_checks == 0, [r.message for r in report.results if not r.passed]
     assert any(r.check_type == "json_schema" and r.passed for r in report.results)
 
 
