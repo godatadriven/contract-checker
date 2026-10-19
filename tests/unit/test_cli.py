@@ -582,6 +582,7 @@ class TestZeroContracts:
         assert result.exit_code == 0
         assert "No data contracts (*.yaml, *.yml) found under" in result.output
         assert "Nothing was checked" in result.output
+        assert "filtered out" not in result.output
 
     def test_missing_path_exits_one(self, tmp_path: Path) -> None:
         config = _write_checks_config(tmp_path, DCS_CHECKS)
@@ -603,7 +604,8 @@ class TestZeroContracts:
         result = self.runner.invoke(app, ["--checks-config-path", str(config)])
         assert result.exit_code == 0
         assert "filtered out ALL discovered contracts" in result.output
-        assert "Nothing was checked" in result.output
+        # One warning naming the cause: contracts were found, so not "none found".
+        assert "No data contracts" not in result.output
 
 
 class TestLoadFailures:

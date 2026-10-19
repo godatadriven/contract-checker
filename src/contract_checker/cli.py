@@ -236,13 +236,10 @@ def main(
 
     # Nothing to check is not a failure: the directory may not have any
     # contracts yet, or include_paths/exclude_paths may deliberately select
-    # none (load_contracts already warns about that case). A path that does
-    # not exist at all is still an error (FileNotFoundError above). Warn so it
-    # is visible in the log, and exit 0.
+    # none. load_contracts has already logged one warning naming which of the
+    # two it was. A path that does not exist at all is still an error
+    # (FileNotFoundError above).
     if not loaded.contracts and not loaded.failed_reports:
-        logging.warning(
-            f"No data contracts (*.yaml, *.yml) found under: {resolved_contract_path}. Nothing was checked."
-        )
         raise typer.Exit()
 
     reports = validate_contracts(
