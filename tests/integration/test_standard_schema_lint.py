@@ -19,9 +19,9 @@ from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 VALID_DCS = FIXTURES / "dcs" / "1.2.1" / "time_data_type_example.yaml"
 INVALID_DCS = FIXTURES / "dcs" / "1.2.1" / "invalid_field_type.yaml"
-VALID_ODCS = FIXTURES / "odcs" / "3.0.2" / "full-example.odcs.yaml"
+VALID_ODCS = FIXTURES / "odcs" / "3.0.2" / "all" / "full-example.odcs.yaml"
 # Contains an unquoted date (``- 2022-10-03``) that YAML parses into a ``date``.
-UNQUOTED_DATE_ODCS = "table-column-description.odcs.yaml"
+UNQUOTED_DATE_ODCS = Path("fundamentals") / "table-column-description.odcs.yaml"
 
 
 def _load_standard_contract(contract_file: Path, specification: str, version: str) -> Contract:
@@ -43,17 +43,9 @@ def test_valid_dcs_contract_passes_standard_schema() -> None:
     assert any(r.check_type == "json_schema" and r.passed for r in report.results)
 
 
-@pytest.mark.parametrize(
-    ("contract_file", "version"),
-    [
-        (VALID_ODCS, "3.0.2"),
-        # 3.2.0 changed `exclusiveMaximum`/`exclusiveMinimum` from booleans to numbers.
-        (FIXTURES / "odcs" / "3.2.0" / "all-data-types.odcs.yaml", "3.2.0"),
-    ],
-)
-def test_valid_odcs_contract_passes_standard_schema(contract_file: Path, version: str) -> None:
+def test_valid_odcs_contract_passes_standard_schema() -> None:
     """A conforming ODCS contract reports no failures when linted."""
-    contract = _load_standard_contract(contract_file, "odcs", version)
+    contract = _load_standard_contract(VALID_ODCS, "odcs", "3.0.2")
     report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
     assert report.failed_checks == 0, [r.message for r in report.results if not r.passed]

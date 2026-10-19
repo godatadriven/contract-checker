@@ -16,7 +16,7 @@ class TestLoadOdcsContract:
         The version is normalised to bare semver (`3.0.2`) so it matches the
         vendored schema folder. Before the fix this raised a ValueError.
         """
-        contract_file = odcs_fixtures_path / "3.0.2" / "basic-four-dpo.odcs.yaml"
+        contract_file = odcs_fixtures_path / "3.0.2" / "stakeholders" / "basic-four-dpo.odcs.yaml"
 
         contracts = load_contracts(contract_file, contract_specification="odcs")
 

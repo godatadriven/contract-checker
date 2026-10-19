@@ -5,8 +5,13 @@ Support for a contract version in this project is filesystem-driven: a version i
 supported iff ``src/contract_checker/contract_schemas/{spec}/{version}/schema.json``
 exists (see ``contract_checker.contract.contract_base.Contract.validate_version``).
 This script discovers versions published upstream, vendors any that are missing,
-refreshes the version ranges quoted in the docs, and scaffolds a starter test
-fixture for each newly added version.
+refreshes the version ranges quoted in the docs, and adds test fixtures for each
+newly added version:
+
+- ODCS (3.0.0+): a snapshot of upstream ``docs/examples/`` at the release tag
+  ``v{version}``, with ``apiVersion`` set to that version. Upstream CI validates
+  every example against the tag's schema, so these are known-good contracts.
+- DCS: a starter copy of the newest existing fixture with the version field bumped.
 
 It is dependency-free (standard library only) so it can run in CI without adding a
 runtime dependency. Set ``GITHUB_TOKEN`` in the environment to raise the GitHub API
@@ -16,20 +21,30 @@ Run from anywhere:
 
     uv run python scripts/update_schemas.py
 
+Re-snapshot the ODCS examples of every vendored version (e.g. after changing the
+snapshot logic) without vendoring anything new:
+
+    uv run python scripts/update_schemas.py --resnapshot-odcs-examples
+
 Exit code is always 0 on a successful run (including "nothing to do"); individual
 download failures are logged and skipped rather than aborting the whole run.
 """
 
 from __future__ import annotations
 
+import argparse
+import datetime
+import io
 import json
 import os
 import re
+import shutil
 import sys
+import tarfile
 import urllib.error
 import urllib.request
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS_DIR = REPO_ROOT / "src" / "contract_checker" / "contract_schemas"
@@ -42,6 +57,12 @@ SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 ODCS_CONTENTS_API = "https://api.github.com/repos/bitol-io/open-data-contract-standard/contents/schema?ref=main"
 ODCS_FILE_RE = re.compile(r"^odcs-json-schema-v(\d+\.\d+\.\d+)\.json$")
+
+# Example contracts live under docs/examples/ at each release tag. Only 3.x is
+# snapshotted: 2.x examples mostly lack `apiVersion` and are not validated upstream.
+ODCS_TAG_TARBALL = "https://codeload.github.com/bitol-io/open-data-contract-standard/tar.gz/refs/tags/v{version}"
+ODCS_EXAMPLES_DIR = "docs/examples/"
+ODCS_EXAMPLES_MIN_VERSION = "3.0.0"
 
 # DCS publishes every release as its own directory under versions/, each containing a
 # datacontract.schema.json. Versions are discovered by listing that directory.
@@ -184,6 +205,62 @@ def update_docs(ranges: dict[str, tuple[str, str]]) -> list[Path]:
     return changed
 
 
+def set_version_field(spec: str, version: str, text: str) -> str:
+    """Point a contract's version field (``dataContractSpecification`` / ``apiVersion``) at ``version``."""
+    if spec == "dcs":
+        return re.sub(
+            r"^dataContractSpecification:.*$",
+            f"dataContractSpecification: {version}",
+            text,
+            count=1,
+            flags=re.MULTILINE,
+        )
+    if spec == "odcs":
+        return re.sub(r"^apiVersion:.*$", f"apiVersion: v{version}", text, count=1, flags=re.MULTILINE)
+    return text
+
+
+def fetch_odcs_examples(version: str) -> dict[PurePosixPath, str]:
+    """Return ``{path relative to docs/examples: text}`` for the ODCS examples at tag ``v{version}``."""
+    archive = _request(ODCS_TAG_TARBALL.format(version=version))
+    examples: dict[PurePosixPath, str] = {}
+    with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as tar:
+        for member in tar.getmembers():
+            # Members are "<repo>-<version>/<path>"; drop the top-level directory.
+            _, _, path = member.name.partition("/")
+            if not (member.isfile() and path.startswith(ODCS_EXAMPLES_DIR) and path.endswith((".yaml", ".yml"))):
+                continue
+            relative = PurePosixPath(path.removeprefix(ODCS_EXAMPLES_DIR))
+            if ".." in relative.parts:
+                continue
+            handle = tar.extractfile(member)
+            if handle is not None:
+                examples[relative] = handle.read().decode("utf-8")
+    return examples
+
+
+def snapshot_odcs_examples(version: str) -> list[Path]:
+    """Replace ``tests/fixtures/odcs/{version}/`` with upstream's examples at tag ``v{version}``.
+
+    Many examples still declare an older ``apiVersion`` than the tag they ship with,
+    while upstream validates them against the tag's schema. contract-checker picks
+    the schema from ``apiVersion``, so it is rewritten to ``v{version}``.
+    """
+    examples = fetch_odcs_examples(version)
+    if not examples:
+        return []
+    dest_dir = FIXTURES_DIR / "odcs" / version
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    written: list[Path] = []
+    for relative, text in sorted(examples.items()):
+        dest = dest_dir / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(set_version_field("odcs", version, text), encoding="utf-8")
+        written.append(dest)
+    return written
+
+
 def scaffold_fixture(spec: str, version: str) -> Path | None:
     """Create a starter fixture for ``version`` by copying the newest existing one.
 
@@ -205,23 +282,7 @@ def scaffold_fixture(spec: str, version: str) -> Path | None:
         return None
     source_file = source_files[0]
 
-    text = source_file.read_text(encoding="utf-8")
-    if spec == "dcs":
-        text = re.sub(
-            r"^dataContractSpecification:.*$",
-            f"dataContractSpecification: {version}",
-            text,
-            count=1,
-            flags=re.MULTILINE,
-        )
-    elif spec == "odcs":
-        text = re.sub(
-            r"^apiVersion:.*$",
-            f"apiVersion: v{version}",
-            text,
-            count=1,
-            flags=re.MULTILINE,
-        )
+    text = set_version_field(spec, version, source_file.read_text(encoding="utf-8"))
 
     dest_dir = spec_fix_dir / version
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -235,8 +296,15 @@ def scaffold_fixture(spec: str, version: str) -> Path | None:
 # ---------------------------------------------------------------------------
 
 
+def _isoformat(value: object) -> str:
+    """``json.dumps`` fallback: render YAML dates as ISO strings, like the validator does."""
+    if isinstance(value, datetime.date):  # also matches datetime
+        return value.isoformat()
+    raise TypeError(f"{type(value).__name__} is not JSON serializable")
+
+
 def validate_fixture(spec: str, version: str, fixture: Path) -> bool | None:
-    """Validate a scaffolded fixture against the freshly vendored schema.
+    """Validate a fixture against the freshly vendored schema.
 
     Returns True/False, or None if the validation tooling (jsonschema/PyYAML, both
     project dependencies) is unavailable so the script still works standalone.
@@ -247,7 +315,8 @@ def validate_fixture(spec: str, version: str, fixture: Path) -> bool | None:
     except ImportError:
         return None
     schema = json.loads((SCHEMAS_DIR / spec / version / "schema.json").read_text(encoding="utf-8"))
-    data = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+    # Unquoted dates load as date objects; validate them as strings (see checks/validator.py).
+    data = json.loads(json.dumps(yaml.safe_load(fixture.read_text(encoding="utf-8")), default=_isoformat))
     try:
         jsonschema.validate(data, schema)
     except jsonschema.ValidationError:
@@ -255,15 +324,40 @@ def validate_fixture(spec: str, version: str, fixture: Path) -> bool | None:
     return True
 
 
+def add_fixtures(spec: str, version: str, needs_review: list[str]) -> None:
+    """Add fixtures for a newly vendored ``version`` and validate them against its schema.
+
+    ODCS 3.x gets upstream's examples at the release tag; anything else (or an ODCS tag
+    that cannot be fetched) falls back to a scaffolded copy of the previous version.
+    """
+    fixtures: list[Path] = []
+    if spec == "odcs" and version_key(version) >= version_key(ODCS_EXAMPLES_MIN_VERSION):
+        try:
+            fixtures = snapshot_odcs_examples(version)
+        except (urllib.error.URLError, tarfile.TarError) as exc:
+            log(f"[{spec}] WARN: could not snapshot examples for {version}: {exc}")
+    if not fixtures:
+        scaffolded = scaffold_fixture(spec, version)
+        fixtures = [scaffolded] if scaffolded else []
+
+    for fixture in fixtures:
+        valid = validate_fixture(spec, version, fixture)
+        status = {True: "valid", False: "NEEDS REVIEW", None: "unvalidated"}[valid]
+        name = fixture.relative_to(FIXTURES_DIR / spec / version)
+        log(f"[{spec}] {version} fixture {name}: {status}")
+        if valid is False:
+            needs_review.append(f"`{spec}/{version}/{name}` does not validate against the new schema")
+
+
 def process_spec(
     spec: str,
     discover: Callable[[], dict[str, str]],
     needs_review: list[str],
 ) -> list[str]:
-    """Vendor missing versions for ``spec`` and scaffold fixtures.
+    """Vendor missing versions for ``spec`` and add their fixtures.
 
     Returns the list of added versions; appends "spec version (file): reason" entries to
-    ``needs_review`` for scaffolded fixtures that fail validation against the new schema.
+    ``needs_review`` for fixtures that fail validation against the new schema.
     """
     log(f"[{spec}] discovering upstream versions...")
     upstream = discover()
@@ -281,15 +375,8 @@ def process_spec(
             continue
         write_schema(spec, version, schema)
         added.append(version)
-        fixture = scaffold_fixture(spec, version)
-        if fixture is None:
-            log(f"[{spec}] added {version}")
-            continue
-        valid = validate_fixture(spec, version, fixture)
-        status = {True: "valid", False: "NEEDS REVIEW", None: "unvalidated"}[valid]
-        log(f"[{spec}] added {version} (+fixture {fixture.name}: {status})")
-        if valid is False:
-            needs_review.append(f"`{spec}/{version}/{fixture.name}` does not validate against the new schema")
+        log(f"[{spec}] added {version}")
+        add_fixtures(spec, version, needs_review)
     return added
 
 
@@ -316,8 +403,9 @@ def emit_summary(
             lines.extend(f"- {item}" for item in needs_review)
         lines.append("")
         lines.append(
-            "> Scaffolded fixtures are starter copies of the previous version with the "
-            "version field bumped — review them, and consider dedicated checks for the new versions."
+            "> ODCS fixtures are upstream's `docs/examples/` at the release tag. DCS fixtures are "
+            "starter copies of the previous version with the version field bumped — review them, "
+            "and consider dedicated checks for the new versions."
         )
     summary = "\n".join(lines) + "\n"
     print(summary)
@@ -327,7 +415,30 @@ def emit_summary(
             handle.write(summary)
 
 
-def main() -> int:
+def resnapshot_odcs_examples() -> int:
+    """Re-snapshot upstream examples for every vendored ODCS 3.x version."""
+    needs_review: list[str] = []
+    versions = sorted(
+        (v for v in vendored_versions("odcs") if version_key(v) >= version_key(ODCS_EXAMPLES_MIN_VERSION)),
+        key=version_key,
+    )
+    for version in versions:
+        add_fixtures("odcs", version, needs_review)
+    for item in needs_review:
+        log(f"NEEDS REVIEW: {item}")
+    return 1 if needs_review else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Vendor new ODCS and DCS schema versions from upstream.")
+    parser.add_argument(
+        "--resnapshot-odcs-examples",
+        action="store_true",
+        help="re-snapshot upstream ODCS examples for every vendored version instead of vendoring new ones",
+    )
+    if parser.parse_args(argv).resnapshot_odcs_examples:
+        return resnapshot_odcs_examples()
+
     needs_review: list[str] = []
     added = {
         "odcs": process_spec("odcs", discover_odcs, needs_review),
