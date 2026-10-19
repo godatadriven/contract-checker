@@ -1,14 +1,47 @@
-"""Unit tests for utility helpers, focused on custom JSON Schema loading."""
+"""Unit tests for utility helpers: custom JSON Schema loading and lint resolution."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
-from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema
+from contract_checker.utils.utils import CustomSchemaError, load_and_validate_json_schema, resolve_lint
 
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
+
+
+class TestResolveLint:
+    """Tests for resolve_lint: CLI flag > config 'lint' key > default."""
+
+    @pytest.mark.parametrize(
+        ("cli_lint", "checks_dict", "expected"),
+        [
+            # Default: off.
+            (None, None, False),
+            (None, {}, False),
+            # The config key wins over the default...
+            (None, {"lint": True}, True),
+            (None, {"lint": False}, False),
+            # ...and the CLI flag wins over the config key.
+            (True, {"lint": False}, True),
+            (False, {"lint": True}, False),
+        ],
+    )
+    def test_precedence(self, cli_lint: Optional[bool], checks_dict: Optional[dict], expected: bool) -> None:
+        """Each source is only consulted when the higher-priority one is unset."""
+        assert resolve_lint(cli_lint, checks_dict) is expected
+
+    @pytest.mark.parametrize("value", ["false", "true", "yes", 0, 1])
+    def test_non_boolean_config_value_raises(self, value: object) -> None:
+        """A non-boolean 'lint' (e.g. quoted "false", which bool() treats as true) is rejected."""
+        with pytest.raises(ValueError, match="must be true or false"):
+            resolve_lint(None, {"lint": value})
+
+    def test_cli_flag_skips_config_type_check(self) -> None:
+        """An explicit CLI flag wins, so a malformed config value is never consulted."""
+        assert resolve_lint(True, {"lint": "false"}) is True
 
 
 class TestLoadAndValidateJsonSchema:

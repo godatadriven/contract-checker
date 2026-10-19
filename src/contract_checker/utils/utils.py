@@ -8,7 +8,7 @@ import yaml
 
 
 class CustomSchemaError(Exception):
-    """Raised when a custom JSON Schema is missing, unparseable, or itself invalid."""
+    """Raised when a JSON Schema is missing, unparseable, or itself invalid."""
 
 
 class YamlMappingError(ValueError):
@@ -43,13 +43,13 @@ def load_yaml_mapping(file_path: Path) -> dict:
 
 
 def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
-    """Load a custom JSON Schema and verify it is itself a valid JSON Schema.
+    """Load a JSON Schema (custom or built-in) and verify it is itself a valid JSON Schema.
 
     Unlike :func:`load_json_schema`, this does not swallow errors: it raises
     :class:`CustomSchemaError` with a clear, user-facing message for each failure
     mode so the CLI can fail fast before validating any contracts.
 
-    :param schema_path: Path to the custom JSON Schema file.
+    :param schema_path: Path to the JSON Schema file.
     :returns: The parsed schema as a dict.
     :raises CustomSchemaError: If the file is missing, not valid JSON, or not a
         valid JSON Schema (checked against its meta-schema).
@@ -58,12 +58,12 @@ def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
         with open(schema_path, "r") as file:
             schema = json.load(file)
     except FileNotFoundError as e:
-        raise CustomSchemaError(f"Custom schema file not found: {schema_path}") from e
+        raise CustomSchemaError(f"Schema file not found: {schema_path}") from e
     except json.JSONDecodeError as e:
-        raise CustomSchemaError(f"Custom schema is not valid JSON ({schema_path}): {e}") from e
+        raise CustomSchemaError(f"Schema is not valid JSON ({schema_path}): {e}") from e
 
     if not isinstance(schema, dict):
-        raise CustomSchemaError(f"Custom schema must be a JSON object ({schema_path}).")
+        raise CustomSchemaError(f"Schema must be a JSON object ({schema_path}).")
 
     # Validate the schema itself against its meta-schema. The draft is auto-detected
     # from the schema's "$schema" key (falling back to the latest supported draft).
@@ -71,9 +71,33 @@ def load_and_validate_json_schema(schema_path: Union[str, Path]) -> dict:
     try:
         validator_class.check_schema(schema)
     except jsonschema.exceptions.SchemaError as e:
-        raise CustomSchemaError(f"Custom schema is not a valid JSON Schema ({schema_path}): {e.message}") from e
+        raise CustomSchemaError(f"Schema is not a valid JSON Schema ({schema_path}): {e.message}") from e
 
     return schema
+
+
+def resolve_lint(cli_lint: Optional[bool], checks_dict: Optional[dict]) -> bool:
+    """Decide whether schema validation ("lint") runs. The single place lint is resolved.
+
+    Precedence: the ``--lint/--no-lint`` CLI flag, then the ``lint`` key in the
+    checks config, then the default (off), also when a custom schema is supplied.
+
+    :param cli_lint: The CLI flag value, or ``None`` when the flag was not passed.
+    :param checks_dict: The parsed checks config (may be ``None``).
+    :returns: ``True`` when contracts should be validated against their JSON Schema.
+    :raises ValueError: If the config ``lint`` key is present but not a boolean
+        (e.g. the quoted string ``"false"``, which ``bool()`` would treat as true).
+    """
+    if cli_lint is not None:
+        return cli_lint
+
+    config_lint = (checks_dict or {}).get("lint")
+    if config_lint is not None:
+        if not isinstance(config_lint, bool):
+            raise ValueError(f"'lint' in the checks config must be true or false, got {config_lint!r}.")
+        return config_lint
+
+    return False
 
 
 def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
