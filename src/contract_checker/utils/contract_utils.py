@@ -179,6 +179,8 @@ def load_contracts(
 
     Returns:
         The loadable contracts and a failed report per unloadable file.
+        Note: this used to return a plain ``list[Contract]``; callers of the
+        Python API should now read ``.contracts`` (and ``.failed_reports``).
 
     Raises:
         ValueError: If the specification is missing, unknown, or ``"custom"``

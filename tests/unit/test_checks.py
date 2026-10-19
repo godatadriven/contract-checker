@@ -391,6 +391,13 @@ class TestAcceptedValuesCheck:
         assert results[0].passed is False
         assert "is not in the list of accepted values" in results[0].message
 
+    def test_accepted_values_single_string_is_exact_match_not_substring(self) -> None:
+        """A single-string config is a one-item list: 'act' must not pass against 'active'."""
+        results = self.check.execute("test.field", ["act", "active"], "active")
+
+        assert [r.passed for r in results] == [False, True]
+        assert "'act' is not in the list of accepted values" in results[0].message
+
     def test_accepted_values_check_list_all_pass(self) -> None:
         """Test accepted values check passes when all list items are accepted."""
         results = self.check.execute("test.field", [["active", "inactive"]], ["active", "inactive", "pending"])

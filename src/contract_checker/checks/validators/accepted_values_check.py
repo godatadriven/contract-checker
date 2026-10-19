@@ -77,6 +77,12 @@ class AcceptedValuesCheck(Check):
             ``value_list``) produces no results. Null values are reported by
             the validator.
         """
+        # validate_config allows a single string as shorthand for a one-item
+        # list; normalise it here so ``in`` is a membership test, not a
+        # substring test ('act' must not pass against accepted_values: active).
+        if isinstance(accepted_values, str):
+            accepted_values = [accepted_values]
+
         results = []
         for value in value_list:
             if isinstance(value, str):
