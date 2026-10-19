@@ -820,11 +820,15 @@ class TestContractFileIsStr:
 
     def test_run_checks_converts_path_to_str(self) -> None:
         v = self._validator()
-        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=Path("contracts/orders.yaml")))  # type: ignore[arg-type]
+        # pathlib renders this with the OS separator ("contracts\\orders.yaml" on
+        # Windows); the report must carry exactly that string.
+        path = Path("contracts/orders.yaml")
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=path))  # type: ignore[arg-type]
 
-        assert report.contract_file == "contracts/orders.yaml"
+        assert isinstance(report.contract_file, str)
+        assert report.contract_file == str(path)
         assert report.results, "wildcard and plain rules both ran"
-        assert all(r.contract_file == "contracts/orders.yaml" for r in report.results)
+        assert all(r.contract_file == str(path) for r in report.results)
 
     def test_processing_error_report_converts_path_to_str(self) -> None:
         class _BrokenContract:
