@@ -421,11 +421,16 @@ class TestCustomSchemaCli:
         assert result.exit_code == 0
         assert "linting is disabled" not in result.output
 
-    def test_non_boolean_lint_config_exits_2(self, tmp_path: Path) -> None:
-        """A quoted 'lint: "false"' is rejected rather than silently treated as true."""
+    def test_non_boolean_lint_config_is_a_config_error(self, tmp_path: Path) -> None:
+        """A quoted 'lint: "false"' is rejected rather than silently treated as true.
+
+        It is a config content error, so it exits 1 like the other config checks
+        (exit 2 is reserved for invalid CLI option values).
+        """
         config = _write_checks_config(tmp_path, 'lint: "false"\ndata_contract_checks: []\n')
         result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
-        assert result.exit_code == 2
+        assert result.exit_code == 1
+        assert "Invalid checks config" in result.output
         assert "must be true or false" in result.output
 
     def test_schema_path_from_config(self, tmp_path: Path) -> None:
