@@ -213,12 +213,12 @@ wheels = [
 name = "contract-checker"
 version = "0.1.0"
 source = { editable = "." }
+default-groups = ["dev", "lint"]
 dependencies = [
     { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "typer" },
-    { name = "types-pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -236,6 +236,7 @@ docs = [
 lint = [
     { name = "mypy" },
     { name = "ruff" },
+    { name = "types-pyyaml" },
 ]
 
 [package.metadata]
@@ -244,7 +245,6 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.3" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "typer", specifier = ">=0.26.8" },
-    { name = "types-pyyaml" },
 ]
 
 [package.metadata.requires-dev]
@@ -262,6 +262,7 @@ docs = [
 lint = [
     { name = "mypy", specifier = "==2.3.1" },
     { name = "ruff", specifier = "==0.16.9" },
+    { name = "types-pyyaml" },
 ]
 
 [[package]]

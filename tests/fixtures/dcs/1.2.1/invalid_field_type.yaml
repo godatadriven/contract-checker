@@ -1,0 +1,20 @@
+dataContractSpecification: 1.2.1
+id: invalid-field-type-demo
+info:
+  title: Invalid Field Type Example
+  version: 1.0.0
+  description: |
+    A DCS 1.2.1 contract that is structurally valid except for a field whose
+    type is a compact Spark/Hive DDL string, which the FieldType enum does not
+    allow. Used to exercise standard-schema linting failures.
+  owner: Data Contract Team
+models:
+  orders:
+    type: table
+    fields:
+      order_id:
+        type: string
+      attributes:
+        # Not a valid FieldType enum value — nested types must be structural
+        # (type: array + items), not a compact DDL string.
+        type: array<struct<`key` string, `value` string>>

@@ -17,6 +17,10 @@ VALID_CONTRACT = CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml"
 VALID_SCHEMA = CUSTOM_FIXTURES / "ecommerce-product-schema.json"
 INVALID_SCHEMA = CUSTOM_FIXTURES / "invalid-json-schema.json"
 
+DCS_FIXTURES = Path(__file__).parent.parent / "fixtures" / "dcs"
+VALID_DCS_CONTRACT = DCS_FIXTURES / "1.2.1" / "time_data_type_example.yaml"
+INVALID_DCS_CONTRACT = DCS_FIXTURES / "1.2.1" / "invalid_field_type.yaml"
+
 
 def _write_checks_config(directory: Path, body: str = "data_contract_checks: []\n") -> Path:
     """Write a minimal checks config file and return its path."""
@@ -318,6 +322,7 @@ class TestCustomSchemaCli:
         result = self.runner.invoke(
             app,
             [
+                "--lint",
                 "--contract-path",
                 str(VALID_CONTRACT),
                 "--custom-schema-path",
@@ -335,6 +340,7 @@ class TestCustomSchemaCli:
         result = self.runner.invoke(
             app,
             [
+                "--lint",
                 "--contract-path",
                 str(VALID_CONTRACT),
                 "--custom-schema-path",
@@ -345,11 +351,88 @@ class TestCustomSchemaCli:
         )
         assert result.exit_code == 0
 
+    def test_custom_schema_skipped_without_lint(self, tmp_path: Path) -> None:
+        """Without --lint (the default), an invalid custom schema is ignored, exiting 0."""
+        config = _write_checks_config(tmp_path)
+        result = self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(INVALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        # Linting is off, so the invalid schema is never loaded — no fail-fast.
+        assert result.exit_code == 0
+
+    def test_custom_schema_without_lint_warns_by_default(self, tmp_path: Path) -> None:
+        """A custom schema with lint left unset warns at default verbosity."""
+        config = _write_checks_config(tmp_path)
+        result = self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "WARNING: A custom schema was provided but linting is disabled" in result.output
+
+    def test_custom_schema_with_explicit_no_lint_cli_does_not_warn(self, tmp_path: Path) -> None:
+        """An explicit --no-lint is a deliberate choice, so no warning is shown."""
+        config = _write_checks_config(tmp_path)
+        result = self.runner.invoke(
+            app,
+            [
+                "--no-lint",
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "linting is disabled" not in result.output
+
+    def test_custom_schema_with_explicit_lint_false_config_does_not_warn(self, tmp_path: Path) -> None:
+        """An explicit 'lint: false' in the checks config also suppresses the warning."""
+        config = _write_checks_config(tmp_path, "lint: false\ndata_contract_checks: []\n")
+        result = self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "linting is disabled" not in result.output
+
+    def test_non_boolean_lint_config_exits_2(self, tmp_path: Path) -> None:
+        """A quoted 'lint: "false"' is rejected rather than silently treated as true."""
+        config = _write_checks_config(tmp_path, 'lint: "false"\ndata_contract_checks: []\n')
+        result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
+        assert result.exit_code == 2
+        assert "must be true or false" in result.output
+
     def test_schema_path_from_config(self, tmp_path: Path) -> None:
         """The custom schema path can be supplied via the checks config file."""
         config = _write_checks_config(
             tmp_path,
             "data_contract_specification: custom\n"
+            "lint: true\n"
             f'custom_schema_path: "{VALID_SCHEMA.as_posix()}"\n'
             "data_contract_checks: []\n",
         )
@@ -378,6 +461,7 @@ class TestCustomSchemaCli:
         result = self.runner.invoke(
             app,
             [
+                "--lint",
                 "--contract-path",
                 str(VALID_CONTRACT),
                 "--custom-schema-path",
@@ -389,3 +473,43 @@ class TestCustomSchemaCli:
         # The CLI flag wins, so the invalid schema triggers the fail-fast exit.
         assert result.exit_code == 1
         assert "not a valid JSON Schema" in result.output
+
+
+class TestStandardSchemaLintCli:
+    """Test JSON Schema linting of standard (DCS/ODCS) contracts via the CLI."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_valid_standard_contract_lints_clean(self, tmp_path: Path) -> None:
+        """A conforming DCS contract passes when --lint is enabled."""
+        config = _write_checks_config(tmp_path, "data_contract_specification: dcs\ndata_contract_checks: []\n")
+        result = self.runner.invoke(
+            app,
+            ["--lint", "--contract-path", str(VALID_DCS_CONTRACT), "--checks-config-path", str(config)],
+        )
+        assert result.exit_code == 0
+
+    def test_invalid_standard_contract_fails_lint(self, tmp_path: Path) -> None:
+        """A DCS contract with an illegal field type fails when --lint is enabled."""
+        config = _write_checks_config(tmp_path, "data_contract_specification: dcs\ndata_contract_checks: []\n")
+        result = self.runner.invoke(
+            app,
+            ["--lint", "--contract-path", str(INVALID_DCS_CONTRACT), "--checks-config-path", str(config)],
+        )
+        # Default severity is 'error', so a failing lint check exits 1.
+        assert result.exit_code == 1
+        assert "failing" in result.output
+        assert "All checks passed" not in result.output
+
+    def test_standard_contract_not_linted_by_default(self, tmp_path: Path) -> None:
+        """Without --lint, an invalid standard contract is not schema-checked."""
+        config = _write_checks_config(tmp_path, "data_contract_specification: dcs\ndata_contract_checks: []\n")
+        result = self.runner.invoke(
+            app,
+            ["--contract-path", str(INVALID_DCS_CONTRACT), "--checks-config-path", str(config)],
+        )
+        assert result.exit_code == 0
+        # No schema checks ran, so nothing fails.
+        assert "failing" not in result.output

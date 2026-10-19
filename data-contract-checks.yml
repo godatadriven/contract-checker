@@ -15,6 +15,10 @@ data_contracts_path:
 
 data_contract_specification: dcs
 
+# Validate each contract against its full JSON Schema (built-in DCS/ODCS schema,
+# or a custom_schema_path). Off by default; also toggleable with --lint/--no-lint.
+# lint: true
+
 # Severity options (1)
 data_contract_check_severity:
   info:
