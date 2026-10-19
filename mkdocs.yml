@@ -42,6 +42,7 @@ nav:
   - Checks:
     - Reference: checks.md
     - Pass and fail examples: check_examples.md
+  - Schema Validation: linting.md
   - Custom Schemas: custom_schemas.md
   - CLI: cli.md
   - Contributing: contributing.md

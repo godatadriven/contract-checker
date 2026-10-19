@@ -586,6 +586,143 @@ class TestUnknownCheckType:
 
 
 # ===================================================================
+# 10. ODCS-style contracts (repeatable objects as lists)
+# ===================================================================
+
+
+ODCS_SAMPLE_DATA = {
+    "apiVersion": "v3.0.2",
+    "kind": "DataContract",
+    "name": "my_table",
+    "status": "active",
+    "schema": [
+        {
+            "name": "tbl",
+            "physicalType": "table",
+            "properties": [
+                {
+                    "name": "rcvr_cntry_code",
+                    "logicalType": "string",
+                    "primaryKey": True,
+                },
+                {
+                    "name": "amount",
+                    "logicalType": "number",
+                },
+            ],
+        }
+    ],
+}
+
+
+class TestOdcsListStyleContracts:
+    """Full pipeline against ODCS-shaped contracts, where repeatable
+    objects are lists of named objects instead of dicts keyed by name."""
+
+    def test_required_name_per_property(self) -> None:
+        v = _make_validator([{"attribute": "schema.*.properties.*.name", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path["schema.tbl.properties.rcvr_cntry_code.name"] is True
+        assert results_by_path["schema.tbl.properties.amount.name"] is True
+        assert report.failed_checks == 0
+
+    def test_required_missing_leaf_fails_per_property(self) -> None:
+        v = _make_validator([{"attribute": "schema.*.properties.*.primaryKey", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path["schema.tbl.properties.rcvr_cntry_code.primaryKey"] is True
+        assert results_by_path["schema.tbl.properties.amount.primaryKey"] is False
+
+    def test_accepted_values_per_property(self) -> None:
+        v = _make_validator(
+            [{"attribute": "schema.*.properties.*.logicalType", "checks": [{"accepted_values": ["string"]}]}]
+        )
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path["schema.tbl.properties.rcvr_cntry_code.logicalType"] is True
+        assert results_by_path["schema.tbl.properties.amount.logicalType"] is False
+
+    def test_same_path_shape_works_for_both_standards(self) -> None:
+        """The same wildcard path yields field names for list-style (ODCS)
+        and dict-style (DCS) contracts alike."""
+        odcs_style = {"models": [{"name": "orders", "fields": [{"name": "order_id"}]}]}
+        dcs_style = {"models": {"orders": {"fields": {"order_id": {"type": "text"}}}}}
+
+        v = _make_validator([{"attribute": "models.*.fields.*.name", "checks": [{"required": True}]}])
+
+        for content in (odcs_style, dcs_style):
+            report = v.run_checks(_FakeContract(content))
+            assert report.failed_checks == 0
+            assert report.results[0].attribute == "models.orders.fields.order_id.name"
+
+    def test_concrete_paths_no_wildcards_in_output(self) -> None:
+        v = _make_validator([{"attribute": "schema.*.properties.*.name", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(ODCS_SAMPLE_DATA))
+
+        assert report.results, "expected per-property results"
+        for result in report.results:
+            assert "*" not in result.attribute
+
+    def test_duplicate_property_names_checked_separately(self) -> None:
+        """A duplicate property missing its leaf fails instead of hiding behind its twin."""
+        content = {
+            "schema": [{"name": "orders", "properties": [{"name": "id", "logicalType": "string"}, {"name": "id"}]}]
+        }
+        v = _make_validator([{"attribute": "schema.*.properties.*.logicalType", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(content))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path == {
+            "schema.orders.properties.id[0].logicalType": True,
+            "schema.orders.properties.id[1].logicalType": False,
+        }
+
+    def test_exactly_one_per_duplicate_named_schema(self) -> None:
+        """exactly_one counts per schema object, even when two share a name."""
+        content = {
+            "schema": [
+                {"name": "t", "properties": [{"name": "a", "primaryKey": True}]},
+                {"name": "t", "properties": [{"name": "b", "primaryKey": True}]},
+            ]
+        }
+        v = _make_validator([{"attribute": "schema.*.properties", "checks": [{"exactly_one": {"primaryKey": True}}]}])
+        report = v.run_checks(_FakeContract(content))
+
+        assert report.failed_checks == 0
+        assert {r.attribute for r in report.results} == {"schema.t[0].properties", "schema.t[1].properties"}
+
+
+# ===================================================================
+# 11. DCS-style contracts: key-as-name
+# ===================================================================
+
+
+class TestDcsKeyAsName:
+    """Full pipeline for `*.name` on DCS-style dicts, where the key is the name."""
+
+    def test_null_field_name_is_missing(self) -> None:
+        """A null field entry fails `required` on its name instead of borrowing the key."""
+        content = {"models": {"orders": {"fields": {"order_id": None, "amount": {"type": "long"}}}}}
+        v = _make_validator([{"attribute": "models.*.fields.*.name", "checks": [{"required": True}]}])
+        report = v.run_checks(_FakeContract(content))
+
+        results_by_path = {r.attribute: r.passed for r in report.results}
+
+        assert results_by_path == {
+            "models.orders.fields.order_id.name": False,
+            "models.orders.fields.amount.name": True,
+        }
+
+
+# ===================================================================
 # Missing vs null through the full pipeline
 # ===================================================================
 
