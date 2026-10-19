@@ -7,12 +7,11 @@ nothing is schema-checked unless linting is explicitly enabled.
 
 from __future__ import annotations
 
-from datetime import date, datetime
 from pathlib import Path
 
 import pytest
 
-from contract_checker.checks.validator import DataContractValidator, _to_json_compatible
+from contract_checker.checks.validator import DataContractValidator
 from contract_checker.contract.contract_base import Contract
 from contract_checker.utils.utils import load_yaml_mapping, resolve_lint
 
@@ -20,7 +19,7 @@ FIXTURES = Path(__file__).parent.parent / "fixtures"
 VALID_DCS = FIXTURES / "dcs" / "1.2.1" / "time_data_type_example.yaml"
 INVALID_DCS = FIXTURES / "dcs" / "1.2.1" / "invalid_field_type.yaml"
 VALID_ODCS = FIXTURES / "odcs" / "3.0.2" / "full-example.odcs.yaml"
-# Contains an unquoted date (``- 2022-10-03``) that YAML parses into a ``date``.
+# Contains an unquoted date (``- 2022-10-03``) that plain ``yaml.safe_load`` parses into a ``date``.
 UNQUOTED_DATE_ODCS = "table-column-description.odcs.yaml"
 
 
@@ -54,28 +53,13 @@ def test_valid_odcs_contract_passes_standard_schema() -> None:
 
 @pytest.mark.parametrize("version", ["3.0.0", "3.1.0"])
 def test_unquoted_yaml_date_passes_standard_schema(version: str) -> None:
-    """Unquoted YAML dates are validated as strings, not rejected as ``date`` objects."""
+    """Unquoted YAML dates are loaded as strings, so they pass a ``"type": "string"`` schema."""
     contract = _load_standard_contract(FIXTURES / "odcs" / version / UNQUOTED_DATE_ODCS, "odcs", version)
-    assert isinstance(contract.contract_content["schema"][0]["properties"][0]["examples"][0], date)
+    assert contract.contract_content["schema"][0]["properties"][0]["examples"][0] == "2022-10-03"
 
     report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contract)
 
     assert report.failed_checks == 0, [r.message for r in report.results if not r.passed]
-
-
-def test_to_json_compatible_renders_dates_as_iso_strings() -> None:
-    """Dates and datetimes become ISO strings at any depth; other values are untouched."""
-    content = {
-        "a": date(2022, 10, 3),
-        "b": [datetime(2022, 10, 3, 10, 0)],
-        "c": {"n": 1, "flag": True, "s": "x", "none": None},
-    }
-
-    assert _to_json_compatible(content) == {
-        "a": "2022-10-03",
-        "b": ["2022-10-03T10:00:00"],
-        "c": {"n": 1, "flag": True, "s": "x", "none": None},
-    }
 
 
 def test_invalid_dcs_contract_fails_standard_schema() -> None:

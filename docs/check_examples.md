@@ -130,6 +130,24 @@ data_contract_checks:
 
 `accepted_values` fails a value that isn't in the list, a key left blank, or a blank item in a list. A list gets one result per item.
 
+Values are compared with the type the contract specification gives the field. DCS types
+`pii` as a boolean, so the config uses an unquoted `false`:
+
+```yaml
+data_contract_checks:
+  - attribute: models.*.fields.*.pii
+    checks:
+      - accepted_values: [false]   # no field may contain PII
+```
+
+A quoted `"false"` is a string and never matches the boolean `false`, the same way
+`--lint` rejects `pii: "false"` in a contract. A failure caused by quotes says so in its
+message. Numbers match by value, so `1` and `1.0` are the same.
+
+Dates and timestamps are strings in every supported specification, so both the contract
+and the checks config keep them as the text that was written, quoted or not:
+`accepted_values: [2024-01-01T00:00:00Z]` matches a contract `contractCreatedTs: 2024-01-01T00:00:00Z`.
+
 ```yaml
 data_contract_checks:
   - attribute: info.env
