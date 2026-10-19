@@ -23,7 +23,9 @@ def test_odcs_fixture_passes_schema_of_its_version(fixture: Path) -> None:
     """Each fixture declares its folder's version and passes lint against that schema."""
     version = fixture.relative_to(ODCS_FIXTURES).parts[0]
 
-    contracts = load_contracts(fixture, contract_specification="odcs")
+    loaded = load_contracts(fixture, contract_specification="odcs")
+    assert loaded.failed_reports == []
+    contracts = loaded.contracts
     assert [c.contract_specification_version for c in contracts] == [version]
 
     report = DataContractValidator({"data_contract_checks": []}, lint=True).run_checks(contracts[0])
