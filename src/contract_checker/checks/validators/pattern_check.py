@@ -49,6 +49,18 @@ class PatternCheck(Check):
         """
         return "pattern"
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only a string that compiles as a regular expression.
+
+        :raises ValueError: If ``check_value`` is not a string or is not a valid regex.
+        """
+        if not isinstance(check_value, str):
+            raise ValueError(f"'pattern' expects a regular expression string, got {type(check_value).__name__}")
+        try:
+            re.compile(check_value)
+        except re.error as e:
+            raise ValueError(f"'pattern' is not a valid regular expression ({check_value!r}): {e}") from e
+
     def execute(self, attribute_path: str, values: List[Any], pattern: str) -> List[ValidationResult]:
         """Execute the pattern matching validation.
 

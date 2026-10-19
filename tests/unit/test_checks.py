@@ -391,6 +391,13 @@ class TestAcceptedValuesCheck:
         assert results[0].passed is False
         assert "is not in the list of accepted values" in results[0].message
 
+    def test_accepted_values_single_string_is_exact_match_not_substring(self) -> None:
+        """A single-string config is a one-item list: 'act' must not pass against 'active'."""
+        results = self.check.execute("test.field", ["act", "active"], "active")
+
+        assert [r.passed for r in results] == [False, True]
+        assert "'act' is not in the list of accepted values" in results[0].message
+
     def test_accepted_values_check_list_all_pass(self) -> None:
         """Test accepted values check passes when all list items are accepted."""
         results = self.check.execute("test.field", [["active", "inactive"]], ["active", "inactive", "pending"])
@@ -730,6 +737,12 @@ class TestMissingVsNullRule:
         """required: false stays a no-op, even for a null value."""
         check = CheckRegistry().get("required")
         assert _validator()._run_check(check, "a.b", [None], False) == []
+
+    def test_required_none_config_is_rejected_not_ignored(self) -> None:
+        """A missing config value must not silently behave like required: false."""
+        check = CheckRegistry().get("required")
+        with pytest.raises(ValueError, match="'required' has no value"):
+            check.execute("a.b", ["present"], None)
 
 
 class _LengthCheck(Check):
