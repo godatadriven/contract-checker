@@ -45,6 +45,17 @@ class AtLeastOneCheck(Check):
     def check_type(self) -> str:
         return "at_least_one"
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only a single-key mapping such as ``{primaryKey: true}``.
+
+        :raises ValueError: If ``check_value`` is not a mapping or does not
+            have exactly one key.
+        """
+        if not isinstance(check_value, dict) or len(check_value) != 1:
+            raise ValueError(
+                f"'at_least_one' expects a single-key mapping such as {{primaryKey: true}}, got {check_value!r}"
+            )
+
     def execute(
         self,
         attribute_path: str,
