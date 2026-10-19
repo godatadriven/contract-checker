@@ -568,19 +568,27 @@ class TestFailFastOnConfig:
 
 
 class TestZeroContracts:
-    """Finding nothing to check is an error, not a passing run."""
+    """An empty directory is a warning; a missing path or filters that drop everything are errors."""
 
     def setup_method(self) -> None:
         self.runner = CliRunner()
 
-    def test_empty_directory_exits_one(self, tmp_path: Path) -> None:
+    def test_empty_directory_warns_and_exits_zero(self, tmp_path: Path) -> None:
         config = _write_checks_config(tmp_path, DCS_CHECKS)
         empty = tmp_path / "contracts"
         empty.mkdir()
         result = self.runner.invoke(app, ["--checks-config-path", str(config), "--contract-path", str(empty)])
-        assert result.exit_code == 1
+        assert result.exit_code == 0
         assert "No data contracts (*.yaml, *.yml) found under" in result.output
-        assert "All checks passed" not in result.output
+        assert "Nothing was checked" in result.output
+
+    def test_missing_path_exits_one(self, tmp_path: Path) -> None:
+        config = _write_checks_config(tmp_path, DCS_CHECKS)
+        result = self.runner.invoke(
+            app, ["--checks-config-path", str(config), "--contract-path", str(tmp_path / "nope")]
+        )
+        assert result.exit_code == 1
+        assert "Provided contract path does not exist" in result.output
 
     def test_filters_excluding_everything_exits_one(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
@@ -594,7 +602,8 @@ class TestZeroContracts:
         result = self.runner.invoke(app, ["--checks-config-path", str(config)])
         assert result.exit_code == 1
         assert "filtered out ALL discovered contracts" in result.output
-        assert "No data contracts" in result.output
+        assert "All 1 contract file(s) under" in result.output
+        assert "were excluded by include_paths/exclude_paths" in result.output
 
 
 class TestLoadFailures:
