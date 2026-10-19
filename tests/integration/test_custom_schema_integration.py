@@ -13,7 +13,7 @@ from pathlib import Path
 
 from contract_checker.checks.validator import DataContractValidator
 from contract_checker.contract.contract_base import Contract
-from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
+from contract_checker.utils.utils import load_yaml_mapping, resolve_lint
 
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
 ECOMMERCE_SCHEMA = CUSTOM_FIXTURES / "ecommerce-product-schema.json"
@@ -25,7 +25,7 @@ def _load_contract(contract_file: Path, schema: Path) -> Contract:
     """Build a Contract in custom-schema mode from a fixture file."""
     return Contract(
         contract_path=str(contract_file),
-        contract_content=parse_yml_to_dict(contract_file),
+        contract_content=load_yaml_mapping(contract_file),
         contract_specification="custom",
         contract_specification_version="custom",
         custom_schema_path=schema,

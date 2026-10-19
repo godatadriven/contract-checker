@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from contract_checker.checks.models import ContractValidationReport
@@ -25,7 +26,7 @@ def validate_contracts(
             'json' prints a machine-readable JSON document to stdout instead.
         load_failures (list[ContractValidationReport] | None): Reports for files
             that could not be loaded (see load_contracts); printed and counted
-            alongside the validation reports, listed first.
+            alongside the validation reports, in file order.
         lint (bool): Whether to validate each contract against its JSON Schema.
             Already resolved by the caller (see utils.resolve_lint); default off.
     Returns:
@@ -38,7 +39,13 @@ def validate_contracts(
     from contract_checker.checks.validator import DataContractValidator
 
     validator = DataContractValidator(checks_dict, lint=lint)
-    reports: list[ContractValidationReport] = [*(load_failures or []), *validator.validate(contracts)]
+    # Keep the report in discovery (sorted path) order, so "Contract N" and the
+    # JSON contracts[] match the file list whether or not a file failed to load.
+    # Same key as the discovery sort in load_contracts (Path, not str).
+    reports: list[ContractValidationReport] = sorted(
+        [*(load_failures or []), *validator.validate(contracts)],
+        key=lambda report: Path(str(report.contract_file)),
+    )
     if output_format == "json":
         # Plain print, not rich: stdout must stay clean, unwrapped JSON for
         # piping into jq, files, or other tools.

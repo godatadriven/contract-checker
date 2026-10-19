@@ -35,9 +35,9 @@ class YamlMappingError(ValueError):
 def load_yaml_mapping(file_path: Path) -> dict:
     """Load a YAML file whose root must be a mapping.
 
-    Unlike :func:`parse_yml_to_dict`, this does not swallow errors: every
-    failure mode raises :class:`YamlMappingError` with a message that names
-    the file, so a broken file is reported rather than silently skipped.
+    This does not swallow errors: every failure mode raises
+    :class:`YamlMappingError` with a message that names the file, so a broken
+    file is reported rather than silently skipped.
 
     Unquoted dates and timestamps stay strings; see :class:`_NoTimestampSafeLoader`.
 
@@ -117,20 +117,6 @@ def resolve_lint(cli_lint: Optional[bool], checks_dict: Optional[dict]) -> bool:
         return config_lint
 
     return False
-
-
-def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
-    """Parse a YAML file (a data contract or a checks config) into a dict.
-
-    Unquoted dates and timestamps stay strings; see :class:`_NoTimestampSafeLoader`.
-    """
-    try:
-        with open(file_path, "r") as file:
-            yaml_dict = yaml.load(file, Loader=_NoTimestampSafeLoader)
-        return yaml_dict if isinstance(yaml_dict, dict) else None
-    except Exception as e:
-        logging.warning(f"Failed to parse YAML: {e}")
-        return None
 
 
 def load_json_schema(schema_path: str) -> Optional[dict]:

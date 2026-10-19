@@ -24,7 +24,7 @@ def test_odcs_fixture_passes_schema_of_its_version(fixture: Path) -> None:
     version = fixture.relative_to(ODCS_FIXTURES).parts[0]
 
     loaded = load_contracts(fixture, contract_specification="odcs")
-    assert loaded.failed_reports == []
+    assert loaded.failed_reports == [], [r.results[0].message for r in loaded.failed_reports]
     contracts = loaded.contracts
     assert [c.contract_specification_version for c in contracts] == [version]
 

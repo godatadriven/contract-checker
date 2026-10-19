@@ -234,11 +234,13 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
-    # Nothing to check is a misconfiguration, not a pass: a wrong path or an
-    # over-eager filter must not turn a CI gate green.
+    # Nothing to check is not a failure: the directory may not have any
+    # contracts yet, or include_paths/exclude_paths may deliberately select
+    # none. load_contracts has already logged one warning naming which of the
+    # two it was. A path that does not exist at all is still an error
+    # (FileNotFoundError above).
     if not loaded.contracts and not loaded.failed_reports:
-        logging.error(f"No data contracts (*.yaml, *.yml) found under: {resolved_contract_path}")
-        raise typer.Exit(code=1)
+        raise typer.Exit()
 
     reports = validate_contracts(
         loaded.contracts,
