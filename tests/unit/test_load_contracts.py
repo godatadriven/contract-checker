@@ -53,6 +53,14 @@ class TestDiscoveredCount:
         assert loaded.discovered == 2
         assert loaded.contracts == []
 
+    def test_directory_named_like_a_contract_is_ignored(self, tmp_path: Path) -> None:
+        _write(tmp_path, "orders.yaml", GOOD_DCS)
+        (tmp_path / "archive.yaml").mkdir()
+        loaded = load_contracts(tmp_path, contract_specification="dcs")
+        assert loaded.discovered == 1
+        assert [c.contract_path.name for c in loaded.contracts] == ["orders.yaml"]
+        assert loaded.failed_reports == []
+
     def test_single_file_path_counts_as_one(self, tmp_path: Path) -> None:
         path = _write(tmp_path, "a.yaml", GOOD_DCS)
         loaded = load_contracts(path, contract_specification="dcs")

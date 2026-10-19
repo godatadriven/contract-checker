@@ -217,7 +217,10 @@ def load_contracts(
         contract_paths = [contract_path]
         discovered_count = 1
     else:
-        contract_paths = sorted([*contract_path.rglob("*.yaml"), *contract_path.rglob("*.yml")])
+        # rglob matches names, not file types: skip directories such as "archive.yaml/".
+        contract_paths = sorted(
+            p for p in [*contract_path.rglob("*.yaml"), *contract_path.rglob("*.yml")] if p.is_file()
+        )
         discovered_count = len(contract_paths)
         contract_paths = filter_contract_paths(contract_paths, contract_path, include_paths or [], exclude_paths or [])
         logging.debug(
