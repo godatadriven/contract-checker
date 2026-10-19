@@ -654,7 +654,9 @@ class TestLoadFailures:
         result = self._invoke(tmp_path, contracts)
         assert result.exit_code == 1
         assert "LOAD" in result.output
-        assert "is empty" in result.output
+        # Rich wraps table cells at word boundaries, so with a long tmp path the
+        # message may be split across lines; compare on whitespace-normalised text.
+        assert "is empty" in " ".join(result.output.replace("│", " ").split())
 
     def test_load_failure_ignores_severity_warn(self, tmp_path: Path) -> None:
         """'warn' makes failed checks advisory; an unloadable file is not a check."""
