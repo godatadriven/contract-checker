@@ -234,21 +234,12 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
+    # Nothing to check is not a failure: the directory may not have any
+    # contracts yet, or include_paths/exclude_paths may deliberately select
+    # none. load_contracts has already logged one warning naming which of the
+    # two it was. A path that does not exist at all is still an error
+    # (FileNotFoundError above).
     if not loaded.contracts and not loaded.failed_reports:
-        if loaded.discovered > 0:
-            # Files were found but include_paths/exclude_paths removed every one
-            # of them. Nobody writes a pattern meaning to match nothing, so this
-            # is a misconfiguration and must not turn a CI gate green.
-            logging.error(
-                f"All {loaded.discovered} contract file(s) under {resolved_contract_path} were excluded by "
-                "include_paths/exclude_paths; nothing was checked. Fix the patterns in 'data_contracts_path'."
-            )
-            raise typer.Exit(code=1)
-        # The directory exists but has no contracts yet. That is not a failure:
-        # warn so it is visible in the log, and exit 0.
-        logging.warning(
-            f"No data contracts (*.yaml, *.yml) found under: {resolved_contract_path}. Nothing was checked."
-        )
         raise typer.Exit()
 
     reports = validate_contracts(

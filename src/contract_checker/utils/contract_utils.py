@@ -25,15 +25,10 @@ class LoadedContracts:
     could not be loaded (not valid YAML, missing version key, unsupported
     version); each is a failed report so it is printed, counted and
     reflected in the exit code like any other failing contract.
-    ``discovered`` is how many contract files were found under the path
-    *before* include/exclude filtering, so a caller can tell an empty
-    directory (nothing to check) apart from filters that excluded everything
-    (almost always a mistake).
     """
 
     contracts: list[Contract] = field(default_factory=list)
     failed_reports: list[ContractValidationReport] = field(default_factory=list)
-    discovered: int = 0
 
 
 def parse_data_contracts_path_config(
@@ -211,7 +206,6 @@ def load_contracts(
     path_type = is_dir_or_yaml(contract_path)
     if path_type == "yaml_file":
         contract_paths = [contract_path]
-        discovered_count = 1
     else:
         # rglob matches names, not file types: skip directories such as "archive.yaml/".
         contract_paths = sorted(
@@ -222,13 +216,16 @@ def load_contracts(
         logging.debug(
             f"Discovered {discovered_count} contract file(s), {len(contract_paths)} remaining after filtering."
         )
-        if discovered_count > 0 and not contract_paths:
+        # Exactly one warning when nothing is left to check, naming the actual cause.
+        if discovered_count == 0:
+            logging.warning(f"No data contracts (*.yaml, *.yml) found under: {contract_path}. Nothing was checked.")
+        elif not contract_paths:
             logging.warning(
-                "include_paths/exclude_paths filtered out ALL discovered contracts, nothing will be validated. "
-                "Check your patterns in 'data_contracts_path'."
+                f"include_paths/exclude_paths filtered out ALL {discovered_count} discovered contracts, "
+                "nothing will be validated. Check your patterns in 'data_contracts_path'."
             )
 
-    loaded = LoadedContracts(discovered=discovered_count)
+    loaded = LoadedContracts()
     for path in contract_paths:
         try:
             loaded.contracts.append(_load_contract(path, specification, custom_schema_path))

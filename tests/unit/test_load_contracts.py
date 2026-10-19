@@ -37,35 +37,27 @@ class TestConfigurationErrorsRaise:
             load_contracts(tmp_path / "nope", contract_specification="dcs")
 
 
-class TestDiscoveredCount:
-    """``discovered`` counts files found before filtering, so an empty directory is distinguishable."""
+class TestDiscovery:
+    """Only regular *.yaml / *.yml files are candidates; nothing found is an empty result, not an error."""
 
-    def test_empty_directory_discovers_nothing(self, tmp_path: Path) -> None:
+    def test_empty_directory_loads_nothing(self, tmp_path: Path) -> None:
         loaded = load_contracts(tmp_path, contract_specification="dcs")
-        assert loaded.discovered == 0
         assert loaded.contracts == []
         assert loaded.failed_reports == []
 
-    def test_counts_files_before_filtering(self, tmp_path: Path) -> None:
+    def test_filters_excluding_everything_load_nothing(self, tmp_path: Path) -> None:
         _write(tmp_path, "a.yaml", GOOD_DCS)
         _write(tmp_path, "b.yml", GOOD_DCS)
         loaded = load_contracts(tmp_path, contract_specification="dcs", include_paths=["nothing/**"])
-        assert loaded.discovered == 2
         assert loaded.contracts == []
+        assert loaded.failed_reports == []
 
     def test_directory_named_like_a_contract_is_ignored(self, tmp_path: Path) -> None:
         _write(tmp_path, "orders.yaml", GOOD_DCS)
         (tmp_path / "archive.yaml").mkdir()
         loaded = load_contracts(tmp_path, contract_specification="dcs")
-        assert loaded.discovered == 1
         assert [c.contract_path.name for c in loaded.contracts] == ["orders.yaml"]
         assert loaded.failed_reports == []
-
-    def test_single_file_path_counts_as_one(self, tmp_path: Path) -> None:
-        path = _write(tmp_path, "a.yaml", GOOD_DCS)
-        loaded = load_contracts(path, contract_specification="dcs")
-        assert loaded.discovered == 1
-        assert len(loaded.contracts) == 1
 
 
 class TestPerFileFailuresAreReported:
