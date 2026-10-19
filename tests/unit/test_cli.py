@@ -569,21 +569,30 @@ class TestFailFastOnConfig:
 
 
 class TestZeroContracts:
-    """Finding nothing to check is an error, not a passing run."""
+    """Nothing to check is a warning and exit 0; only a path that does not exist is an error."""
 
     def setup_method(self) -> None:
         self.runner = CliRunner()
 
-    def test_empty_directory_exits_one(self, tmp_path: Path) -> None:
+    def test_empty_directory_warns_and_exits_zero(self, tmp_path: Path) -> None:
         config = _write_checks_config(tmp_path, DCS_CHECKS)
         empty = tmp_path / "contracts"
         empty.mkdir()
         result = self.runner.invoke(app, ["--checks-config-path", str(config), "--contract-path", str(empty)])
-        assert result.exit_code == 1
+        assert result.exit_code == 0
         assert "No data contracts (*.yaml, *.yml) found under" in result.output
-        assert "All checks passed" not in result.output
+        assert "Nothing was checked" in result.output
+        assert "filtered out" not in result.output
 
-    def test_filters_excluding_everything_exits_one(self, tmp_path: Path) -> None:
+    def test_missing_path_exits_one(self, tmp_path: Path) -> None:
+        config = _write_checks_config(tmp_path, DCS_CHECKS)
+        result = self.runner.invoke(
+            app, ["--checks-config-path", str(config), "--contract-path", str(tmp_path / "nope")]
+        )
+        assert result.exit_code == 1
+        assert "Provided contract path does not exist" in result.output
+
+    def test_filters_excluding_everything_warns_and_exits_zero(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
         _write_contract(contracts, "orders.yaml")
         config = _write_checks_config(
@@ -593,9 +602,10 @@ class TestZeroContracts:
             "data_contract_checks: []\n",
         )
         result = self.runner.invoke(app, ["--checks-config-path", str(config)])
-        assert result.exit_code == 1
-        assert "filtered out ALL discovered contracts" in result.output
-        assert "No data contracts" in result.output
+        assert result.exit_code == 0
+        assert "filtered out ALL 1 discovered contracts" in result.output
+        # One warning naming the cause: contracts were found, so not "none found".
+        assert "No data contracts" not in result.output
 
 
 class TestLoadFailures:
@@ -626,13 +636,29 @@ class TestLoadFailures:
         assert broken["results"][0]["check_type"] == "load"
         assert "is not valid YAML" in broken["results"][0]["message"]
 
+    def test_reports_stay_in_file_order_with_a_broken_file_in_the_middle(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "a_good.yaml")
+        _write_contract(contracts, "b_broken.yaml", "info: [not, closed\n")
+        _write_contract(contracts, "c_good.yaml")
+        result = self._invoke(tmp_path, contracts, "--format", "json")
+
+        document = json.loads(result.stdout)
+        assert [Path(c["file"]).name for c in document["contracts"]] == ["a_good.yaml", "b_broken.yaml", "c_good.yaml"]
+        # Rich folds long paths mid-word in the text report (e.g. on Windows runners),
+        # so locate the broken file by its LOAD row rather than by its name.
+        text = self._invoke(tmp_path, contracts, "--output-mode", "full").output
+        assert text.index("Contract 1: ") < text.index("Contract 2: ") < text.index("LOAD") < text.index("Contract 3: ")
+
     def test_load_failure_shows_in_text_report(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
         _write_contract(contracts, "broken.yaml", "")
         result = self._invoke(tmp_path, contracts)
         assert result.exit_code == 1
         assert "LOAD" in result.output
-        assert "is empty" in result.output
+        # Rich wraps table cells at word boundaries, so with a long tmp path the
+        # message may be split across lines; compare on whitespace-normalised text.
+        assert "is empty" in " ".join(result.output.replace("│", " ").split())
 
     def test_load_failure_ignores_severity_warn(self, tmp_path: Path) -> None:
         """'warn' makes failed checks advisory; an unloadable file is not a check."""

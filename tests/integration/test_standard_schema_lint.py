@@ -13,7 +13,7 @@ import pytest
 
 from contract_checker.checks.validator import DataContractValidator
 from contract_checker.contract.contract_base import Contract
-from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
+from contract_checker.utils.utils import load_yaml_mapping, resolve_lint
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 VALID_DCS = FIXTURES / "dcs" / "1.2.1" / "time_data_type_example.yaml"
@@ -27,7 +27,7 @@ def _load_standard_contract(contract_file: Path, specification: str, version: st
     """Build a Contract in standard-schema mode from a fixture file."""
     return Contract(
         contract_path=str(contract_file),
-        contract_content=parse_yml_to_dict(contract_file),
+        contract_content=load_yaml_mapping(contract_file),
         contract_specification=specification,
         contract_specification_version=version,
     )

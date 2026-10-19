@@ -11,7 +11,6 @@ from contract_checker.utils.utils import (
     CustomSchemaError,
     load_and_validate_json_schema,
     load_yaml_mapping,
-    parse_yml_to_dict,
     resolve_lint,
 )
 
@@ -115,8 +114,3 @@ class TestYamlLoadingKeepsDatesAsStrings:
         path = tmp_path / "contract.yaml"
         path.write_text(_DATES_YAML)
         assert load_yaml_mapping(path) == _DATES_EXPECTED
-
-    def test_parse_yml_to_dict(self, tmp_path: Path) -> None:
-        path = tmp_path / "contract.yaml"
-        path.write_text(_DATES_YAML)
-        assert parse_yml_to_dict(path) == _DATES_EXPECTED

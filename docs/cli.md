@@ -45,8 +45,8 @@ overall outcome so CI pipelines can pass or fail on it:
 
 | Code | Meaning |
 | ---- | ------- |
-| 0 | All checks passed, or checks failed with `--severity warn` |
-| 1 | One or more checks failed with `--severity error` (the default); a contract file could not be loaded; a configuration error; or no contracts were found |
+| 0 | All checks passed; checks failed with `--severity warn`; or there were no contracts to check (a warning is logged) |
+| 1 | One or more checks failed with `--severity error` (the default); a contract file could not be loaded; or a configuration error |
 | 2 | Usage error (e.g. an invalid `--severity` value) |
 
 Use `--severity warn` to keep *checks* advisory: the same report is printed, but failed
@@ -65,8 +65,8 @@ cause of a failure is always reported where it belongs:
 | **Contract fails a check** | `info.title` does not match `^Orders` | Reported per attribute in the usual way. Exit 1 with `--severity error`, 0 with `--severity warn`. |
 
 Finding **no contracts at all** (an empty directory, or `include_paths` / `exclude_paths`
-that filter everything out) is treated as a configuration error: a run that checks
-nothing must not turn a CI gate green.
+that filter everything out) is not an error: the run logs a warning that nothing was
+checked and exits 0. A `--contract-path` that does not exist is still an error (exit 1).
 
 ```text
 $ contract-checker --contract-path ./contracts   # output abridged
@@ -75,7 +75,7 @@ $ contract-checker --contract-path ./contracts   # output abridged
 📄 Contract 1: contracts/orders.yaml ~ Checks passed: [3/4]
   ✗ FAIL  PATTERN  info.title  Attribute 'info.title' value 'Order events' does not match pattern '^Orders'
 
-📄 Contract 3: contracts/payments.yaml ~ Checks passed: [0/1]
+📄 Contract 2: contracts/payments.yaml ~ Checks passed: [0/1]
   ✗ FAIL  LOAD     file        contracts/payments.yaml is not valid YAML: while parsing a flow sequence ...
 ```
 

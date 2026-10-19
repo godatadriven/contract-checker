@@ -37,6 +37,29 @@ class TestConfigurationErrorsRaise:
             load_contracts(tmp_path / "nope", contract_specification="dcs")
 
 
+class TestDiscovery:
+    """Only regular *.yaml / *.yml files are candidates; nothing found is an empty result, not an error."""
+
+    def test_empty_directory_loads_nothing(self, tmp_path: Path) -> None:
+        loaded = load_contracts(tmp_path, contract_specification="dcs")
+        assert loaded.contracts == []
+        assert loaded.failed_reports == []
+
+    def test_filters_excluding_everything_load_nothing(self, tmp_path: Path) -> None:
+        _write(tmp_path, "a.yaml", GOOD_DCS)
+        _write(tmp_path, "b.yml", GOOD_DCS)
+        loaded = load_contracts(tmp_path, contract_specification="dcs", include_paths=["nothing/**"])
+        assert loaded.contracts == []
+        assert loaded.failed_reports == []
+
+    def test_directory_named_like_a_contract_is_ignored(self, tmp_path: Path) -> None:
+        _write(tmp_path, "orders.yaml", GOOD_DCS)
+        (tmp_path / "archive.yaml").mkdir()
+        loaded = load_contracts(tmp_path, contract_specification="dcs")
+        assert [c.contract_path.name for c in loaded.contracts] == ["orders.yaml"]
+        assert loaded.failed_reports == []
+
+
 class TestPerFileFailuresAreReported:
     """A single bad file becomes a failed report; the other files still load."""
 
@@ -71,6 +94,13 @@ class TestPerFileFailuresAreReported:
         assert report.results[0].check_type == "load"
         assert report.results[0].attribute == "file"
         assert expected_message in report.results[0].message
+
+    def test_dcs_version_with_v_prefix_is_unsupported(self, tmp_path: Path) -> None:
+        _write(tmp_path, "a.yaml", "dataContractSpecification: v1.1.0\ninfo:\n  title: Orders\n")
+        loaded = load_contracts(tmp_path, contract_specification="dcs")
+        assert loaded.contracts == []
+        assert len(loaded.failed_reports) == 1
+        assert "version 'v1.1.0' is not supported" in loaded.failed_reports[0].results[0].message
 
     def test_unsupported_version_message_has_no_pydantic_noise(self, tmp_path: Path) -> None:
         _write(tmp_path, "bad.yaml", "dataContractSpecification: 9.9.9\n")

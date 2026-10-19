@@ -10,10 +10,11 @@ from contract_checker.contract.contract_base import Contract
 from contract_checker.utils.path_filter import filter_contract_paths
 from contract_checker.utils.utils import YamlMappingError, is_dir_or_yaml, load_yaml_mapping
 
-# Specifications with vendored schemas under contract_schemas/, and the
-# contract key that carries the specification version for each.
-SUPPORTED_SPECIFICATIONS = ("dcs", "odcs")
+# Specifications with vendored schemas under contract_schemas/, mapped to the
+# contract key that carries the specification version. Single source of truth:
+# to support a new standard, add it here (and vendor its schemas).
 SPECIFICATION_VERSION_KEYS = {"dcs": "dataContractSpecification", "odcs": "apiVersion"}
+SUPPORTED_SPECIFICATIONS = tuple(SPECIFICATION_VERSION_KEYS)
 
 
 @dataclass
@@ -74,25 +75,30 @@ def parse_data_contracts_path_config(
 
 
 def get_specification_version(contract_content: dict, contract_standard: str) -> str:
-    """Get the version of the provided contract based on its standard."""
+    """Get the version of the provided contract based on its standard.
+
+    ``contract_standard`` must be ``"custom"`` or one of SUPPORTED_SPECIFICATIONS;
+    :func:`load_contracts` validates that before any file is read, so an
+    unknown value here is a programming error and raises ``KeyError``.
+    """
     if contract_standard == "custom":
         return "custom"
 
-    version_key = SPECIFICATION_VERSION_KEYS.get(contract_standard)
-    if version_key is None:
-        raise ValueError(
-            f"Unsupported data_contract_specification '{contract_standard}'. "
-            f"Use one of: {', '.join(SUPPORTED_SPECIFICATIONS)}, or 'custom' with a custom schema."
-        )
+    version_key = SPECIFICATION_VERSION_KEYS[contract_standard]
     if version_key not in contract_content:
         raise ValueError(
             f"Contract is missing the '{version_key}' key, cannot determine its {contract_standard} version."
         )
 
-    # ODCS contracts carry the version as `apiVersion: vX.Y.Z`, but the
-    # vendored schema folders are bare semver (e.g. odcs/3.0.2). Strip the
-    # leading `v` so the version resolves to a supported schema directory.
-    return str(contract_content[version_key]).removeprefix("v")
+    version = str(contract_content[version_key])
+    if contract_standard == "odcs":
+        # ODCS contracts carry the version as `apiVersion: vX.Y.Z`, but the
+        # vendored schema folders are bare semver (e.g. odcs/3.0.2). Strip the
+        # leading `v` so the version resolves to a supported schema directory.
+        # Only ODCS: a DCS `dataContractSpecification: v1.1.0` is invalid and
+        # must be rejected as an unsupported version, not normalised.
+        version = version.removeprefix("v")
+    return version
 
 
 def parse_specification_from_contract(contract_content: dict, checks_dict: dict) -> tuple[str, str]:
@@ -105,17 +111,7 @@ def parse_specification_from_contract(contract_content: dict, checks_dict: dict)
     else:
         raise ValueError("data_contract_standard not configured.")
 
-    # Maybe we can simplify this with a mapping dict in utils later?
-    if contract_specification == "dcs":
-        version = contract_content["dataContractSpecification"]
-    elif contract_specification == "odcs":
-        # Normalise `vX.Y.Z` to bare semver to match the schema folder names.
-        version = str(contract_content["apiVersion"]).removeprefix("v")
-        return version, contract_specification
-    else:
-        raise ValueError("Specification field not found in data contract.")
-
-    return version, contract_specification
+    return get_specification_version(contract_content, contract_specification), contract_specification
 
 
 def _load_failure_report(contract_path: Path, message: str) -> ContractValidationReport:
@@ -211,16 +207,22 @@ def load_contracts(
     if path_type == "yaml_file":
         contract_paths = [contract_path]
     else:
-        contract_paths = sorted([*contract_path.rglob("*.yaml"), *contract_path.rglob("*.yml")])
+        # rglob matches names, not file types: skip directories such as "archive.yaml/".
+        contract_paths = sorted(
+            p for p in [*contract_path.rglob("*.yaml"), *contract_path.rglob("*.yml")] if p.is_file()
+        )
         discovered_count = len(contract_paths)
         contract_paths = filter_contract_paths(contract_paths, contract_path, include_paths or [], exclude_paths or [])
         logging.debug(
             f"Discovered {discovered_count} contract file(s), {len(contract_paths)} remaining after filtering."
         )
-        if discovered_count > 0 and not contract_paths:
+        # Exactly one warning when nothing is left to check, naming the actual cause.
+        if discovered_count == 0:
+            logging.warning(f"No data contracts (*.yaml, *.yml) found under: {contract_path}. Nothing was checked.")
+        elif not contract_paths:
             logging.warning(
-                "include_paths/exclude_paths filtered out ALL discovered contracts, nothing will be validated. "
-                "Check your patterns in 'data_contracts_path'."
+                f"include_paths/exclude_paths filtered out ALL {discovered_count} discovered contracts, "
+                "nothing will be validated. Check your patterns in 'data_contracts_path'."
             )
 
     loaded = LoadedContracts()
