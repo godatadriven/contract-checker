@@ -157,7 +157,15 @@ def main(
     # malformed check entry, is a setup error that is reported once, before any
     # contract is read, rather than attributed to every contract file.
     if not checks_config_path.is_file():
-        logging.error(f"Checks config file not found: {checks_config_path}")
+        # The default path is relative to the current directory, so the usual
+        # cause is running from the wrong folder: say where we looked and how
+        # to point the CLI at the file.
+        logging.error(
+            f"Checks config file not found: {checks_config_path} "
+            f"(looked in {checks_config_path.resolve().parent}).\n"
+            "Pass --checks-config-path <file>, or run from the directory that contains it. "
+            "See docs/config.md for an example."
+        )
         raise typer.Exit(code=1)
     try:
         checks_dict = load_yaml_mapping(checks_config_path)
