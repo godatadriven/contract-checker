@@ -11,6 +11,9 @@ test-unit:
 test-integration:
 	uv run pytest ./tests/integration
 
+benchmark:
+	uv run python scripts/benchmark.py
+
 validate-examples:
 	uv run contract-checker
 

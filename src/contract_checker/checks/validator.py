@@ -114,6 +114,11 @@ class DataContractValidator:
         self.registry = check_registry or CheckRegistry()
         # Initialize the reporter for output formatting and summary generation
         self.reporter = ValidationReporter()
+        # One compiled JSON Schema validator per schema file. All contracts of
+        # the same standard/version (or one custom schema) share a schema, and
+        # loading + meta-validating it is far more expensive than validating a
+        # contract against it, so do that once per schema, not once per contract.
+        self._schema_validators: Dict[Path, Any] = {}
 
     def run_checks(self, data_contract: Contract) -> ContractValidationReport:
         """
@@ -229,6 +234,29 @@ class DataContractValidator:
             )
         )
 
+    def _get_schema_validator(self, schema_path: Path) -> Any:  # noqa: ANN401
+        """Return the compiled JSON Schema validator for a schema file, cached per path.
+
+        The first call for a path loads the schema, checks it against its
+        meta-schema, and builds the validator; later calls reuse it. A broken
+        schema is not cached, so it raises again for every contract and each one
+        reports the failure.
+
+        Args:
+            schema_path: Path to the JSON Schema file
+
+        Returns:
+            A jsonschema validator instance for the schema
+
+        Raises:
+            CustomSchemaError: If the schema is missing, not valid JSON, or not a valid JSON Schema.
+        """
+        if schema_path not in self._schema_validators:
+            schema = load_and_validate_json_schema(schema_path)
+            validator_class = jsonschema.validators.validator_for(schema)
+            self._schema_validators[schema_path] = validator_class(schema)
+        return self._schema_validators[schema_path]
+
     def _validate_against_schema(self, data_contract: Contract) -> List[ValidationResult]:
         """
         Validate a contract against its JSON Schema.
@@ -250,7 +278,7 @@ class DataContractValidator:
         # clear failure instead of a generic runtime error.
         try:
             schema_path = self._resolve_schema_path(data_contract)
-            schema = load_and_validate_json_schema(schema_path)
+            validator = self._get_schema_validator(schema_path)
         except CustomSchemaError as e:
             results.append(
                 ValidationResult(
@@ -264,9 +292,6 @@ class DataContractValidator:
             return results
 
         try:
-            # Create a validator to get all errors
-            validatorClass = jsonschema.validators.validator_for(schema)
-            validator = validatorClass(schema)
             errors = list(validator.iter_errors(_to_json_compatible(data_contract.contract_content)))
 
             if not errors:

@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from contract_checker.checks import validator as validator_module
 from contract_checker.checks.validator import DataContractValidator
 from contract_checker.contract.contract_base import Contract
 from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
@@ -147,3 +150,36 @@ def test_invalid_contract_fails_extended_odcs_schema() -> None:
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)
+
+
+def test_schema_is_loaded_once_for_many_contracts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The schema is loaded and meta-validated once per validator, not once per contract.
+
+    Loading + meta-validating a schema costs more than validating a contract
+    against it, so contracts sharing a schema must reuse the compiled validator.
+    """
+    calls = []
+    real_load = validator_module.load_and_validate_json_schema
+
+    def counting_load(path: Path) -> dict:
+        calls.append(path)
+        return real_load(path)
+
+    monkeypatch.setattr(validator_module, "load_and_validate_json_schema", counting_load)
+    valid = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
+    invalid = _load_contract(CUSTOM_FIXTURES / "invalid-ecommerce-contract.yaml", ECOMMERCE_SCHEMA)
+
+    reports = DataContractValidator({"data_contract_checks": []}, lint=True).validate([valid, invalid, valid])
+
+    assert calls == [ECOMMERCE_SCHEMA]
+    # Reusing the validator does not leak results between contracts.
+    assert [r.failed_checks == 0 for r in reports] == [True, False, True]
+
+
+def test_invalid_schema_is_reported_for_every_contract() -> None:
+    """A broken schema is not cached away: each contract still reports the failure."""
+    contract = _load_contract(CUSTOM_FIXTURES / "valid-ecommerce-contract.yaml", INVALID_SCHEMA)
+
+    reports = DataContractValidator({"data_contract_checks": []}, lint=True).validate([contract, contract])
+
+    assert [r.failed_checks for r in reports] == [1, 1]
