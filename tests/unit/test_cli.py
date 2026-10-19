@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner, Result
 
 from contract_checker.cli import app
@@ -420,11 +421,16 @@ class TestCustomSchemaCli:
         assert result.exit_code == 0
         assert "linting is disabled" not in result.output
 
-    def test_non_boolean_lint_config_exits_2(self, tmp_path: Path) -> None:
-        """A quoted 'lint: "false"' is rejected rather than silently treated as true."""
+    def test_non_boolean_lint_config_is_a_config_error(self, tmp_path: Path) -> None:
+        """A quoted 'lint: "false"' is rejected rather than silently treated as true.
+
+        It is a config content error, so it exits 1 like the other config checks
+        (exit 2 is reserved for invalid CLI option values).
+        """
         config = _write_checks_config(tmp_path, 'lint: "false"\ndata_contract_checks: []\n')
         result = self.runner.invoke(app, ["--contract-path", str(VALID_CONTRACT), "--checks-config-path", str(config)])
-        assert result.exit_code == 2
+        assert result.exit_code == 1
+        assert "Invalid checks config" in result.output
         assert "must be true or false" in result.output
 
     def test_schema_path_from_config(self, tmp_path: Path) -> None:
@@ -473,6 +479,72 @@ class TestCustomSchemaCli:
         # The CLI flag wins, so the invalid schema triggers the fail-fast exit.
         assert result.exit_code == 1
         assert "not a valid JSON Schema" in result.output
+
+
+GOOD_DCS_CONTRACT = "dataContractSpecification: 1.1.0\ninfo:\n  title: Orders\n"
+
+
+def _write_contract(directory: Path, name: str, body: str = GOOD_DCS_CONTRACT) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / name
+    path.write_text(body)
+    return path
+
+
+class TestFailFastOnConfig:
+    """Configuration problems exit 1 with one clear message, before any contract is read."""
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    def _invoke(self, config: Path, contracts: Path) -> Result:
+        return self.runner.invoke(app, ["--checks-config-path", str(config), "--contract-path", str(contracts)])
+
+    def test_missing_config_file(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml")
+        result = self._invoke(tmp_path / "nope.yml", contracts)
+        assert result.exit_code == 1
+        assert "Checks config file not found" in result.output
+
+    def test_config_not_valid_yaml(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml")
+        config = _write_checks_config(tmp_path, "data_contract_checks: [\n")
+        result = self._invoke(config, contracts)
+        assert result.exit_code == 1
+        assert "Invalid checks config" in result.output
+        assert "is not valid YAML" in result.output
+
+    @pytest.mark.parametrize(
+        ("check_line", "expected"),
+        [
+            ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
+            ("      - pattern: ['^Orders']\n        required: true", "each check must be a single-key mapping"),
+        ],
+        ids=["unknown-check", "multi-key-check"],
+    )
+    def test_bad_check_entry_is_a_config_error_not_a_contract_failure(
+        self, tmp_path: Path, check_line: str, expected: str
+    ) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "a.yaml")
+        _write_contract(contracts, "b.yaml")
+        config = _write_checks_config(
+            tmp_path,
+            "data_contract_specification: dcs\n"
+            "data_contract_checks:\n"
+            "  - attribute: info.title\n"
+            "    checks:\n"
+            f"{check_line}\n",
+        )
+        result = self._invoke(config, contracts)
+        assert result.exit_code == 1
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+        assert expected in result.output
+        # Reported once as a config error, never per contract file.
+        assert "Error processing file" not in result.output
+        assert result.output.count(expected) == 1
 
 
 class TestStandardSchemaLintCli:
