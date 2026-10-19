@@ -73,6 +73,53 @@ class _EmptyRegistry(CheckRegistry):
         pass
 
 
+class TestBuiltinValidateConfig:
+    """Each built-in check rejects values its execute() cannot handle."""
+
+    @pytest.mark.parametrize(
+        ("check", "message"),
+        [
+            ({"required": None}, r"'required' has no value \(did you mean 'required: true'\?\)"),
+            ({"required": "yes"}, "'required' expects true or false"),
+            ({"required": 1}, "'required' expects true or false"),
+            ({"pattern": "^Orders("}, "'pattern' is not a valid regular expression"),
+            ({"pattern": 123}, "'pattern' expects a regular expression string, got int"),
+            ({"accepted_values": 1.0}, "'accepted_values' expects a non-empty list"),
+            ({"accepted_values": []}, "'accepted_values' expects a non-empty list"),
+            ({"accepted_values": {"a": 1}}, "'accepted_values' expects a non-empty list"),
+            ({"accepted_values": None}, "'accepted_values' expects a non-empty list"),
+            ({"min_items": "1"}, "'min_items' expects a non-negative integer"),
+            ({"min_items": True}, "'min_items' expects a non-negative integer"),
+            ({"min_items": -1}, "'min_items' expects a non-negative integer"),
+            ({"max_items": 2.5}, "'max_items' expects a non-negative integer"),
+            ({"at_least_one": True}, "'at_least_one' expects a single-key mapping"),
+            ({"at_least_one": {}}, "'at_least_one' expects a single-key mapping"),
+            ({"at_least_one": {"a": 1, "b": 2}}, "'at_least_one' expects a single-key mapping"),
+            ({"exactly_one": "primaryKey"}, "'exactly_one' expects a single-key mapping"),
+        ],
+    )
+    def test_rejected_values(self, check: dict[str, Any], message: str) -> None:
+        with pytest.raises(ChecksConfigError, match=r"entry 1 \('info.title'\): " + message):
+            validate_checks_config(_config(check))
+
+    @pytest.mark.parametrize(
+        "check",
+        [
+            {"required": True},
+            {"required": False},
+            {"pattern": r"^\d+\.\d+\.\d+$"},
+            {"accepted_values": ["a", "b"]},
+            {"accepted_values": "0.0.1"},  # single-value shorthand, as documented
+            {"min_items": 0},
+            {"max_items": 10},
+            {"at_least_one": {"unique": True}},
+            {"exactly_one": {"primaryKey": True}},
+        ],
+    )
+    def test_accepted_values(self, check: dict[str, Any]) -> None:
+        validate_checks_config(_config(check))
+
+
 class _FakeContract:
     contract_path = "orders.yaml"
     custom_schema_path = None
@@ -83,8 +130,8 @@ class TestValidatorRunsConfigValidation:
     """validate() refuses a malformed config instead of blaming every contract."""
 
     def test_validate_raises_for_bad_config(self) -> None:
-        v = DataContractValidator(_config({"nonexistent_check": True}))
-        with pytest.raises(ChecksConfigError, match="unknown check type 'nonexistent_check'"):
+        v = DataContractValidator(_config({"pattern": "("}))
+        with pytest.raises(ChecksConfigError, match="not a valid regular expression"):
             v.validate([_FakeContract()])  # type: ignore[list-item]
 
     def test_validate_with_good_config_still_reports_check_failures(self) -> None:

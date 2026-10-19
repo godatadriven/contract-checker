@@ -53,6 +53,17 @@ class AcceptedValuesCheck(Check):
         """
         return "accepted_values"
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept a non-empty list of values, or a single string value.
+
+        :raises ValueError: If ``check_value`` is anything else (a mapping, a
+            number, or null).
+        """
+        if isinstance(check_value, str):
+            return
+        if not isinstance(check_value, list) or not check_value:
+            raise ValueError(f"'accepted_values' expects a non-empty list of values, got {check_value!r}")
+
     def execute(self, attribute_path: str, value_list: List[Any], accepted_values: List[str]) -> List[ValidationResult]:
         """Execute the accepted values validation.
 
@@ -66,6 +77,12 @@ class AcceptedValuesCheck(Check):
             ``value_list``) produces no results. Null values are reported by
             the validator.
         """
+        # validate_config allows a single string as shorthand for a one-item
+        # list; normalise it here so ``in`` is a membership test, not a
+        # substring test ('act' must not pass against accepted_values: active).
+        if isinstance(accepted_values, str):
+            accepted_values = [accepted_values]
+
         results = []
         for value in value_list:
             if isinstance(value, str):
