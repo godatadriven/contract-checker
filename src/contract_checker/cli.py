@@ -187,8 +187,9 @@ def main(
     try:
         resolved_lint = resolve_lint(lint, checks_dict)
     except ValueError as e:
-        logging.error(str(e))
-        raise typer.Exit(code=2)
+        # Config content, not a CLI usage error: exit 1 like the other config checks.
+        logging.error(f"Invalid checks config: {e}")
+        raise typer.Exit(code=1)
     logging.debug(f"Schema validation (lint): {resolved_lint}")
 
     # Warn (visible at default verbosity) only when lint is off by default: an

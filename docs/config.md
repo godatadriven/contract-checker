@@ -154,3 +154,4 @@ The following are rejected:
   `exactly_one` a single-key mapping
 - `data_contract_specification` missing or not one of `dcs`, `odcs` — unless a custom
   schema is given, in which case it is not needed
+- `lint` present but not `true`/`false` (a quoted `"false"` is a string, not a boolean)
