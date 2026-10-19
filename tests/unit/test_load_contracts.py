@@ -37,6 +37,29 @@ class TestConfigurationErrorsRaise:
             load_contracts(tmp_path / "nope", contract_specification="dcs")
 
 
+class TestDiscoveredCount:
+    """``discovered`` counts files found before filtering, so an empty directory is distinguishable."""
+
+    def test_empty_directory_discovers_nothing(self, tmp_path: Path) -> None:
+        loaded = load_contracts(tmp_path, contract_specification="dcs")
+        assert loaded.discovered == 0
+        assert loaded.contracts == []
+        assert loaded.failed_reports == []
+
+    def test_counts_files_before_filtering(self, tmp_path: Path) -> None:
+        _write(tmp_path, "a.yaml", GOOD_DCS)
+        _write(tmp_path, "b.yml", GOOD_DCS)
+        loaded = load_contracts(tmp_path, contract_specification="dcs", include_paths=["nothing/**"])
+        assert loaded.discovered == 2
+        assert loaded.contracts == []
+
+    def test_single_file_path_counts_as_one(self, tmp_path: Path) -> None:
+        path = _write(tmp_path, "a.yaml", GOOD_DCS)
+        loaded = load_contracts(path, contract_specification="dcs")
+        assert loaded.discovered == 1
+        assert len(loaded.contracts) == 1
+
+
 class TestPerFileFailuresAreReported:
     """A single bad file becomes a failed report; the other files still load."""
 

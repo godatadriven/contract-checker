@@ -49,5 +49,7 @@ without failing the pipeline.
 
 Two things fail the step even with `--severity warn`: a contract file that cannot be
 loaded at all (not valid YAML, unsupported specification version, …), which is also
-annotated on the file with the title `load`, and a run that finds no contracts to check.
-Both mean the checker could not do its job, which should never look like a green build.
+annotated on the file with the title `load`, and a run whose `include_paths`/`exclude_paths`
+filtered out every contract that was found. Both mean the checker could not do its job,
+which should never look like a green build. A directory that exists but contains no
+contracts yet is not an error: the run logs a warning and exits 0.
