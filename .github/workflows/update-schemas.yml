@@ -59,12 +59,13 @@ jobs:
             Automated update from `.github/workflows/update-schemas.yml`.
 
             This PR vendors newly published ODCS / DCS schema versions, refreshes the
-            version ranges in `README.md` and `docs/index.md`, and scaffolds a starter
-            test fixture per new version. See the workflow run summary for the exact
-            versions added.
+            version ranges in `README.md` and `docs/index.md`, and adds test fixtures per
+            new version: for ODCS, upstream's `docs/examples/` at the release tag; for DCS,
+            a scaffolded copy of the previous version. See the workflow run summary for
+            the exact versions added.
 
             **Reviewer checklist**
             - [ ] Confirm the vendored `schema.json` files match upstream.
-            - [ ] Review scaffolded fixtures — they are copies of the previous version
+            - [ ] Review scaffolded DCS fixtures — they are copies of the previous version
                   with the version field bumped and may not satisfy new required fields.
             - [ ] Consider whether the new version(s) warrant dedicated checks.

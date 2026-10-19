@@ -2,7 +2,7 @@
 domain: seller # Domain
 dataProduct: my quantum # Data product name
 version: 1.1.0 # Version (follows semantic versioning)
-status: active
+status: current
 id: 53581432-6c55-4ba2-a65f-72344a91553a
 
 # Lots of information
@@ -10,13 +10,10 @@ description:
   purpose: Views built on top of the seller tables.
   limitations: Data based on seller perspective, no buyer information
   usage: Predict sales over time
-  authoritativeDefinitions:
-    - type: privacy-statement
-      url: https://example.com/gdpr.pdf
 tenant: ClimateQuantumInc
 
 kind: DataContract
-apiVersion: v3.0.2 # Standard version (follows semantic versioning)
+apiVersion: v3.0.0
 
 # Infrastructure & servers
 servers:
@@ -32,18 +29,16 @@ schema:
   - name: tbl
     physicalName: tbl_1
     physicalType: table
-    businessName: Core Payment Metrics
     description: Provides core payment metrics
     authoritativeDefinitions:
       - url: https://catalog.data.gov/dataset/air-quality
         type: businessDefinition
       - url: https://youtu.be/jbY1BKFj9ec
         type: videoTutorial
-    tags: [ 'finance', 'payments']
+    tags: [ ]
     dataGranularityDescription: Aggregation on columns txn_ref_dt, pmt_txn_id
     properties:
-      - name: transaction_reference_date
-        physicalName: txn_ref_dt
+      - name: txn_ref_dt
         primaryKey: false
         primaryKeyPosition: -1
         businessName: transaction reference date
@@ -79,7 +74,7 @@ schema:
         partitioned: false
         partitionKeyPosition: -1
         criticalDataElement: false
-        tags: [ 'uid' ]
+        tags: [ ]
         classification: restricted
       - name: rcvr_cntry_code
         primaryKey: false
@@ -154,7 +149,7 @@ team:
     dateIn: "2022-10-01"
   - username: daustin
     role: Owner
-    description: Keeper of the grail
+    comment: Keeper of the grail
     dateIn: "2022-10-01"
 
 
