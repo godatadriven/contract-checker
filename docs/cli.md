@@ -75,7 +75,7 @@ $ contract-checker --contract-path ./contracts   # output abridged
 📄 Contract 1: contracts/orders.yaml ~ Checks passed: [3/4]
   ✗ FAIL  PATTERN  info.title  Attribute 'info.title' value 'Order events' does not match pattern '^Orders'
 
-📄 Contract 3: contracts/payments.yaml ~ Checks passed: [0/1]
+📄 Contract 2: contracts/payments.yaml ~ Checks passed: [0/1]
   ✗ FAIL  LOAD     file        contracts/payments.yaml is not valid YAML: while parsing a flow sequence ...
 ```
 
