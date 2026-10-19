@@ -5,11 +5,31 @@ from typing import Any, List, Sequence, Union
 from ..base import Check
 from ..models import ValidationResult
 
-# Config values are compared by their string form, so a YAML ``1`` and a YAML
-# ``"1"`` are the same accepted value. Nested lists, mappings and null are not
-# values and are rejected by ``validate_config``.
+# The JSON Schema scalar types (string, number/integer, boolean). Nested lists,
+# mappings and null are not values and are rejected by ``validate_config``.
+# Dates need no type of their own: YAML loading keeps them as strings.
 _SCALAR_TYPES = (str, int, float, bool)
 _Scalar = Union[str, int, float, bool]
+
+_JSON_TYPE_NAMES = {bool: "boolean", int: "integer", float: "number", str: "string"}
+
+
+def _same_value(a: Any, b: Any) -> bool:  # noqa: ANN401
+    """Compare two values the way JSON Schema types them.
+
+    ``==`` already keeps strings apart from numbers (``"255" != 255``) and
+    treats ``1`` and ``1.0`` as the same number. Booleans need their own check:
+    ``bool`` is a subclass of ``int`` in Python, so ``True == 1``, but JSON
+    Schema keeps ``boolean`` and ``integer`` apart.
+    """
+    if isinstance(a, bool) or isinstance(b, bool):
+        return type(a) is type(b) and bool(a == b)
+    return bool(a == b)
+
+
+def _json_type_name(value: Any) -> str:  # noqa: ANN401
+    """Name ``value``'s type the way JSON Schema and ``--lint`` do."""
+    return _JSON_TYPE_NAMES.get(type(value), type(value).__name__)
 
 
 class AcceptedValuesCheck(Check):
@@ -21,10 +41,11 @@ class AcceptedValuesCheck(Check):
     - For list attributes, each item in the list is checked against the accepted values,
     and a validation result is generated for each item.
 
-    Values are compared by their string form: a contract value ``1`` matches an
-    accepted value of ``1`` or ``"1"``, and ``true`` matches ``true`` or ``"true"``
-    (YAML booleans render as ``True``/``False``). ``1.0`` and ``1`` are different
-    values.
+    Values are compared with their type, the same way ``--lint`` checks them
+    against the contract schema: a contract value ``255`` matches an accepted
+    value of ``255`` (or ``255.0``) but not ``"255"``, and ``true`` matches
+    ``true`` but not ``"true"`` or ``1``. Unquoted dates are strings on both
+    sides, so ``2024-01-01`` matches ``2024-01-01`` and ``"2024-01-01"``.
 
     The identifier for this check type (``"accepted_values"``).
 
@@ -101,13 +122,10 @@ class AcceptedValuesCheck(Check):
             the validator.
         """
         # validate_config allows a single scalar as shorthand for a one-item
-        # list. Normalise both sides to their string form so ``in`` is a
-        # membership test, not a substring test ('act' must not pass against
-        # accepted_values: active), and a YAML ``1`` matches a contract ``1``
-        # (the contract side was always stringified; the config side was not).
+        # list. Wrapping it keeps the test a membership test, not a substring
+        # test ('act' must not pass against accepted_values: active).
         if isinstance(accepted_values, _SCALAR_TYPES):
             accepted_values = [accepted_values]
-        accepted_strs = [str(v) for v in accepted_values]
 
         results = []
         for value in value_list:
@@ -123,17 +141,32 @@ class AcceptedValuesCheck(Check):
                 items = [value]
 
             for item in items:
-                item_str = str(item)
-                passed = item_str in accepted_strs
+                passed = any(_same_value(item, accepted) for accepted in accepted_values)
 
                 if passed:
-                    message = f"Attribute '{attribute_path}' value '{item_str}' is in the list of accepted values"
+                    message = f"Attribute '{attribute_path}' value '{item}' is in the list of accepted values"
                 else:
                     message = (
-                        f"Attribute '{attribute_path}' value '{item_str}' "
+                        f"Attribute '{attribute_path}' value '{item}' "
                         f"is not in the list of accepted values: '{accepted_values}'"
-                    )
+                    ) + self._type_mismatch_hint(item, accepted_values)
 
                 results.append(ValidationResult("", attribute_path, self.check_type, passed, message))
 
         return results
+
+    @staticmethod
+    def _type_mismatch_hint(item: Any, accepted_values: Sequence[_Scalar]) -> str:  # noqa: ANN401
+        """Explain a failure where the value is listed, but with another type.
+
+        A contract ``255`` against ``accepted_values: ["255"]``, or ``true``
+        against ``["true"]``, reads as the same value but is not: point at the
+        quotes in the checks config rather than leave the failure unexplained.
+        """
+        for accepted in accepted_values:
+            if str(accepted).lower() == str(item).lower():
+                return (
+                    f" (type mismatch: the contract has {_json_type_name(item)} {item!r}, the checks config has "
+                    f"{_json_type_name(accepted)} {accepted!r}; add or remove the quotes in the checks config)"
+                )
+        return ""

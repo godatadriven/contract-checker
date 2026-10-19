@@ -681,6 +681,44 @@ class TestLoadFailures:
         assert "title=load::" in result.output
 
 
+class TestAcceptedValuesDates:
+    """Unquoted dates match between contract and checks config, as strings."""
+
+    CONTRACT = (
+        "apiVersion: v3.1.0\n"
+        "kind: DataContract\n"
+        "id: orders\n"
+        "version: 1.0.0\n"
+        "status: active\n"
+        "contractCreatedTs: 2024-01-01T00:00:00Z\n"
+    )
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    @pytest.mark.parametrize(
+        "accepted",
+        ["[2024-01-01T00:00:00Z]", '["2024-01-01T00:00:00Z"]'],
+        ids=["unquoted", "quoted"],
+    )
+    def test_unquoted_timestamp_matches_and_lints(self, tmp_path: Path, accepted: str) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml", self.CONTRACT)
+        config = _write_checks_config(
+            tmp_path,
+            "data_contract_specification: odcs\n"
+            "data_contract_checks:\n"
+            "  - attribute: contractCreatedTs\n"
+            "    checks:\n"
+            f"      - accepted_values: {accepted}\n",
+        )
+        result = self.runner.invoke(
+            app, ["--lint", "--contract-path", str(contracts), "--checks-config-path", str(config)]
+        )
+        assert result.exit_code == 0, result.output
+        assert "All checks passed" in result.output
+
+
 class TestStandardSchemaLintCli:
     """Test JSON Schema linting of standard (DCS/ODCS) contracts via the CLI."""
 

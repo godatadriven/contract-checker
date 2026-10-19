@@ -402,25 +402,50 @@ class TestAcceptedValuesCheck:
         ("contract_value", "accepted"),
         [
             (1, [1, 2]),
-            (1, ["1", "2"]),
-            ("1", [1, 2]),
+            (1, [1.0]),
             (True, [True]),
-            (True, ["True"]),
+            (False, False),
+            ("2024-01-01T00:00:00Z", ["2024-01-01T00:00:00Z"]),
             (2024, 2024),
         ],
-        ids=["int-int", "int-str", "str-int", "bool-bool", "bool-str", "int-shorthand"],
+        ids=["int-int", "int-float", "bool-bool", "bool-shorthand", "timestamp-string", "int-shorthand"],
     )
-    def test_accepted_values_compares_by_string_form(self, contract_value: object, accepted: object) -> None:
-        """A YAML ``1`` in the config matches a contract ``1``: both sides are stringified."""
+    def test_accepted_values_matches_same_type(self, contract_value: object, accepted: object) -> None:
+        """A value matches an accepted value of the same JSON type: ``1`` and ``1.0`` are one number."""
         results = self.check.execute("test.field", [contract_value], accepted)  # type: ignore[arg-type]
 
         assert [r.passed for r in results] == [True]
 
-    def test_accepted_values_float_and_int_are_different_values(self) -> None:
-        """``1.0`` is not ``1``: write the value the way the contract writes it."""
-        results = self.check.execute("test.field", [1], [1.0])
+    @pytest.mark.parametrize(
+        ("contract_value", "accepted"),
+        [
+            (255, ["255"]),
+            ("255", [255]),
+            (True, ["True"]),
+            (True, ["true"]),
+            (True, [1]),
+            (1, [True]),
+        ],
+        ids=["int-str", "str-int", "bool-str", "bool-lower-str", "bool-int", "int-bool"],
+    )
+    def test_accepted_values_different_type_fails(self, contract_value: object, accepted: object) -> None:
+        """A number is not a string and a boolean is not a number, the same verdict as ``--lint``."""
+        results = self.check.execute("test.field", [contract_value], accepted)  # type: ignore[arg-type]
 
         assert [r.passed for r in results] == [False]
+
+    def test_accepted_values_type_mismatch_hints_at_quotes(self) -> None:
+        """A value listed with the wrong type explains the failure instead of leaving it unexplained."""
+        results = self.check.execute("test.field", [255], ["255"])
+
+        assert [r.passed for r in results] == [False]
+        assert "the contract has integer 255, the checks config has string '255'" in results[0].message
+
+    def test_accepted_values_plain_miss_has_no_type_hint(self) -> None:
+        """A value that is simply not listed gets no quoting hint."""
+        results = self.check.execute("test.field", [255], [512])
+
+        assert "type mismatch" not in results[0].message
 
     def test_accepted_values_check_list_all_pass(self) -> None:
         """Test accepted values check passes when all list items are accepted."""
