@@ -38,19 +38,36 @@ class RequiredCheck(Check):
     # and required: false must stay a no-op even when the value is null.
     handles_nulls = True
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only ``true`` or ``false``.
+
+        A bare ``required:`` (YAML null) is rejected rather than treated as
+        ``false``: it is almost always a forgotten ``true``, and ``required:
+        false`` exists for the intentional case.
+
+        :raises ValueError: If ``check_value`` is anything else.
+        """
+        if check_value is None:
+            raise ValueError("'required' has no value (did you mean 'required: true'?)")
+        if not isinstance(check_value, bool):
+            raise ValueError(f"'required' expects true or false, got {check_value!r}")
+
     def execute(self, attribute_path: str, values: List[Any], check_value: bool) -> List[ValidationResult]:
         """Execute the required field validation.
 
         :param attribute_path: The dot-notation path to the attribute being checked
             (e.g., ``"info.title"`` or ``"models.*.fields.*.name"``).
         :param values: List of values found at the attribute path.
-        :param check_value: If ``True``, the attribute must exist and be non-null.
-            If ``False`` (or null), the check does nothing and returns no results.
+        :param check_value: ``True``: the attribute must exist and be non-null.
+            ``False``: the check does nothing and returns no results. Anything
+            else is rejected (see :meth:`validate_config`).
         :return: A list containing a single :class:`ValidationResult` indicating
             whether the check passed or failed, or an empty list when
-            ``check_value`` is falsy.
+            ``check_value`` is ``False``.
+        :raises ValueError: If ``check_value`` is not a boolean.
         """
-        if not check_value:
+        self.validate_config(check_value)
+        if check_value is False:
             # required: false documents that a field is optional; it checks
             # nothing, so it must not add a (misleading) passing result.
             return []

@@ -22,6 +22,16 @@ def _not_a_collection_result(attribute_path: str, check_type: str) -> Validation
     )
 
 
+def _validate_count_config(check_type: str, check_value: Any) -> None:  # noqa: ANN401
+    """Accept only a non-negative integer.
+
+    :raises ValueError: If ``check_value`` is not an integer (booleans are
+        rejected too, since ``true`` is not a count) or is negative.
+    """
+    if isinstance(check_value, bool) or not isinstance(check_value, int) or check_value < 0:
+        raise ValueError(f"'{check_type}' expects a non-negative integer, got {check_value!r}")
+
+
 def _count_items(
     check: Check, attribute_path: str, value: Union[List[Any], Dict[Any, Any]]
 ) -> Tuple[int, List[ValidationResult]]:
@@ -72,6 +82,10 @@ class MinItemsCheck(Check):
         :return: The string ``"min_items"``.
         """
         return "min_items"
+
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only a non-negative integer. See :func:`_validate_count_config`."""
+        _validate_count_config(self.check_type, check_value)
 
     def execute(self, attribute_path: str, values: List[Any], min_count: int) -> List[ValidationResult]:
         """Execute the minimum items validation.
@@ -137,6 +151,10 @@ class MaxItemsCheck(Check):
         :return: The string ``"max_items"``.
         """
         return "max_items"
+
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Accept only a non-negative integer. See :func:`_validate_count_config`."""
+        _validate_count_config(self.check_type, check_value)
 
     def execute(self, attribute_path: str, values: List[Any], max_count: int) -> List[ValidationResult]:
         """Execute the maximum items validation.
