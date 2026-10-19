@@ -62,6 +62,16 @@ class <ClassName>(Check):
     def check_type(self) -> str:
         return "<check_name>"
 
+    def validate_config(self, check_value: Any) -> None:  # noqa: ANN401
+        """Reject configuration values execute() cannot handle.
+
+        Called once per config entry before any contract is read; a ValueError
+        here is reported once as a config error, not against every contract.
+        """
+        # TODO: check the shape/type of check_value, e.g.:
+        # if not isinstance(check_value, int):
+        #     raise ValueError(f"'{self.check_type}' expects an integer, got {check_value!r}")
+
     def execute(
         self,
         attribute_path: str,
@@ -119,6 +129,9 @@ class Test<ClassName>:
         assert results[0].message == "Attribute 'test.field' is null"
 ```
 
+   - If you implemented `validate_config`, add one accepted and one rejected value to the
+     parametrised lists in `tests/unit/test_checks_config.py::TestBuiltinValidateConfig`.
+
    - Add `"<check_name>": <check_value>,` to the `CHECK_VALUES` dict in `tests/unit/test_checks.py`. `TestMissingVsNullRule` fails until you do, and then enforces the missing-vs-null rule (see the `Check` docstring in `checks/base.py`) on the new check.
 
 7. Edit `docs/checks.md` — insert before the final `::: contract_checker.checks.validators` autodoc line:
@@ -137,7 +150,7 @@ data_contract_checks:
 ```
 
 8. Print a summary of all files created/modified and remind the developer to:
-   - Implement `execute()` logic in the new validator file
+   - Implement `execute()` logic in the new validator file, and `validate_config()` if the check has a config value with a required shape
    - Replace `TODO` stubs in the test class with real assertions and inputs
    - Fill in the docs description and example
 </process>

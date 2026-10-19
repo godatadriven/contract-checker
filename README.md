@@ -39,7 +39,7 @@ pip install contract-checker
 uv add contract-checker
 ```
 
-Requires Python 3.10+.
+Requires Python 3.11–3.15.
 
 ---
 

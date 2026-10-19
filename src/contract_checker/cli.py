@@ -7,13 +7,15 @@ import typer
 from typing_extensions import Annotated
 
 from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, github_annotations
+from contract_checker.checks.validator import ChecksConfigError, validate_checks_config
 from contract_checker.logger import setup_console_logger
 from contract_checker.utils.check_utils import validate_contracts
 from contract_checker.utils.contract_utils import load_contracts, parse_data_contracts_path_config
 from contract_checker.utils.utils import (
     CustomSchemaError,
+    YamlMappingError,
     load_and_validate_json_schema,
-    parse_yml_to_dict,
+    load_yaml_mapping,
     resolve_lint,
 )
 from contract_checker.version import version as get_version
@@ -113,7 +115,7 @@ def main(
     data contracts do not meet the specified criteria.
 
     Args:
-        config_path: Path to the YAML file containing data contract check definitions.
+        checks_config_path: Path to the YAML file containing data contract check definitions.
         severity: Severity level for validation issues ('error' or 'warn').
         output_mode: How much of the report to print ('summary', 'failures', or 'full').
         output_format: 'text' for the human-readable report, 'json' for machine output.
@@ -151,7 +153,26 @@ def main(
         logging.error(f"Invalid format '{output_format}'. Use one of: {', '.join(OUTPUT_FORMATS)}.")
         raise typer.Exit(code=2)
 
-    checks_dict = parse_yml_to_dict(checks_config_path)
+    # Fail fast on the configuration: a missing or malformed checks file, or a
+    # malformed check entry, is a setup error that is reported once, before any
+    # contract is read, rather than attributed to every contract file.
+    if not checks_config_path.is_file():
+        # The default path is relative to the current directory, so the usual
+        # cause is running from the wrong folder: say where we looked and how
+        # to point the CLI at the file.
+        logging.error(
+            f"Checks config file not found: {checks_config_path} "
+            f"(looked in {checks_config_path.resolve().parent}).\n"
+            "Pass --checks-config-path <file>, or run from the directory that contains it. "
+            "See docs/config.md for an example."
+        )
+        raise typer.Exit(code=1)
+    try:
+        checks_dict = load_yaml_mapping(checks_config_path)
+        validate_checks_config(checks_dict)
+    except (YamlMappingError, ChecksConfigError) as e:
+        logging.error(f"Invalid checks config: {e}")
+        raise typer.Exit(code=1)
 
     # Resolve the contract path: the CLI flag wins, otherwise fall back to the
     # 'data_contracts_path' block in the checks config file (which may also carry
@@ -166,7 +187,7 @@ def main(
 
     # Resolve the custom schema path: the CLI flag wins, otherwise fall back to the
     # 'custom_schema_path' key in the checks config file.
-    config_schema_path = checks_dict.get("custom_schema_path") if checks_dict else None
+    config_schema_path = checks_dict.get("custom_schema_path")
     resolved_schema_path = custom_schema_path or (Path(config_schema_path) if config_schema_path else None)
 
     # Resolve schema validation ("lint") once, here; the validator just receives
@@ -174,8 +195,9 @@ def main(
     try:
         resolved_lint = resolve_lint(lint, checks_dict)
     except ValueError as e:
-        logging.error(str(e))
-        raise typer.Exit(code=2)
+        # Config content, not a CLI usage error: exit 1 like the other config checks.
+        logging.error(f"Invalid checks config: {e}")
+        raise typer.Exit(code=1)
     logging.debug(f"Schema validation (lint): {resolved_lint}")
 
     # Warn (visible at default verbosity) only when lint is off by default: an
@@ -204,7 +226,7 @@ def main(
     try:
         contracts = load_contracts(
             contract_path=resolved_contract_path,
-            contract_specification=checks_dict.get("data_contract_specification") if checks_dict else None,
+            contract_specification=checks_dict.get("data_contract_specification"),
             custom_schema_path=resolved_schema_path,
             include_paths=include_paths,
             exclude_paths=exclude_paths,
