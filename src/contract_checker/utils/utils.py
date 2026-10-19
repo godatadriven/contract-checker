@@ -6,6 +6,11 @@ from typing import Optional, Union
 import jsonschema
 import yaml
 
+# libyaml's C loader parses YAML ~7x faster than the pure-Python SafeLoader and
+# builds the same Python objects. PyYAML wheels ship it on all major platforms;
+# fall back to the pure-Python loader where it is unavailable.
+SafeLoader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 
 class CustomSchemaError(Exception):
     """Raised when a JSON Schema is missing, unparseable, or itself invalid."""
@@ -29,7 +34,7 @@ def load_yaml_mapping(file_path: Path) -> dict:
     """
     try:
         with open(file_path, "r") as file:
-            content = yaml.safe_load(file)
+            content = yaml.load(file, Loader=SafeLoader)
     except OSError as e:
         raise YamlMappingError(f"Cannot read {file_path}: {e.strerror}") from e
     except yaml.YAMLError as e:
@@ -104,7 +109,7 @@ def parse_yml_to_dict(file_path: Path) -> Optional[dict]:
     """Parse a data contract from a YAML string."""
     try:
         with open(file_path, "r") as file:
-            yaml_dict = yaml.safe_load(file)
+            yaml_dict = yaml.load(file, Loader=SafeLoader)
         return yaml_dict if isinstance(yaml_dict, dict) else None
     except Exception as e:
         logging.warning(f"Failed to parse YAML: {e}")
