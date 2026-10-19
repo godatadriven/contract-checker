@@ -368,6 +368,58 @@ class TestCustomSchemaCli:
         # Linting is off, so the invalid schema is never loaded — no fail-fast.
         assert result.exit_code == 0
 
+    def test_custom_schema_without_lint_warns_by_default(self, tmp_path: Path) -> None:
+        """A custom schema with lint left unset warns at default verbosity."""
+        config = _write_checks_config(tmp_path)
+        result = self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "WARNING: A custom schema was provided but linting is disabled" in result.output
+
+    def test_custom_schema_with_explicit_no_lint_cli_does_not_warn(self, tmp_path: Path) -> None:
+        """An explicit --no-lint is a deliberate choice, so no warning is shown."""
+        config = _write_checks_config(tmp_path)
+        result = self.runner.invoke(
+            app,
+            [
+                "--no-lint",
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "linting is disabled" not in result.output
+
+    def test_custom_schema_with_explicit_lint_false_config_does_not_warn(self, tmp_path: Path) -> None:
+        """An explicit 'lint: false' in the checks config also suppresses the warning."""
+        config = _write_checks_config(tmp_path, "lint: false\ndata_contract_checks: []\n")
+        result = self.runner.invoke(
+            app,
+            [
+                "--contract-path",
+                str(VALID_CONTRACT),
+                "--custom-schema-path",
+                str(VALID_SCHEMA),
+                "--checks-config-path",
+                str(config),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "linting is disabled" not in result.output
+
     def test_non_boolean_lint_config_exits_2(self, tmp_path: Path) -> None:
         """A quoted 'lint: "false"' is rejected rather than silently treated as true."""
         config = _write_checks_config(tmp_path, 'lint: "false"\ndata_contract_checks: []\n')

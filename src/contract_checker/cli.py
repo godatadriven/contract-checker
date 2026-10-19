@@ -178,8 +178,11 @@ def main(
         raise typer.Exit(code=2)
     logging.debug(f"Schema validation (lint): {resolved_lint}")
 
-    if resolved_schema_path is not None and not resolved_lint:
-        logging.info(
+    # Warn (visible at default verbosity) only when lint is off by default: an
+    # explicit --no-lint / 'lint: false' is a deliberate choice, not a surprise.
+    lint_set_explicitly = lint is not None or "lint" in (checks_dict or {})
+    if resolved_schema_path is not None and not resolved_lint and not lint_set_explicitly:
+        logging.warning(
             "A custom schema was provided but linting is disabled; schema validation will be skipped. "
             "Pass --lint or set 'lint: true' in the checks config to enable it."
         )
