@@ -9,6 +9,13 @@ on:
     workflows: [CI]
     types: [completed]
 
+# One review at a time per PR branch, so two runs can't both create a comment or overwrite each other
+# out of order. Queue instead of cancelling: a late-arriving run for an older commit must not cancel
+# the review of a newer one (the resolver skips stale runs once they get their turn).
+concurrency:
+  group: ai-review-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
 jobs:
   ai_review:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
@@ -116,6 +123,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
           COMMENT_FILE="/tmp/ai-pr-review-comment.md"
+
+          # --- Don't overwrite the comment if the PR was pushed to during the review ---
+          CURRENT_HEAD_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)
+          if [ "$CURRENT_HEAD_SHA" != "$PR_HEAD_SHA" ]; then
+            echo "::notice::PR head moved from ${PR_HEAD_SHA} to ${CURRENT_HEAD_SHA}; the run for the new head posts the review."
+            exit 0
+          fi
 
           # --- If Claude didn't run or didn't write the file, just say so ---
           if [ ! -s "$COMMENT_FILE" ] || ! grep -q "ai-pr-review-marker" "$COMMENT_FILE"; then

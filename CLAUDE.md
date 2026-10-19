@@ -76,7 +76,8 @@ Null/missing semantics (see the `Check` docstring) apply to every check:
   head as git objects only (never into the working tree), because Claude Code would otherwise load the PR's
   own `.claude/` hooks/settings/skills, `.mcp.json` and `CLAUDE.md`. Keep it that way: do not add a checkout
   of the PR head or `allow-unsafe-pr-checkout`. It upserts a single PR comment marked
-  `<!-- ai-pr-review-marker -->`. Claude only runs when the PR author and triggering actor are in the
+  `<!-- ai-pr-review-marker -->`; runs are queued per PR branch (`concurrency`, no cancelling) and skip
+  posting if the PR head moved during the review. Claude only runs when the PR author and triggering actor are in the
   `ALLOWED_USERS` allowlist in the workflow. Otherwise, or if Claude fails, the comment just says the
   agent is not available.
 - `CLAUDE_CODE_OAUTH_TOKEN` is a secret of the `claude-review` environment, restricted to the `main`
