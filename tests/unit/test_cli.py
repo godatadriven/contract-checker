@@ -513,6 +513,8 @@ class TestFailFastOnConfig:
         result = self._invoke(tmp_path / "nope.yml", contracts)
         assert result.exit_code == 1
         assert "Checks config file not found" in result.output
+        assert str(tmp_path.resolve()) in result.output
+        assert "--checks-config-path" in result.output
 
     def test_config_not_valid_yaml(self, tmp_path: Path) -> None:
         contracts = tmp_path / "contracts"
