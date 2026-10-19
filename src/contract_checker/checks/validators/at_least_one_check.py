@@ -84,13 +84,24 @@ class AtLeastOneCheck(Check):
         results = []
         found = False
         for value in values:
+            items: List[Any]
+            # A collection is either a dict keyed by item name (DCS style)
+            # or a list of named objects (ODCS style).
             if isinstance(value, dict):
                 null_keys = [str(key) for key, item in value.items() if item is None]
                 if null_keys:
                     results.append(self.null_elements_result(attribute_path, len(null_keys), null_keys))
-                for item in value.values():
-                    if isinstance(item, dict) and item.get(required_attr) == required_val:
-                        found = True
+                items = list(value.values())
+            elif isinstance(value, list):
+                null_count = sum(1 for item in value if item is None)
+                if null_count:
+                    results.append(self.null_elements_result(attribute_path, null_count))
+                items = value
+            else:
+                items = []
+            for item in items:
+                if isinstance(item, dict) and item.get(required_attr) == required_val:
+                    found = True
 
         if found:
             message = f"Attribute '{attribute_path}' contains at least one item with '{required_attr}: {required_val}'"

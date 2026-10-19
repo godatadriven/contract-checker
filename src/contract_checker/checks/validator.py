@@ -1,5 +1,7 @@
 """Core data contract validation logic with integrated reporting."""
 
+
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -332,6 +334,23 @@ class DataContractValidator:
         values for each. This allows checks to run per-item rather than across
         all matched items combined.
 
+        A ``*`` segment matches each repeated item regardless of how the
+        repetition is represented in the contract standard:
+
+        - dict keyed by name (DCS style): ``*`` expands over the dict entries,
+          e.g. ``models.*.fields.*.unique``
+        - list of objects (ODCS style): ``*`` expands over the list items,
+          e.g. ``schema.*.properties.*.logicalType``
+
+        List items are labeled by their ``name``, falling back to their index.
+        Items whose label is not unique (duplicate names) are labeled
+        ``label[index]`` so each one is checked separately.
+
+        A trailing ``name`` segment after a dict ``*`` resolves to the dict key
+        itself when the entry is a dict without an explicit ``name`` value, so
+        ``models.*.fields.*.name`` yields field names for both standards. Null
+        or scalar entries are not named objects and resolve to missing.
+
         Args:
             data: The data dictionary
             attribute_path: Dot-separated path with wildcards (e.g., 'models.*.fields.*.unique')
@@ -373,11 +392,19 @@ class DataContractValidator:
 
         if isinstance(data, dict):
             if current_part == "*":
-                # Wildcard: expand into each key in the dict
+                # Wildcard: expand into each entry of the dict (DCS-style
+                # repeatable objects are dicts keyed by name).
                 results_wildcard: Dict[str, List[Any]] = {}
                 for key, value in data.items():
-                    sub = self._expand_and_collect(value, remaining, [*current_path, key])
-                    results_wildcard.update(sub)
+                    if remaining == ["name"] and isinstance(value, dict) and "name" not in value:
+                        # Key-as-name: in dict-style contracts the entry name
+                        # is the key itself (e.g. DCS `fields:`). An explicit
+                        # `name` value inside the entry wins over the key, and
+                        # null or scalar entries are not named objects.
+                        results_wildcard[".".join([*current_path, key, "name"])] = [key]
+                    else:
+                        sub = self._expand_and_collect(value, remaining, [*current_path, key])
+                        results_wildcard.update(sub)
                 return results_wildcard
             elif current_part in data:
                 return self._expand_and_collect(data[current_part], remaining, [*current_path, current_part])
@@ -387,14 +414,49 @@ class DataContractValidator:
 
         elif isinstance(data, list):
             results: Dict[str, List[Any]] = {}
-            for item in data:
-                sub = self._expand_and_collect(item, parts, current_path)
-                for k, v in sub.items():
-                    results.setdefault(k, []).extend(v)
+            if current_part == "*":
+                # Wildcard: expand into each item of the list (ODCS-style
+                # repeatable objects are lists of named objects). Each item
+                # gets a unique label so items are never merged.
+                for label, item in zip(self._list_item_labels(data), data):
+                    sub = self._expand_and_collect(item, remaining, [*current_path, label])
+                    for k, v in sub.items():
+                        results.setdefault(k, []).extend(v)
+            else:
+                # Non-wildcard segment: lists are transparent, the segment
+                # applies to each item (e.g. `servers.type`).
+                for item in data:
+                    sub = self._expand_and_collect(item, parts, current_path)
+                    for k, v in sub.items():
+                        results.setdefault(k, []).extend(v)
             return results
 
         path_str = ".".join(current_path + parts)
         return {path_str: []}
+
+    @staticmethod
+    def _list_item_labels(items: List[Any]) -> List[str]:
+        """
+        Build a unique path label for each item of a list.
+
+        An item is labeled with its ``name`` when it is a non-empty string,
+        falling back to its index. When a label occurs more than once
+        (duplicate names, or a name equal to another item's index), each of
+        those items is labeled ``label[index]`` instead, so they are checked
+        separately rather than merged under one path.
+
+        Args:
+            items: The list being expanded by a ``*`` segment
+
+        Returns:
+            One label per item, in list order
+        """
+        labels = []
+        for index, item in enumerate(items):
+            name = item.get("name") if isinstance(item, dict) else None
+            labels.append(name if isinstance(name, str) and name else str(index))
+        counts = Counter(labels)
+        return [f"{label}[{index}]" if counts[label] > 1 else label for index, label in enumerate(labels)]
 
     def _traverse_path(
         self,
