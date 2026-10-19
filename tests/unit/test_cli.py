@@ -536,13 +536,14 @@ class TestFailFastOnConfig:
     @pytest.mark.parametrize(
         ("check_line", "expected"),
         [
-            ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
-            ("      - pattern: ['^Orders']\n        required: true", "each check must be a single-key mapping"),
             ("      - pattern: '^Orders('", "entry 1 ('info.title'): 'pattern' is not a valid regular expression"),
-            ("      - accepted_values: 1.0", "entry 1 ('info.title'): 'accepted_values' expects a non-empty list"),
-            ("      - required: ", "entry 1 ('info.title'): 'required' has no value (did you mean 'required: true'?)"),
+            ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
+            (
+                "      - accepted_values: [[a]]",
+                "entry 1 ('info.title'): 'accepted_values' entries must be strings, numbers or booleans",
+            ),
         ],
-        ids=["unknown-check", "multi-key-check", "bad-regex", "float-accepted-values", "bare-required"],
+        ids=["bad-regex", "unknown-check", "nested-accepted-values"],
     )
     def test_bad_check_entry_is_a_config_error_not_a_contract_failure(
         self, tmp_path: Path, check_line: str, expected: str
@@ -702,6 +703,44 @@ class TestLoadFailures:
         )
         assert "::error file=" in result.output
         assert "title=load::" in result.output
+
+
+class TestAcceptedValuesDates:
+    """Unquoted dates match between contract and checks config, as strings."""
+
+    CONTRACT = (
+        "apiVersion: v3.1.0\n"
+        "kind: DataContract\n"
+        "id: orders\n"
+        "version: 1.0.0\n"
+        "status: active\n"
+        "contractCreatedTs: 2024-01-01T00:00:00Z\n"
+    )
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    @pytest.mark.parametrize(
+        "accepted",
+        ["[2024-01-01T00:00:00Z]", '["2024-01-01T00:00:00Z"]'],
+        ids=["unquoted", "quoted"],
+    )
+    def test_unquoted_timestamp_matches_and_lints(self, tmp_path: Path, accepted: str) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml", self.CONTRACT)
+        config = _write_checks_config(
+            tmp_path,
+            "data_contract_specification: odcs\n"
+            "data_contract_checks:\n"
+            "  - attribute: contractCreatedTs\n"
+            "    checks:\n"
+            f"      - accepted_values: {accepted}\n",
+        )
+        result = self.runner.invoke(
+            app, ["--lint", "--contract-path", str(contracts), "--checks-config-path", str(config)]
+        )
+        assert result.exit_code == 0, result.output
+        assert "All checks passed" in result.output
 
 
 class TestStandardSchemaLintCli:

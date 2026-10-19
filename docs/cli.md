@@ -65,8 +65,8 @@ cause of a failure is always reported where it belongs:
 | **Contract fails a check** | `info.title` does not match `^Orders` | Reported per attribute in the usual way. Exit 1 with `--severity error`, 0 with `--severity warn`. |
 
 Finding **no contracts at all** (an empty directory, or `include_paths` / `exclude_paths`
-that filter everything out) is treated as a configuration error: a run that checks
-nothing must not turn a CI gate green.
+that filter everything out) is not an error: the run logs a warning that nothing was
+checked and exits 0. A `--contract-path` that does not exist is still an error (exit 1).
 
 ```text
 $ contract-checker --contract-path ./contracts   # output abridged
