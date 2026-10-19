@@ -84,10 +84,13 @@ class TestBuiltinValidateConfig:
             ({"required": 1}, "'required' expects true or false"),
             ({"pattern": "^Orders("}, "'pattern' is not a valid regular expression"),
             ({"pattern": 123}, "'pattern' expects a regular expression string, got int"),
-            ({"accepted_values": 1.0}, "'accepted_values' expects a non-empty list"),
             ({"accepted_values": []}, "'accepted_values' expects a non-empty list"),
             ({"accepted_values": {"a": 1}}, "'accepted_values' expects a non-empty list"),
             ({"accepted_values": None}, "'accepted_values' expects a non-empty list"),
+            ({"accepted_values": [["a"]]}, "'accepted_values' entries must be strings, numbers or booleans"),
+            ({"accepted_values": [{"a": 1}]}, "'accepted_values' entries must be strings, numbers or booleans"),
+            ({"accepted_values": [None]}, "'accepted_values' entries must be strings, numbers or booleans"),
+            ({"accepted_values": ["a", None]}, "'accepted_values' entries must be strings, numbers or booleans"),
             ({"min_items": "1"}, "'min_items' expects a non-negative integer"),
             ({"min_items": True}, "'min_items' expects a non-negative integer"),
             ({"min_items": -1}, "'min_items' expects a non-negative integer"),
@@ -110,6 +113,8 @@ class TestBuiltinValidateConfig:
             {"pattern": r"^\d+\.\d+\.\d+$"},
             {"accepted_values": ["a", "b"]},
             {"accepted_values": "0.0.1"},  # single-value shorthand, as documented
+            {"accepted_values": 1.0},  # any scalar works as shorthand
+            {"accepted_values": [1, 2.5, True, "x"]},  # any mix of scalars
             {"min_items": 0},
             {"max_items": 10},
             {"at_least_one": {"unique": True}},

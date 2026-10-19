@@ -398,6 +398,30 @@ class TestAcceptedValuesCheck:
         assert [r.passed for r in results] == [False, True]
         assert "'act' is not in the list of accepted values" in results[0].message
 
+    @pytest.mark.parametrize(
+        ("contract_value", "accepted"),
+        [
+            (1, [1, 2]),
+            (1, ["1", "2"]),
+            ("1", [1, 2]),
+            (True, [True]),
+            (True, ["True"]),
+            (2024, 2024),
+        ],
+        ids=["int-int", "int-str", "str-int", "bool-bool", "bool-str", "int-shorthand"],
+    )
+    def test_accepted_values_compares_by_string_form(self, contract_value: object, accepted: object) -> None:
+        """A YAML ``1`` in the config matches a contract ``1``: both sides are stringified."""
+        results = self.check.execute("test.field", [contract_value], accepted)  # type: ignore[arg-type]
+
+        assert [r.passed for r in results] == [True]
+
+    def test_accepted_values_float_and_int_are_different_values(self) -> None:
+        """``1.0`` is not ``1``: write the value the way the contract writes it."""
+        results = self.check.execute("test.field", [1], [1.0])
+
+        assert [r.passed for r in results] == [False]
+
     def test_accepted_values_check_list_all_pass(self) -> None:
         """Test accepted values check passes when all list items are accepted."""
         results = self.check.execute("test.field", [["active", "inactive"]], ["active", "inactive", "pending"])

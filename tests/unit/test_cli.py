@@ -539,10 +539,21 @@ class TestFailFastOnConfig:
             ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
             ("      - pattern: ['^Orders']\n        required: true", "each check must be a single-key mapping"),
             ("      - pattern: '^Orders('", "entry 1 ('info.title'): 'pattern' is not a valid regular expression"),
-            ("      - accepted_values: 1.0", "entry 1 ('info.title'): 'accepted_values' expects a non-empty list"),
+            ("      - accepted_values: {a: 1}", "entry 1 ('info.title'): 'accepted_values' expects a non-empty list"),
             ("      - required: ", "entry 1 ('info.title'): 'required' has no value (did you mean 'required: true'?)"),
+            (
+                "      - accepted_values: [[a]]",
+                "entry 1 ('info.title'): 'accepted_values' entries must be strings, numbers or booleans",
+            ),
         ],
-        ids=["unknown-check", "multi-key-check", "bad-regex", "float-accepted-values", "bare-required"],
+        ids=[
+            "unknown-check",
+            "multi-key-check",
+            "bad-regex",
+            "mapping-accepted-values",
+            "bare-required",
+            "nested-accepted-values",
+        ],
     )
     def test_bad_check_entry_is_a_config_error_not_a_contract_failure(
         self, tmp_path: Path, check_line: str, expected: str
