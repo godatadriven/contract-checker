@@ -81,5 +81,7 @@ Null/missing semantics (see the `Check` docstring) apply to every check:
   `.github/CODEOWNERS` makes `.github/` changes require approval from the token owners.
 - `workflow_run` workflows always run from the default branch: changes to the review workflow only take
   effect after merge to `main`.
-- The review criteria live in that workflow's prompt; update them when conventions above change. Renaming
+- The review criteria live in the `review-pr` skill (`.claude/skills/review-pr/SKILL.md`); the workflow just
+  invokes `/review-pr <base> <head> <output-file>`. Update the skill when conventions above change. Run
+  `/review-pr` locally to review the current branch against `origin/main`. Renaming
   the `CI` workflow breaks the trigger.
