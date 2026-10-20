@@ -76,12 +76,13 @@ When installed in this way, any changes you make to your local copy of the sourc
 
 ### Running `contract-checker`
 
-With your virtualenv activated, you can run `contract-checker` using the provided example configuration file via:
+With your virtualenv activated, you can run `contract-checker` using the provided example configuration file (`data-contract-checks.example.yml`) via:
 
 ```shell
 uv run contract-checker --help
-uv run contract-checker --contract-path tests/fixtures/dcs/1.2.0/
-uv run contract-checker --output-mode full --verbose   # also show passing checks, plus debug logging
+make validate-examples   # runs the example config against tests/fixtures/dcs/
+uv run contract-checker --checks-config-path data-contract-checks.example.yml --contract-path tests/fixtures/dcs/1.2.0/
+uv run contract-checker --checks-config-path data-contract-checks.example.yml --output-mode full --verbose   # also show passing checks, plus debug logging
 ```
 
 ## Testing
@@ -181,7 +182,7 @@ To add a new check follow the below steps:
 
 1. Export your check from `./src/contract_checker/checks/validators/__init__.py` (import it and add it to `__all__`), and register it in `./src/contract_checker/checks/registry.py` (import it and add it to `_register_default_checks`).
 
-1. Add the check to `data-contract-checks.yml` and run `uv run contract-checker` to ensure the check works as expected.
+1. Add the check to `data-contract-checks.example.yml` and run `make validate-examples` to ensure the check works as expected.
 
 1. Add at least one happy path and one unhappy path test to `./tests/unit/test_checks.py`.
 

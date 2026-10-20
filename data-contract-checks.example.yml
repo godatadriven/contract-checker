@@ -1,0 +1,73 @@
+# EXAMPLE configuration for contract-checker.
+#
+# To use it in your own project, copy this file to `data-contract-checks.yml`
+# (the default path the CLI looks for) and adapt the paths and checks:
+#
+#   cp data-contract-checks.example.yml data-contract-checks.yml
+#
+# In this repository it runs against the DCS test fixtures:
+#
+#   make validate-examples
+#
+# Some checks below fail on purpose, so you can see what failures look like.
+# Full reference: https://godatadriven.github.io/contract-checker/config/
+
+# Which standard the contracts follow: dcs, odcs or custom.
+data_contract_specification: dcs
+
+# Where the contracts live. include_paths / exclude_paths take optional globs.
+data_contracts_path:
+  path: ./tests/fixtures/dcs/
+  # include_paths:
+  #   - 1.2.*/**
+  # exclude_paths:
+  #   - "**/draft_*.yaml"
+
+# Also validate each contract against its full JSON Schema. Off by default;
+# the --lint / --no-lint CLI option overrides this.
+# lint: true
+
+data_contract_checks:
+  # Info
+  - attribute: info.title
+    checks:
+      - required: true
+      - pattern: ^Orders              # title must start with "Orders"
+
+  - attribute: info.version
+    checks:
+      - required: true
+      - pattern: ^\d+\.\d+\.\d+$      # must be semver
+
+  - attribute: tags
+    checks:
+      - accepted_values:
+          - example
+          - test
+
+  # Servers
+  - attribute: servers.*.type
+    checks:
+      - accepted_values:
+          - s3
+          - gcs
+          - azure_blob
+
+  # Models
+  - attribute: models
+    checks:
+      - min_items: 1                  # at least one model
+
+  - attribute: models.*.fields
+    checks:
+      - exactly_one:                  # exactly one primary key per model
+          primaryKey: true
+
+  # Model fields
+  - attribute: models.*.fields.*.description
+    checks:
+      - required: true
+
+  - attribute: models.*.fields.*.type
+    checks:
+      - required: true
