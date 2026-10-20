@@ -46,6 +46,7 @@ nav:
   - Custom Schemas: custom_schemas.md
   - CLI: cli.md
   - Contributing: contributing.md
+  - Releasing: releasing.md
 
 plugins:
   - search

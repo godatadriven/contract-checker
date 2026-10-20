@@ -1,8 +1,11 @@
 [project]
 name = "contract_checker"
 description = "Data contract checker"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11,<3.16"
-version = "0.1.0"
+dynamic = ["version"]
 authors = [
     {name = "Thom van Engelenburg"},
     {name = "Sonu Jacob"},
@@ -51,8 +54,12 @@ default-groups = ["dev", "lint"]
 contract-checker = "contract_checker.cli:app"
 
 [build-system]
-requires = ["setuptools==84.0.0"]
+requires = ["setuptools==84.0.0", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Presence of this (empty) table activates setuptools-scm, which derives the
+# version from the latest `vX.Y.Z` git tag.
 
 [tool.setuptools.packages.find]
 where = ["src"]

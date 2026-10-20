@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+# Least privilege: jobs only get read access unless they ask for more (the
+# publish job requests its own OIDC token permission below).
+permissions:
+  contents: read
+
+# Never run two publishes for the same release concurrently — a partial
+# re-run could race the immutable PyPI upload. Don't cancel an in-flight
+# publish either.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # Full history + tags required for setuptools-scm to resolve the version.
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version-file: ".python-version"
+          enable-cache: true
+
+      # Verification gate: PyPI uploads are immutable, so prove the tagged
+      # commit passes its tests before we build and publish it.
+      - name: Run tests
+        run: uv run --locked pytest  # Fail if uv.lock is stale instead of re-resolving.
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: List built artifacts
+        run: ls -l dist/
+
+      # Guard against publishing a version that differs from the release tag
+      # (e.g. a `.devN` build from a mis-tagged commit, or `v0.1.0-rc1` instead
+      # of the PEP 440 form `v0.1.0rc1`). PyPI uploads can't be undone.
+      - name: Verify built version matches the release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          expected="${TAG#v}"
+          if [ ! -f "dist/contract_checker-${expected}.tar.gz" ] || [ ! -f "dist/contract_checker-${expected}-py3-none-any.whl" ]; then
+            echo "::error::Built version does not match release tag '${TAG}' (expected ${expected})."
+            exit 1
+          fi
+
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # OIDC token for PyPI Trusted Publishing (no stored secrets).
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true  # Re-running a release must not fail on an already-uploaded version.

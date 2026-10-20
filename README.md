@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/contract-checker)](https://pypi.org/project/contract-checker/)
 [![Python versions](https://img.shields.io/pypi/pyversions/contract-checker)](https://pypi.org/project/contract-checker/)
-[![License](https://img.shields.io/github/license/godatadriven/contract-checker)](LICENSE)
+[![License](https://img.shields.io/github/license/godatadriven/contract-checker)](https://github.com/godatadriven/contract-checker/blob/main/LICENSE)
 
 📖 **Full documentation: [godatadriven.github.io/contract-checker](https://godatadriven.github.io/contract-checker)**
 
@@ -84,11 +84,14 @@ data_contract_checks:
 contract-checker
 ```
 
-With verbose output (shows passing checks too):
+To also show passing checks and fully passing contracts:
 
 ```bash
-contract-checker --verbose
+contract-checker --output-mode full
 ```
+
+For a one-line-per-contract scoreboard use `--output-mode summary`, and for machine-readable
+output use `--format json`. `--verbose` / `-v` enables debug logging.
 
 To validate a different location (or a single contract) ad hoc, override the
 configured path with `--contract-path`:
@@ -116,6 +119,8 @@ For the full config-file schema — path filtering, severity overrides, linting,
 | Accepted values | `accepted_values: [a, b]` | Value must be one of the listed options |
 | Min items | `min_items: 2` | List or mapping must contain at least N items; skipped if missing, fails if not a collection |
 | Max items | `max_items: 10` | List or mapping must contain at most N items; skipped if missing, fails if not a collection |
+| At least one | `at_least_one: {unique: true}` | At least one item in a collection must match the key-value condition (point `attribute` at the collection, e.g. `models.*.fields`) |
+| Exactly one | `exactly_one: {primaryKey: true}` | Exactly one item in a collection must match the key-value condition, e.g. a single primary key per model |
 
 Only `required` checks whether a field exists: every other check skips an absent field, and every check fails a field that is present but null. See [missing vs null values](https://godatadriven.github.io/contract-checker/checks/#missing-vs-null-values).
 
@@ -126,11 +131,12 @@ See the [checks reference](https://godatadriven.github.io/contract-checker/check
 ## Key features
 
 - **Wildcard path support** — apply checks across all models and fields with `models.*.fields.*.unique`
-- **Severity levels** — configure checks as `error`, `warn`, or `info`, either globally or per field
+- **Severity levels** — `--severity error` (default) fails the run when checks fail; `--severity warn` prints the same report but always exits 0
 - **Contract filtering** — include or exclude contracts with glob patterns (`domain/**`, `**/draft_*.yaml`); filtering by field value (e.g. only `status: active` contracts) is planned
 - **Schema validation (lint)** — opt into full JSON Schema validation with `--lint`, against the built-in DCS/ODCS schema or your own custom schema (like `datacontract lint`)
 - **Custom JSON Schema** — validate contracts against your own schema, on top of your configured checks
-- **Rich output** — colour-coded pass/fail tables per contract plus a summary across all contracts
+- **Rich output** — colour-coded pass/fail tables per contract plus a summary across all contracts, or JSON with `--format json`
+- **GitHub Actions annotations** — failed checks are emitted as error annotations automatically when running in GitHub Actions
 - **Extensible** — implement the `Check` abstract base class to add your own check types via the Python API
 
 ---
@@ -143,4 +149,4 @@ The full configuration schema — including path filtering, severity overrides, 
 
 ## Contributing
 
-Bug reports, feature requests, and pull requests are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to add a new check type, and the PR process.
+Bug reports, feature requests, and pull requests are all welcome. See [CONTRIBUTING.md](https://github.com/godatadriven/contract-checker/blob/main/CONTRIBUTING.md) for dev setup, how to add a new check type, and the PR process.
