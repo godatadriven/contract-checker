@@ -481,6 +481,13 @@ class TestCustomSchemaCli:
         assert "not a valid JSON Schema" in result.output
 
 
+DCS_CHECKS = (
+    "data_contract_specification: dcs\n"
+    "data_contract_checks:\n"
+    "  - attribute: info.title\n"
+    "    checks:\n"
+    "      - required: true\n"
+)
 GOOD_DCS_CONTRACT = "dataContractSpecification: 1.1.0\ninfo:\n  title: Orders\n"
 
 
@@ -518,16 +525,25 @@ class TestFailFastOnConfig:
         assert "Invalid checks config" in result.output
         assert "is not valid YAML" in result.output
 
+    def test_missing_specification_names_the_config_key(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml")
+        config = _write_checks_config(tmp_path, "data_contract_checks: []\n")
+        result = self._invoke(config, contracts)
+        assert result.exit_code == 1
+        assert "data_contract_specification must be one of: dcs, odcs (got None)" in result.output
+
     @pytest.mark.parametrize(
         ("check_line", "expected"),
         [
-            ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
-            ("      - pattern: ['^Orders']\n        required: true", "each check must be a single-key mapping"),
             ("      - pattern: '^Orders('", "entry 1 ('info.title'): 'pattern' is not a valid regular expression"),
-            ("      - accepted_values: 1.0", "entry 1 ('info.title'): 'accepted_values' expects a non-empty list"),
-            ("      - required: ", "entry 1 ('info.title'): 'required' has no value (did you mean 'required: true'?)"),
+            ("      - patern: '^Orders'", "entry 1 ('info.title'): unknown check type 'patern'"),
+            (
+                "      - accepted_values: [[a]]",
+                "entry 1 ('info.title'): 'accepted_values' entries must be strings, numbers or booleans",
+            ),
         ],
-        ids=["unknown-check", "multi-key-check", "bad-regex", "float-accepted-values", "bare-required"],
+        ids=["bad-regex", "unknown-check", "nested-accepted-values"],
     )
     def test_bad_check_entry_is_a_config_error_not_a_contract_failure(
         self, tmp_path: Path, check_line: str, expected: str
@@ -550,6 +566,183 @@ class TestFailFastOnConfig:
         # Reported once as a config error, never per contract file.
         assert "Error processing file" not in result.output
         assert result.output.count(expected) == 1
+
+
+class TestZeroContracts:
+    """Nothing to check is a warning and exit 0; only a path that does not exist is an error."""
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    def test_empty_directory_warns_and_exits_zero(self, tmp_path: Path) -> None:
+        config = _write_checks_config(tmp_path, DCS_CHECKS)
+        empty = tmp_path / "contracts"
+        empty.mkdir()
+        result = self.runner.invoke(app, ["--checks-config-path", str(config), "--contract-path", str(empty)])
+        assert result.exit_code == 0
+        assert "No data contracts (*.yaml, *.yml) found under" in result.output
+        assert "Nothing was checked" in result.output
+        assert "filtered out" not in result.output
+
+    def test_missing_path_exits_one(self, tmp_path: Path) -> None:
+        config = _write_checks_config(tmp_path, DCS_CHECKS)
+        result = self.runner.invoke(
+            app, ["--checks-config-path", str(config), "--contract-path", str(tmp_path / "nope")]
+        )
+        assert result.exit_code == 1
+        assert "Provided contract path does not exist" in result.output
+
+    def test_filters_excluding_everything_warns_and_exits_zero(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml")
+        config = _write_checks_config(
+            tmp_path,
+            "data_contract_specification: dcs\n"
+            f"data_contracts_path:\n  path: {contracts.as_posix()}\n  include_paths:\n    - nothing/**\n"
+            "data_contract_checks: []\n",
+        )
+        result = self.runner.invoke(app, ["--checks-config-path", str(config)])
+        assert result.exit_code == 0
+        assert "filtered out ALL 1 discovered contracts" in result.output
+        # One warning naming the cause: contracts were found, so not "none found".
+        assert "No data contracts" not in result.output
+
+
+class TestLoadFailures:
+    """A contract that cannot be loaded is a failed contract in the report, not a skip or a crash."""
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    def _invoke(self, tmp_path: Path, contracts: Path, *extra: str) -> Result:
+        config = _write_checks_config(tmp_path, DCS_CHECKS)
+        return self.runner.invoke(app, ["--checks-config-path", str(config), "--contract-path", str(contracts), *extra])
+
+    def test_broken_yaml_fails_the_run_and_is_in_the_report(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "a_good.yaml")
+        _write_contract(contracts, "b_broken.yaml", "info: [not, closed\n")
+        result = self._invoke(tmp_path, contracts, "--format", "json")
+
+        assert result.exit_code == 1
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+        document = json.loads(result.stdout)
+        assert document["total_contracts"] == 2
+        assert document["passed_contracts"] == 1
+        by_file = {Path(c["file"]).name: c for c in document["contracts"]}
+        assert by_file["a_good.yaml"]["success"] is True
+        broken = by_file["b_broken.yaml"]
+        assert broken["success"] is False
+        assert broken["results"][0]["check_type"] == "load"
+        assert "is not valid YAML" in broken["results"][0]["message"]
+
+    def test_reports_stay_in_file_order_with_a_broken_file_in_the_middle(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "a_good.yaml")
+        _write_contract(contracts, "b_broken.yaml", "info: [not, closed\n")
+        _write_contract(contracts, "c_good.yaml")
+        result = self._invoke(tmp_path, contracts, "--format", "json")
+
+        document = json.loads(result.stdout)
+        assert [Path(c["file"]).name for c in document["contracts"]] == ["a_good.yaml", "b_broken.yaml", "c_good.yaml"]
+        # Rich folds long paths mid-word in the text report (e.g. on Windows runners),
+        # so locate the broken file by its LOAD row rather than by its name.
+        text = self._invoke(tmp_path, contracts, "--output-mode", "full").output
+        assert text.index("Contract 1: ") < text.index("Contract 2: ") < text.index("LOAD") < text.index("Contract 3: ")
+
+    def test_load_failure_shows_in_text_report(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "broken.yaml", "")
+        result = self._invoke(tmp_path, contracts)
+        assert result.exit_code == 1
+        assert "LOAD" in result.output
+        # Rich wraps table cells at word boundaries, so with a long tmp path the
+        # message may be split across lines; compare on whitespace-normalised text.
+        assert "is empty" in " ".join(result.output.replace("│", " ").split())
+
+    def test_load_failure_ignores_severity_warn(self, tmp_path: Path) -> None:
+        """'warn' makes failed checks advisory; an unloadable file is not a check."""
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "broken.yaml", "info: [not, closed\n")
+        result = self._invoke(tmp_path, contracts, "--severity", "warn")
+        assert result.exit_code == 1
+
+    def test_failed_check_still_respects_severity_warn(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "no_title.yaml", "dataContractSpecification: 1.1.0\ninfo:\n  owner: x\n")
+        assert self._invoke(tmp_path, contracts).exit_code == 1
+        assert self._invoke(tmp_path, contracts, "--severity", "warn").exit_code == 0
+
+    def test_missing_version_key_is_reported_not_a_traceback(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "nospec.yaml", "info:\n  title: Orders\n")
+        result = self._invoke(tmp_path, contracts)
+        assert result.exit_code == 1
+        assert result.exception is None or isinstance(result.exception, SystemExit)
+        assert "missing the 'dataContractSpecification' key" in result.output
+
+    def test_unsupported_version_does_not_abort_the_run(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "a_old.yaml", "dataContractSpecification: 9.9.9\ninfo:\n  title: Orders\n")
+        _write_contract(contracts, "b_good.yaml")
+        result = self._invoke(tmp_path, contracts, "--format", "json")
+
+        assert result.exit_code == 1
+        document = json.loads(result.stdout)
+        assert document["total_contracts"] == 2
+        messages = [r["message"] for c in document["contracts"] for r in c["results"]]
+        assert any("version '9.9.9' is not supported" in m for m in messages)
+        assert any("is present" in m for m in messages)  # the good contract was still checked
+
+    def test_load_failures_get_github_annotations(self, tmp_path: Path) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "broken.yaml", "info: [not, closed\n")
+        config = _write_checks_config(tmp_path, DCS_CHECKS)
+        result = self.runner.invoke(
+            app,
+            ["--checks-config-path", str(config), "--contract-path", str(contracts)],
+            env={"GITHUB_ACTIONS": "true"},
+        )
+        assert "::error file=" in result.output
+        assert "title=load::" in result.output
+
+
+class TestAcceptedValuesDates:
+    """Unquoted dates match between contract and checks config, as strings."""
+
+    CONTRACT = (
+        "apiVersion: v3.1.0\n"
+        "kind: DataContract\n"
+        "id: orders\n"
+        "version: 1.0.0\n"
+        "status: active\n"
+        "contractCreatedTs: 2024-01-01T00:00:00Z\n"
+    )
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    @pytest.mark.parametrize(
+        "accepted",
+        ["[2024-01-01T00:00:00Z]", '["2024-01-01T00:00:00Z"]'],
+        ids=["unquoted", "quoted"],
+    )
+    def test_unquoted_timestamp_matches_and_lints(self, tmp_path: Path, accepted: str) -> None:
+        contracts = tmp_path / "contracts"
+        _write_contract(contracts, "orders.yaml", self.CONTRACT)
+        config = _write_checks_config(
+            tmp_path,
+            "data_contract_specification: odcs\n"
+            "data_contract_checks:\n"
+            "  - attribute: contractCreatedTs\n"
+            "    checks:\n"
+            f"      - accepted_values: {accepted}\n",
+        )
+        result = self.runner.invoke(
+            app, ["--lint", "--contract-path", str(contracts), "--checks-config-path", str(config)]
+        )
+        assert result.exit_code == 0, result.output
+        assert "All checks passed" in result.output
 
 
 class TestStandardSchemaLintCli:

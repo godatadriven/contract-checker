@@ -17,6 +17,11 @@ class TestGetSpecificationVersion:
         content = {"dataContractSpecification": "1.2.1"}
         assert get_specification_version(content, "dcs") == "1.2.1"
 
+    def test_dcs_keeps_v_prefix_so_it_is_rejected_later(self) -> None:
+        """Only ODCS uses a `v` prefix; `dataContractSpecification: v1.2.1` is not a valid DCS version."""
+        content = {"dataContractSpecification": "v1.2.1"}
+        assert get_specification_version(content, "dcs") == "v1.2.1"
+
     def test_odcs_strips_v_prefix(self) -> None:
         """ODCS `apiVersion: vX.Y.Z` must map to the bare-semver schema folder."""
         content = {"apiVersion": "v3.0.2"}
@@ -29,8 +34,8 @@ class TestGetSpecificationVersion:
     def test_custom_returns_custom(self) -> None:
         assert get_specification_version({}, "custom") == "custom"
 
-    def test_unknown_standard_raises(self) -> None:
-        with pytest.raises(ValueError):
+    def test_unknown_standard_is_a_programming_error(self) -> None:
+        with pytest.raises(KeyError):
             get_specification_version({"apiVersion": "v3.0.2"}, "unknown")
 
 
@@ -46,3 +51,7 @@ class TestParseSpecificationFromContract:
             {"dataContractSpecification": "1.2.1"}, {"data_contract_standard": "dcs"}
         )
         assert (version, spec) == ("1.2.1", "dcs")
+
+    def test_unknown_standard_is_a_programming_error(self) -> None:
+        with pytest.raises(KeyError):
+            parse_specification_from_contract({"apiVersion": "v3.0.2"}, {"data_contract_standard": "nope"})

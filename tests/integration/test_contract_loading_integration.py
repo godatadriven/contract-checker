@@ -18,7 +18,7 @@ class TestLoadOdcsContract:
         """
         contract_file = odcs_fixtures_path / "3.0.2" / "basic-four-dpo.odcs.yaml"
 
-        contracts = load_contracts(contract_file, contract_specification="odcs")
+        contracts = load_contracts(contract_file, contract_specification="odcs").contracts
 
         assert len(contracts) == 1
         assert contracts[0].contract_specification == "odcs"

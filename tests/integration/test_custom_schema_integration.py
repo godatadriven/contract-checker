@@ -13,7 +13,7 @@ from pathlib import Path
 
 from contract_checker.checks.validator import DataContractValidator
 from contract_checker.contract.contract_base import Contract
-from contract_checker.utils.utils import parse_yml_to_dict, resolve_lint
+from contract_checker.utils.utils import load_yaml_mapping, resolve_lint
 
 CUSTOM_FIXTURES = Path(__file__).parent.parent / "fixtures" / "custom"
 ECOMMERCE_SCHEMA = CUSTOM_FIXTURES / "ecommerce-product-schema.json"
@@ -24,8 +24,8 @@ INVALID_SCHEMA = CUSTOM_FIXTURES / "invalid-json-schema.json"
 def _load_contract(contract_file: Path, schema: Path) -> Contract:
     """Build a Contract in custom-schema mode from a fixture file."""
     return Contract(
-        contract_path=str(contract_file),
-        contract_content=parse_yml_to_dict(contract_file),
+        contract_path=contract_file,
+        contract_content=load_yaml_mapping(contract_file),
         contract_specification="custom",
         contract_specification_version="custom",
         custom_schema_path=schema,
@@ -58,6 +58,9 @@ def test_lint_from_config_enables_custom_schema_validation() -> None:
 
     assert report.failed_checks > 0
     assert all(r.check_type == "json_schema" for r in report.results)
+    # Contract.contract_path is a Path; the report carries it as a str.
+    assert report.contract_file == str(CUSTOM_FIXTURES / "invalid-ecommerce-contract.yaml")
+    assert all(r.contract_file == report.contract_file for r in report.results)
 
 
 def test_invalid_contract_fails_custom_schema() -> None:

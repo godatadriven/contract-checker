@@ -45,12 +45,43 @@ overall outcome so CI pipelines can pass or fail on it:
 
 | Code | Meaning |
 | ---- | ------- |
-| 0 | All checks passed, or failures occurred with `--severity warn` |
-| 1 | One or more checks failed with `--severity error` (the default), or a config/load error |
+| 0 | All checks passed; checks failed with `--severity warn`; or there were no contracts to check (a warning is logged) |
+| 1 | One or more checks failed with `--severity error` (the default); a contract file could not be loaded; or a configuration error |
 | 2 | Usage error (e.g. an invalid `--severity` value) |
 
-Use `--severity warn` to keep the checker advisory: the same report is printed, but the
-run always exits 0 so the pipeline stays green.
+Use `--severity warn` to keep *checks* advisory: the same report is printed, but failed
+checks do not fail the run. The other exit-1 causes are not affected by `--severity`,
+because they mean the run could not do its job rather than that a contract broke a rule.
+
+## Three kinds of problem
+
+The checker distinguishes three situations and handles each differently, so that the
+cause of a failure is always reported where it belongs:
+
+| Problem | Example | What happens |
+| ------- | ------- | ------------ |
+| **Configuration error** | Checks file missing or not valid YAML; unknown check type; invalid regex in `pattern`; `data_contract_specification` missing; `--contract-path` does not exist | Reported **once**, on stderr, before any contract is read. Exit 1. |
+| **Contract file cannot be loaded** | Not valid YAML; empty file; root is a list; missing `dataContractSpecification` / `apiVersion`; unsupported specification version | The file appears in the report as a failed contract with check type `load`. The **other contracts are still checked.** Exit 1 regardless of `--severity`. |
+| **Contract fails a check** | `info.title` does not match `^Orders` | Reported per attribute in the usual way. Exit 1 with `--severity error`, 0 with `--severity warn`. |
+
+Finding **no contracts at all** (an empty directory, or `include_paths` / `exclude_paths`
+that filter everything out) is not an error: the run logs a warning that nothing was
+checked and exits 0. A `--contract-path` that does not exist is still an error (exit 1).
+
+```text
+$ contract-checker --contract-path ./contracts   # output abridged
+✗ 2/9 checks across 3 data contracts failing
+
+📄 Contract 1: contracts/orders.yaml ~ Checks passed: [3/4]
+  ✗ FAIL  PATTERN  info.title  Attribute 'info.title' value 'Order events' does not match pattern '^Orders'
+
+📄 Contract 2: contracts/payments.yaml ~ Checks passed: [0/1]
+  ✗ FAIL  LOAD     file        contracts/payments.yaml is not valid YAML: while parsing a flow sequence ...
+```
+
+In `--format json` a load failure is an ordinary entry in `contracts[]` whose single
+result has `"check_type": "load"` and `"attribute": "file"`; it counts as one failed
+check in the totals.
 
 ## Contract discovery
 

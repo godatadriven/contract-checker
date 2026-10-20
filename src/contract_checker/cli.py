@@ -1,10 +1,9 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
-from typing_extensions import Annotated
 
 from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, github_annotations
 from contract_checker.checks.validator import ChecksConfigError, validate_checks_config
@@ -219,12 +218,11 @@ def main(
             logging.error(str(e))
             raise typer.Exit(code=1)
 
-    # Load the contract -> internally identify type of contract -> validate contract.
-    # Misconfiguration (e.g. a 'custom' spec with no schema, or a missing contract
-    # path) surfaces as a clear error and a non-zero exit, matching the fail-fast
-    # handling above rather than leaking a stack trace.
+    # Load the contracts. Misconfiguration (unknown spec, missing contract path)
+    # exits with a clear error; a single unreadable or unsupported contract file
+    # does not abort the run but is reported as a failed contract below.
     try:
-        contracts = load_contracts(
+        loaded = load_contracts(
             contract_path=resolved_contract_path,
             contract_specification=checks_dict.get("data_contract_specification"),
             custom_schema_path=resolved_schema_path,
@@ -235,8 +233,21 @@ def main(
         logging.error(str(e))
         raise typer.Exit(code=1)
 
+    # Nothing to check is not a failure: the directory may not have any
+    # contracts yet, or include_paths/exclude_paths may deliberately select
+    # none. load_contracts has already logged one warning naming which of the
+    # two it was. A path that does not exist at all is still an error
+    # (FileNotFoundError above).
+    if not loaded.contracts and not loaded.failed_reports:
+        raise typer.Exit()
+
     reports = validate_contracts(
-        contracts, checks_dict, output_mode=output_mode, output_format=output_format, lint=resolved_lint
+        loaded.contracts,
+        checks_dict,
+        output_mode=output_mode,
+        output_format=output_format,
+        load_failures=loaded.failed_reports,
+        lint=resolved_lint,
     )
 
     # Inside GitHub Actions (detected via the GITHUB_ACTIONS env var the runner
@@ -249,9 +260,11 @@ def main(
 
     # All checks have run and the full report has been printed above; the exit
     # code only signals the overall outcome to the shell/CI. With severity
-    # 'warn' the run always exits 0, keeping the check advisory.
+    # 'warn' failed checks are advisory and the run exits 0. A contract file
+    # that could not be loaded is not a policy violation but an unusable
+    # file, so it fails the run regardless of severity.
     failed_checks = sum(report.failed_checks for report in reports)
-    if failed_checks > 0 and severity == "error":
+    if loaded.failed_reports or (failed_checks > 0 and severity == "error"):
         raise typer.Exit(code=1)
 
     raise typer.Exit()
