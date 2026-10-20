@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from contract_checker.checks.models import ContractValidationReport, ValidationResult
 
 
@@ -43,9 +45,37 @@ class TestValidationResult:
 
         assert result.contract_file == "updated.yaml"
 
+    def test_contract_file_path_is_normalised_to_str(self) -> None:
+        """A Path passed as contract_file is stored as a str."""
+        path = Path("contracts/orders.yaml")
+        result = ValidationResult(
+            contract_file=path,  # type: ignore[arg-type]
+            attribute="info.title",
+            check_type="required",
+            passed=True,
+            message="ok",
+        )
+
+        assert isinstance(result.contract_file, str)
+        assert result.contract_file == str(path)
+
 
 class TestContractValidationReport:
     """Test ContractValidationReport dataclass."""
+
+    def test_contract_file_path_is_normalised_to_str(self) -> None:
+        """A Path passed as contract_file is stored as a str."""
+        path = Path("contracts/orders.yaml")
+        report = ContractValidationReport(
+            contract_file=path,  # type: ignore[arg-type]
+            total_checks=0,
+            passed_checks=0,
+            failed_checks=0,
+            results=[],
+        )
+
+        assert isinstance(report.contract_file, str)
+        assert report.contract_file == str(path)
 
     def test_success_when_no_failures(self) -> None:
         """Report should be successful when failed_checks is 0."""

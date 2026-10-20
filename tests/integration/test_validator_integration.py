@@ -27,7 +27,7 @@ def _make_validator(rules: list[dict]) -> DataContractValidator:
 class _FakeContract:
     """Lightweight stand-in for Contract to avoid on-disk schema validation."""
 
-    def __init__(self, content: dict, path: str = "test-contract.yaml") -> None:
+    def __init__(self, content: dict, path: Path = Path("test-contract.yaml")) -> None:
         self.contract_path = path
         self.contract_content = content
         self.custom_schema_path = None
@@ -226,7 +226,7 @@ class TestReportProperties:
     def test_contract_file_set_on_results(self) -> None:
         """Every result should have the contract path set."""
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
-        report = v.run_checks(_FakeContract(SAMPLE_DATA, path="my/contract.yaml"))
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=Path("my/contract.yaml")))
 
         assert report.contract_file == "my/contract.yaml"
         for r in report.results:
@@ -471,10 +471,10 @@ class TestValidateMultipleContracts:
     """Test the validate() method processing multiple contracts."""
 
     def test_multiple_contracts_individual_reports(self) -> None:
-        contract_a = _FakeContract(SAMPLE_DATA, path="a.yaml")
+        contract_a = _FakeContract(SAMPLE_DATA, path=Path("a.yaml"))
         contract_b = _FakeContract(
             {"info": {"title": "Other", "version": "1.0.0"}},
-            path="b.yaml",
+            path=Path("b.yaml"),
         )
 
         v = _make_validator(
@@ -490,8 +490,8 @@ class TestValidateMultipleContracts:
         assert all(r.success for r in reports)
 
     def test_one_contract_fails_other_passes(self) -> None:
-        good = _FakeContract({"info": {"title": "Good"}}, path="good.yaml")
-        bad = _FakeContract({"info": {}}, path="bad.yaml")
+        good = _FakeContract({"info": {"title": "Good"}}, path=Path("good.yaml"))
+        bad = _FakeContract({"info": {}}, path=Path("bad.yaml"))
 
         v = _make_validator(
             [
@@ -535,8 +535,8 @@ class TestGetSummary:
     """Test the get_summary() method for aggregated statistics."""
 
     def test_summary_structure(self) -> None:
-        good = _FakeContract({"info": {"title": "Good"}}, path="good.yaml")
-        bad = _FakeContract({"info": {}}, path="bad.yaml")
+        good = _FakeContract({"info": {"title": "Good"}}, path=Path("good.yaml"))
+        bad = _FakeContract({"info": {}}, path=Path("bad.yaml"))
 
         v = _make_validator(
             [
@@ -555,7 +555,7 @@ class TestGetSummary:
         assert len(summary["contracts"]) == 2
 
     def test_summary_all_pass(self) -> None:
-        c = _FakeContract({"info": {"title": "OK"}}, path="ok.yaml")
+        c = _FakeContract({"info": {"title": "OK"}}, path=Path("ok.yaml"))
 
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
         reports = v.validate([c])
@@ -823,7 +823,7 @@ class TestContractFileIsStr:
         # pathlib renders this with the OS separator ("contracts\\orders.yaml" on
         # Windows); the report must carry exactly that string.
         path = Path("contracts/orders.yaml")
-        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=path))  # type: ignore[arg-type]
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=path))
 
         assert isinstance(report.contract_file, str)
         assert report.contract_file == str(path)

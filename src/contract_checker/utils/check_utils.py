@@ -44,7 +44,7 @@ def validate_contracts(
     # Same key as the discovery sort in load_contracts (Path, not str).
     reports: list[ContractValidationReport] = sorted(
         [*(load_failures or []), *validator.validate(contracts)],
-        key=lambda report: Path(str(report.contract_file)),
+        key=lambda report: Path(report.contract_file),
     )
     if output_format == "json":
         # Plain print, not rich: stdout must stay clean, unwrapped JSON for
