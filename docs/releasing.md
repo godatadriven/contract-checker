@@ -53,24 +53,3 @@ Pre-releases are not installed by default. Request one explicitly:
 ```shell
 uvx contract-checker@0.1.0rc1 --version   # or: pip install --pre contract-checker
 ```
-
-## First release: `v0.1.0rc1`
-
-The first release is the release candidate **`v0.1.0rc1`**, published as a GitHub pre-release. It
-validates the whole pipeline (Trusted Publishing, the `pypi` environment, the PyPI project page)
-without spending the `0.1.0` version number, which PyPI would never let us re-upload. Once
-`0.1.0rc1` installs and works from PyPI, cut `v0.1.0` from the same commit. If the candidate
-needs fixes, merge them and cut `v0.1.0rc2`.
-
-!!! tip "Dry-run future releases the same way"
-    Before a significant release, cut a `vX.Y.ZrcN` pre-release first. PyPI rejects re-uploads of
-    an already-published version, so a release candidate is a safe way to validate the flow.
-
-## One-time setup (already configured)
-
-These steps only need to be done once per project and are recorded here for reference:
-
-- **PyPI Trusted Publisher** — configured on PyPI for owner `godatadriven`, repository
-  `contract-checker`, workflow `release.yml`, and environment `pypi`.
-- **GitHub `pypi` environment** — defined under **Settings → Environments**; optionally protected
-  with required reviewers to add a manual approval gate before the publish step runs.
