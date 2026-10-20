@@ -16,6 +16,11 @@ class ValidationResult:
     passed: bool
     message: str
 
+    def __post_init__(self) -> None:
+        # Normalise at construction so a Path passed by new code still ends up
+        # as the str the reports and JSON output expect.
+        self.contract_file = str(self.contract_file)
+
 
 @dataclass
 class ContractValidationReport:
@@ -26,6 +31,9 @@ class ContractValidationReport:
     passed_checks: int
     failed_checks: int
     results: List[ValidationResult]
+
+    def __post_init__(self) -> None:
+        self.contract_file = str(self.contract_file)
 
     @property
     def success(self) -> bool:

@@ -26,7 +26,7 @@ UNQUOTED_DATE_ODCS = "table-column-description.odcs.yaml"
 def _load_standard_contract(contract_file: Path, specification: str, version: str) -> Contract:
     """Build a Contract in standard-schema mode from a fixture file."""
     return Contract(
-        contract_path=str(contract_file),
+        contract_path=contract_file,
         contract_content=load_yaml_mapping(contract_file),
         contract_specification=specification,
         contract_specification_version=version,
