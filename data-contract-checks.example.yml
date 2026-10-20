@@ -9,7 +9,9 @@
 #
 #   make validate-examples
 #
-# Some checks below fail on purpose, so you can see what failures look like.
+# The checks reflect common governance rules (ownership, documentation, approved
+# platforms). Several fixtures break some of them, so you can see what failures
+# look like.
 # Full reference: https://godatadriven.github.io/contract-checker/config/
 
 # Which standard the contracts follow: dcs, odcs or custom.
@@ -28,46 +30,82 @@ data_contracts_path:
 # lint: true
 
 data_contract_checks:
-  # Info
-  - attribute: info.title
+  # Ownership & discoverability: every contract has an accountable owner,
+  # a point of contact and enough context to be found in a catalog.
+  - attribute: id
     checks:
       - required: true
-      - pattern: ^Orders              # title must start with "Orders"
+      - pattern: ^[a-z0-9]+(-[a-z0-9]+)*$   # kebab-case, e.g. orders-latest
+
+  - attribute: info.owner
+    checks:
+      - required: true
+
+  - attribute: info.contact.name
+    checks:
+      - required: true
+
+  - attribute: info.description
+    checks:
+      - required: true
 
   - attribute: info.version
     checks:
       - required: true
-      - pattern: ^\d+\.\d+\.\d+$      # must be semver
+      - pattern: ^\d+\.\d+\.\d+$          # semantic versioning
 
   - attribute: tags
     checks:
-      - accepted_values:
-          - example
-          - test
+      - required: true
+      - min_items: 1                        # at least one tag for search
 
-  # Servers
+  # Terms: consumers must know what they may use the data for.
+  - attribute: terms.usage
+    checks:
+      - required: true
+
+  # Infrastructure: only platforms and environments your organisation supports.
   - attribute: servers.*.type
     checks:
       - accepted_values:
           - s3
-          - gcs
-          - azure_blob
+          - bigquery
+          - snowflake
+          - databricks
+          - postgres
 
-  # Models
+  - attribute: servers.*.environment
+    checks:
+      - accepted_values:
+          - prod
+          - staging
+          - dev
+
+  # Models: at least one, each documented and with a primary key.
   - attribute: models
     checks:
-      - min_items: 1                  # at least one model
+      - min_items: 1
 
-  - attribute: models.*.fields
-    checks:
-      - exactly_one:                  # exactly one primary key per model
-          primaryKey: true
-
-  # Model fields
-  - attribute: models.*.fields.*.description
+  - attribute: models.*.description
     checks:
       - required: true
 
+  - attribute: models.*.type
+    checks:
+      - accepted_values:
+          - table
+          - view
+
+  - attribute: models.*.fields
+    checks:
+      - at_least_one:                       # use exactly_one to forbid composite keys
+          primaryKey: true
+
+  # Fields: every column is typed and documented.
   - attribute: models.*.fields.*.type
+    checks:
+      - required: true
+
+  - attribute: models.*.fields.*.description
     checks:
       - required: true
