@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
 
+# Least privilege: jobs only get read access unless they ask for more (the
+# publish job requests its own OIDC token permission below).
+permissions:
+  contents: read
+
 # Never run two publishes for the same release concurrently — a partial
 # re-run could race the immutable PyPI upload. Don't cancel an in-flight
 # publish either.
@@ -28,7 +33,7 @@ jobs:
       # Verification gate: PyPI uploads are immutable, so prove the tagged
       # commit passes its tests before we build and publish it.
       - name: Run tests
-        run: uv run pytest
+        run: uv run --locked pytest  # Fail if uv.lock is stale instead of re-resolving.
 
       - name: Build sdist and wheel
         run: uv build
