@@ -22,8 +22,13 @@ contract-checker --version
 1. Make sure `main` is green and contains everything you want to ship.
 1. On GitHub, go to **Releases → Draft a new release**.
 1. Create a new tag of the form `vX.Y.Z` (e.g. `v0.2.0`), following
-   [semantic versioning](https://semver.org/), targeting `main`.
+   [semantic versioning](https://semver.org/), targeting `main`. For a release candidate use
+   `vX.Y.ZrcN` (e.g. `v0.2.0rc1`) and tick **Set as a pre-release**.
 1. Write the release notes and click **Publish release**.
+
+!!! warning "Use the PEP 440 tag form"
+    Write release candidates as `v0.1.0rc1`, not `v0.1.0-rc1`. The workflow checks that the built
+    version equals the tag (minus the leading `v`) and fails before publishing if they differ.
 
 Publishing the release triggers the
 [`Release` workflow](https://github.com/godatadriven/contract-checker/blob/main/.github/workflows/release.yml),
@@ -32,7 +37,7 @@ which:
 1. Checks out the tagged commit (with full history, so `setuptools-scm` can resolve the version).
 1. Runs the test suite against the tagged commit — PyPI uploads are immutable, so a release that
    fails its tests never reaches PyPI.
-1. Builds the sdist and wheel with `uv build`.
+1. Builds the sdist and wheel with `uv build` and checks their version matches the tag.
 1. Publishes them to PyPI via
    [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC — no API tokens stored
    in the repo).
@@ -43,10 +48,23 @@ Once the workflow finishes, the new version is available:
 uvx contract-checker --version   # or: pipx install contract-checker
 ```
 
-!!! tip "Dry-run with a pre-release"
-    To exercise the full pipeline without burning a real version number, cut a pre-release tag
-    such as `v0.2.0rc1` first. PyPI rejects re-uploads of an already-published version, so a
-    release candidate is a safe way to validate the flow.
+Pre-releases are not installed by default. Request one explicitly:
+
+```shell
+uvx contract-checker@0.1.0rc1 --version   # or: pip install --pre contract-checker
+```
+
+## First release: `v0.1.0rc1`
+
+The first release is the release candidate **`v0.1.0rc1`**, published as a GitHub pre-release. It
+validates the whole pipeline (Trusted Publishing, the `pypi` environment, the PyPI project page)
+without spending the `0.1.0` version number, which PyPI would never let us re-upload. Once
+`0.1.0rc1` installs and works from PyPI, cut `v0.1.0` from the same commit. If the candidate
+needs fixes, merge them and cut `v0.1.0rc2`.
+
+!!! tip "Dry-run future releases the same way"
+    Before a significant release, cut a `vX.Y.ZrcN` pre-release first. PyPI rejects re-uploads of
+    an already-published version, so a release candidate is a safe way to validate the flow.
 
 ## One-time setup (already configured)
 

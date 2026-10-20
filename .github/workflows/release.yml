@@ -36,6 +36,19 @@ jobs:
       - name: List built artifacts
         run: ls -l dist/
 
+      # Guard against publishing a version that differs from the release tag
+      # (e.g. a `.devN` build from a mis-tagged commit, or `v0.1.0-rc1` instead
+      # of the PEP 440 form `v0.1.0rc1`). PyPI uploads can't be undone.
+      - name: Verify built version matches the release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          expected="${TAG#v}"
+          if [ ! -f "dist/contract_checker-${expected}.tar.gz" ] || [ ! -f "dist/contract_checker-${expected}-py3-none-any.whl" ]; then
+            echo "::error::Built version does not match release tag '${TAG}' (expected ${expected})."
+            exit 1
+          fi
+
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v7
         with:
