@@ -63,9 +63,6 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/contract_checker
     permissions:
       id-token: write  # OIDC token for PyPI Trusted Publishing (no stored secrets).
     steps:
