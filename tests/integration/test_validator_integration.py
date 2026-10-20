@@ -226,11 +226,13 @@ class TestReportProperties:
     def test_contract_file_set_on_results(self) -> None:
         """Every result should have the contract path set."""
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
-        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=Path("my/contract.yaml")))
+        # Compare with str(path): pathlib renders the separator per OS.
+        path = Path("my/contract.yaml")
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=path))
 
-        assert report.contract_file == "my/contract.yaml"
+        assert report.contract_file == str(path)
         for r in report.results:
-            assert r.contract_file == "my/contract.yaml"
+            assert r.contract_file == str(path)
 
     def test_report_success_property(self) -> None:
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
