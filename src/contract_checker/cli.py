@@ -1,10 +1,9 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
-from typing_extensions import Annotated
 
 from contract_checker.checks.reporting import OUTPUT_FORMATS, OUTPUT_MODES, github_annotations
 from contract_checker.checks.validator import ChecksConfigError, validate_checks_config
