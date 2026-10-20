@@ -194,7 +194,7 @@ To add a new check follow the below steps:
 
 ## Submitting a Pull Request
 
-Code can be merged into the current development branch `main` by opening a pull request. Give it a [Conventional Commits](https://www.conventionalcommits.org/) title (`feat: …`, `fix: …`, `docs: …`, `ci: …`). If the proposal looks like it's on the right track, then a `contract-checker` maintainer will review the PR. They may suggest code revision for style or clarity, or request that you add unit or integration test(s). These are good things! We believe that, with a little bit of help, anyone can contribute high-quality code. Once merged, your contribution will be available for the next [release](releasing.md) of `contract-checker`.
+Code can be merged into the current development branch `main` by opening a pull request. Give it a [Conventional Commits](https://www.conventionalcommits.org/) title (`feat: …`, `fix: …`, `docs: …`, `ci: …`). PRs are squash-merged into `main`: the whole PR becomes a single commit whose message is the PR title and description, so there's no need to tidy up the individual commits on your branch. If the proposal looks like it's on the right track, then a `contract-checker` maintainer will review the PR. They may suggest code revision for style or clarity, or request that you add unit or integration test(s). These are good things! We believe that, with a little bit of help, anyone can contribute high-quality code. Once merged, your contribution will be available for the next [release](releasing.md) of `contract-checker`.
 
 Automated tests run via GitHub Actions. If you're a first-time contributor, all tests will require a maintainer to approve.
 

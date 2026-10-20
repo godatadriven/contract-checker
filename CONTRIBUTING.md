@@ -67,7 +67,8 @@ for the full walkthrough, including config validation with `validate_config`.
 2. Make your changes and ensure all tests pass (`make test`)
 3. Open a pull request — describe what you changed and why. Use a
    [Conventional Commits](https://www.conventionalcommits.org/) title, e.g. `feat: add unique check`
-   or `fix: handle null lists in pattern check`
+   or `fix: handle null lists in pattern check`. PRs are squash-merged, so the PR title becomes the
+   commit message on `main` — no need to tidy up the individual commits on your branch
 4. A code owner reviews and approves the PR; CI must pass before it can be merged
 
 Releases are cut by maintainers; see [Releasing](https://godatadriven.github.io/contract-checker/releasing/).
