@@ -1,12 +1,12 @@
-# Contributing to `data-contract-checker`
+# Contributing to `contract-checker`
 
-`data-contract-checker` is open source software. Whether you are a seasoned open source contributor or a first-time committer, we welcome and encourage you to contribute code, documentation, ideas, or problem statements to this project.
+`contract-checker` is open source software. Whether you are a seasoned open source contributor or a first-time committer, we welcome and encourage you to contribute code, documentation, ideas, or problem statements to this project.
 
 ## About this document
 
-There are many ways to contribute to the ongoing development of `data-contract-checker`, such as by participating in discussions and issues.
+There are many ways to contribute to the ongoing development of `contract-checker`, such as by participating in discussions and issues.
 
-The rest of this document serves as a more granular guide for contributing code changes to `data-contract-checker` (this repository). It is not intended as a guide for using `data-contract-checker`, and some pieces assume a level of familiarity with Python development (virtualenvs, `uv`, etc). Specific code snippets in this guide assume you are using macOS or Linux and are comfortable with the command line.
+The rest of this document serves as a more granular guide for contributing code changes to `contract-checker` (this repository). It is not intended as a guide for using `contract-checker`, and some pieces assume a level of familiarity with Python development (virtualenvs, `uv`, etc). Specific code snippets in this guide assume you are using macOS or Linux and are comfortable with the command line.
 
 If you get stuck, we're happy to help! Just open an issue or draft PR and we'll do our best to help out.
 
@@ -18,13 +18,13 @@ If you get stuck, we're happy to help! Just open an issue or draft PR and we'll 
 
 ### Installing git
 
-You will need `git` in order to download and modify the `data-contract-checker` source code. On macOS, the best way to download git is to just install [Xcode](https://developer.apple.com/support/xcode/).
+You will need `git` in order to download and modify the `contract-checker` source code. On macOS, the best way to download git is to just install [Xcode](https://developer.apple.com/support/xcode/).
 
 ### Contributors
 
-You can contribute to `data-contract-checker` by forking the `data-contract-checker` repository. For a detailed overview on forking, check out the [GitHub docs on forking](https://help.github.com/en/articles/fork-a-repo). In short, you will need to:
+You can contribute to `contract-checker` by forking the `contract-checker` repository. For a detailed overview on forking, check out the [GitHub docs on forking](https://help.github.com/en/articles/fork-a-repo). In short, you will need to:
 
-1. Fork the `data-contract-checker` repository.
+1. Fork the `contract-checker` repository.
 1. Clone your fork locally.
 1. Check out a new branch for your proposed changes.
 1. Push changes to your fork.
@@ -32,14 +32,14 @@ You can contribute to `data-contract-checker` by forking the `data-contract-chec
 
 ## Setting up an environment
 
-There are some tools that will be helpful to you in developing locally. While this is the list relevant for `data-contract-checker` development, many of these tools are used commonly across open-source python projects.
+There are some tools that will be helpful to you in developing locally. While this is the list relevant for `contract-checker` development, many of these tools are used commonly across open-source python projects.
 
 ### Tools
 
-These are the tools used in `data-contract-checker` development and testing:
+These are the tools used in `contract-checker` development and testing:
 
 - [`typer`](https://typer.tiangolo.com/) to create our CLI interface.
-- [GitHub Actions](https://github.com/features/actions) for automating tests and checks, once a PR is pushed to the `data-contract-checker` repository.
+- [GitHub Actions](https://github.com/features/actions) for automating tests and checks, once a PR is pushed to the `contract-checker` repository.
 - [`make`](https://www.gnu.org/software/make/manual/make.html) to run multiple setup or test steps in combination.
 - [`mypy`](https://mypy.readthedocs.io/en/stable/) for static type checking.
 - [`uv`](https://docs.astral.sh/uv/) to manage our python virtual environment and dependencies.
@@ -48,38 +48,40 @@ These are the tools used in `data-contract-checker` development and testing:
 - [`pytest`](https://docs.pytest.org/en/latest/) to define, discover, and run tests.
 - [`Ruff`](https://github.com/astral-sh/ruff) to lint and format python code.
 
-A deep understanding of these tools in not required to effectively contribute to `data-contract-checker`, but we recommend checking out the attached documentation if you're interested in learning more about each one.
+A deep understanding of these tools in not required to effectively contribute to `contract-checker`, but we recommend checking out the attached documentation if you're interested in learning more about each one.
 
 #### Virtual environments
 
-We strongly recommend using virtual environments when developing code in `data-contract-checker`. We recommend creating this virtualenv in the root of the `data-contract-checker` repository. To create and activate a new virtualenv, run:
+We strongly recommend using virtual environments when developing code in `contract-checker`. We recommend creating this virtualenv in the root of the `contract-checker` repository. To create and activate a new virtualenv, run:
 
 ```shell
 uv venv && source .venv/bin/activate
 ```
 
-This will create a new Python virtual environment in `.venv/` and install all dependencies.
+This creates an empty Python virtual environment in `.venv/`; the dependencies are installed in the
+next step.
 
-## Running `data-contract-checker` in development
+## Running `contract-checker` in development
 
 ### Installation
 
-First make sure that you set up your `virtualenv` as described in [Setting up an environment](#setting-up-an-environment). Next, install `data-contract-checker`, its dependencies and `pre-commit`:
+First make sure that you set up your `virtualenv` as described in [Setting up an environment](#setting-up-an-environment). Next, install `contract-checker`, its dependencies and `pre-commit`:
 
 ```shell
 make install
 uv run pre-commit install
 ```
 
-When installed in this way, any changes you make to your local copy of the source code will be reflected immediately in your next `data-contract-checker` run.
+When installed in this way, any changes you make to your local copy of the source code will be reflected immediately in your next `contract-checker` run.
 
-### Running `data-contract-checker`
+### Running `contract-checker`
 
-With your virtualenv activated, you can run `data-contract-checker` using the provided example configuration file via:
+With your virtualenv activated, you can run `contract-checker` using the provided example configuration file via:
 
 ```shell
 uv run contract-checker --help
-uv run contract-checker --verbose --contract-path tests/fixtures/dcs/1.2.0/
+uv run contract-checker --contract-path tests/fixtures/dcs/1.2.0/
+uv run contract-checker --output-mode full --verbose   # also show passing checks, plus debug logging
 ```
 
 ## Testing
@@ -123,7 +125,7 @@ uv run pytest ./tests/unit/test_cli.py
 uv run pytest ./tests/unit/test_cli.py::test_specific_function
 ```
 
-> See [pytest usage docs](https://docs.pytest.org/en/8.1.x/how-to/usage.html) for an overview of useful command-line options.
+> See [pytest usage docs](https://docs.pytest.org/en/stable/how-to/usage.html) for an overview of useful command-line options.
 
 ### Assorted development tips
 
@@ -177,11 +179,13 @@ To add a new check follow the below steps:
             return results
     ```
 
-1. Register your check in `./src/contract_checker/checks/validators/__init__.py` by importing it and adding it to the registry.
+1. Export your check from `./src/contract_checker/checks/validators/__init__.py` (import it and add it to `__all__`), and register it in `./src/contract_checker/checks/registry.py` (import it and add it to `_register_default_checks`).
 
 1. Add the check to `data-contract-checks.yml` and run `uv run contract-checker` to ensure the check works as expected.
 
-1. Add at least one happy path and one unhappy path test to `./tests/unit/`. The test file should match the check being tested.
+1. Add at least one happy path and one unhappy path test to `./tests/unit/test_checks.py`.
+
+1. Document the check in `./docs/checks.md` and add it to the checks table in `README.md`.
 
 1. Run `make test` to ensure the tests pass.
 
@@ -189,8 +193,8 @@ To add a new check follow the below steps:
 
 ## Submitting a Pull Request
 
-Code can be merged into the current development branch `main` by opening a pull request. If the proposal looks like it's on the right track, then a `data-contract-checker` maintainer will review the PR. They may suggest code revision for style or clarity, or request that you add unit or integration test(s). These are good things! We believe that, with a little bit of help, anyone can contribute high-quality code. Once merged, your contribution will be available for the next release of `data-contract-checker`.
+Code can be merged into the current development branch `main` by opening a pull request. Give it a [Conventional Commits](https://www.conventionalcommits.org/) title (`feat: …`, `fix: …`, `docs: …`, `ci: …`). If the proposal looks like it's on the right track, then a `contract-checker` maintainer will review the PR. They may suggest code revision for style or clarity, or request that you add unit or integration test(s). These are good things! We believe that, with a little bit of help, anyone can contribute high-quality code. Once merged, your contribution will be available for the next [release](releasing.md) of `contract-checker`.
 
 Automated tests run via GitHub Actions. If you're a first-time contributor, all tests will require a maintainer to approve.
 
-Once all tests are passing and your PR has been approved, a `data-contract-checker` maintainer will merge your changes into the active development branch. And that's it! Happy developing :tada:
+Every PR needs an approval from a code owner (see `.github/CODEOWNERS`). Once all tests are passing and your PR has been approved, a `contract-checker` maintainer will merge your changes into the active development branch. And that's it! Happy developing :tada:

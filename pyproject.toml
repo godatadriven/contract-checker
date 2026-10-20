@@ -2,6 +2,8 @@
 name = "contract_checker"
 description = "Data contract checker"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11,<3.16"
 dynamic = ["version"]
 authors = [
