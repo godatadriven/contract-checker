@@ -11,7 +11,7 @@ Use [GitHub Issues](https://github.com/godatadriven/contract-checker/issues) to 
 
 ## Development setup
 
-**Requirements:** Python 3.11–3.15, [uv](https://docs.astral.sh/uv/)
+**Requirements:** Python 3.11–3.15, [uv](https://docs.astral.sh/uv/) 0.13.4 or newer (`uv self update`)
 
 ```bash
 git clone https://github.com/godatadriven/contract-checker.git
