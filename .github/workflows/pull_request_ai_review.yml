@@ -1,0 +1,184 @@
+---
+name: Pull Request AI Review
+
+# Runs after CI via workflow_run (not pull_request) so fork PRs get a review too: a
+# pull_request run from a fork has no secrets and a read-only token, so it could neither
+# call Claude nor comment. workflow_run always uses this file from the default branch.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+# One review at a time per PR branch, so two runs can't both create a comment or overwrite each other
+# out of order. Queue instead of cancelling: a late-arriving run for an older commit must not cancel
+# the review of a newer one (the resolver skips stale runs once they get their turn).
+concurrency:
+  group: ai-review-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  ai_review:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    # CLAUDE_CODE_OAUTH_TOKEN is an environment secret of `claude-review`, which only
+    # allows the main branch. Workflows on other branches can't read it.
+    environment: claude-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMMENT_FILE: /tmp/ai-pr-review-comment.md
+    steps:
+      # workflow_run runs do not check out the repo, so fetch the composite action from
+      # the default branch first.
+      - name: Check out composite actions
+        uses: actions/checkout@v7
+        with:
+          path: _pr_resolver
+          persist-credentials: false
+          sparse-checkout: .github/actions
+
+      - name: Export PR event data
+        id: export
+        uses: ./_pr_resolver/.github/actions/resolve-pr-from-workflow-run
+
+      # The Claude OAuth token is personal, so Claude runs only when both the PR author and
+      # whoever triggered this run (e.g. pushed to the PR) are on this allowlist. Everyone
+      # else gets a short "not available" comment.
+      - name: Check PR author
+        id: author
+        if: steps.export.outputs.skip != 'true'
+        env:
+          ALLOWED_USERS: "Thootje sonurjacob"
+          TRIGGERING_ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+        run: |-
+          trusted=false
+          if [[ " $ALLOWED_USERS " == *" $PR_AUTHOR "* && " $ALLOWED_USERS " == *" $TRIGGERING_ACTOR "* ]]; then
+            trusted=true
+          fi
+          echo "trusted=$trusted" >> "$GITHUB_OUTPUT"
+
+      # Claude Code loads .claude/ (hooks, settings, skills), .mcp.json and CLAUDE.md from its
+      # working directory at startup, so the PR head must never be checked out there: a PR could
+      # otherwise run its own hooks with the OAuth token in the environment. Check out the default
+      # branch instead (trusted config, including the review-pr skill) and fetch the PR head as
+      # git objects only. Claude reads the PR through `git diff` / `git show <sha>:<path>`.
+      - name: Check out default branch
+        if: steps.export.outputs.skip != 'true' && steps.author.outputs.trusted == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Authenticate only this fetch (the repo is private) so the token is never written to
+      # .git/config, where Claude could read it.
+      - name: Fetch PR head commits
+        if: steps.export.outputs.skip != 'true' && steps.author.outputs.trusted == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+            fetch --no-tags origin "$PR_HEAD_SHA"
+          git cat-file -e "${PR_HEAD_SHA}^{commit}"
+
+      # The Anthropic API can return a transient 529 (overloaded): retry once. Both attempts are
+      # non-fatal so a sustained outage still posts a "not available" comment.
+      - name: Analyse PR
+        id: analyse
+        if: steps.export.outputs.skip != 'true' && steps.author.outputs.trusted == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: >-
+            --model claude-opus-5-5
+            --allowedTools 'Skill,Bash(git diff*),Bash(git log*),Bash(git show*),Read,Glob,Grep,Write'
+          # Review instructions live in .claude/skills/review-pr/SKILL.md.
+          prompt: /review-pr origin/${{ env.PR_BASE }} ${{ env.PR_HEAD_SHA }} ${{ env.COMMENT_FILE }}
+
+      # Retry not only on a failed step but also when Claude exited cleanly without writing a review.
+      - name: Check AI review output
+        id: output
+        if: steps.export.outputs.skip != 'true' && steps.author.outputs.trusted == 'true'
+        run: |-
+          written=false
+          if [ -s "$COMMENT_FILE" ] && grep -q "ai-pr-review-marker" "$COMMENT_FILE"; then
+            written=true
+          fi
+          echo "written=$written" >> "$GITHUB_OUTPUT"
+
+      - name: Wait before AI review retry
+        if: steps.output.outputs.written == 'false'
+        run: |-
+          rm -f "$COMMENT_FILE"
+          sleep 20
+
+      - name: Analyse PR (retry)
+        if: steps.output.outputs.written == 'false'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: >-
+            --model claude-opus-5-5
+            --allowedTools 'Skill,Bash(git diff*),Bash(git log*),Bash(git show*),Read,Glob,Grep,Write'
+          # Review instructions live in .claude/skills/review-pr/SKILL.md.
+          prompt: /review-pr origin/${{ env.PR_BASE }} ${{ env.PR_HEAD_SHA }} ${{ env.COMMENT_FILE }}
+
+      - name: Post or update review comment
+        if: always() && steps.export.outputs.skip != 'true'
+        env:
+          # In a workflow_run event this is the base repo's token, so it can comment on fork PRs.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          # A failed comment listing must abort the step, not look like "no comments yet" and post a duplicate.
+          set -o pipefail
+
+          # --- Don't overwrite the comment if the PR was pushed to during the review ---
+          CURRENT_HEAD_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)
+          if [ "$CURRENT_HEAD_SHA" != "$PR_HEAD_SHA" ]; then
+            echo "::notice::PR head moved from ${PR_HEAD_SHA} to ${CURRENT_HEAD_SHA}; the run for the new head posts the review."
+            exit 0
+          fi
+
+          # --- Find this workflow's own comments (never touch a human's comment quoting the marker) ---
+          MARKER="ai-pr-review-marker"
+          COMMENTS=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+            --jq "[.[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${MARKER}\"))) | {id, body}]" \
+            | jq -s 'add // []')
+          FIRST_ID=$(echo "$COMMENTS" | jq -r 'first.id // empty')
+          REST_IDS=$(echo "$COMMENTS" | jq -r '.[1:] | .[].id')
+
+          # --- No new review: keep an earlier real review (flagged as such), else say it's unavailable ---
+          if [ ! -s "$COMMENT_FILE" ] || ! grep -q "$MARKER" "$COMMENT_FILE"; then
+            UNAVAILABLE="The AI review agent is not available for this PR."
+            STALE_PREFIX="> ⚠️ No AI review of"
+            PREVIOUS=$(echo "$COMMENTS" | jq -r 'first.body // empty')
+            if [ -n "$PREVIOUS" ] && ! grep -qF "$UNAVAILABLE" <<< "$PREVIOUS"; then
+              # Put a fresh note under the marker line, replacing a note from an earlier failed run.
+              printf '%s\n' "$PREVIOUS" | awk -v prefix="$STALE_PREFIX" \
+                -v note="$STALE_PREFIX \`${PR_HEAD_SHA:0:7}\`, so this review is of an earlier commit." '
+                NR == 1 { print; print note; print ""; next }
+                index($0, prefix) == 1 { skip = 1; next }
+                skip && $0 == "" { skip = 0; next }
+                { skip = 0; print }' > "$COMMENT_FILE"
+            else
+              printf '%s\n' "<!-- ${MARKER} -->" "## 🔍 AI PR Review" "" "> ${UNAVAILABLE}" > "$COMMENT_FILE"
+            fi
+          fi
+
+          # --- Upsert: keep a single review comment per PR ---
+          if [ -n "$FIRST_ID" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${FIRST_ID}" -f body="$(cat "$COMMENT_FILE")"
+            for CID in $REST_IDS; do
+              gh api -X DELETE "repos/${GITHUB_REPOSITORY}/issues/comments/${CID}" || true
+            done
+          else
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$COMMENT_FILE"
+          fi
