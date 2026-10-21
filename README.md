@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/contract-checker)](https://pypi.org/project/contract-checker/)
 [![Python versions](https://img.shields.io/pypi/pyversions/contract-checker)](https://pypi.org/project/contract-checker/)
-[![License](https://img.shields.io/github/license/godatadriven/contract-checker)](https://github.com/godatadriven/contract-checker/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/godatadriven/contract-checker?style=flat)](https://github.com/godatadriven/contract-checker/blob/main/LICENSE)
 
 📖 **Full documentation: [godatadriven.github.io/contract-checker](https://godatadriven.github.io/contract-checker)**
 
