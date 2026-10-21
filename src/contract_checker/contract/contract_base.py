@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, Self
 
 from pydantic import BaseModel, model_validator
-from typing_extensions import Self
 
 # The vendored standard schemas (DCS / ODCS) live alongside the package, not in
 # the current working directory. Resolve them relative to this module so lookups

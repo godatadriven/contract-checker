@@ -8,6 +8,8 @@ contracts, error handling, and summary generation.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from contract_checker.checks.validator import DataContractValidator
@@ -25,7 +27,7 @@ def _make_validator(rules: list[dict]) -> DataContractValidator:
 class _FakeContract:
     """Lightweight stand-in for Contract to avoid on-disk schema validation."""
 
-    def __init__(self, content: dict, path: str = "test-contract.yaml") -> None:
+    def __init__(self, content: dict, path: Path = Path("test-contract.yaml")) -> None:
         self.contract_path = path
         self.contract_content = content
         self.custom_schema_path = None
@@ -224,11 +226,13 @@ class TestReportProperties:
     def test_contract_file_set_on_results(self) -> None:
         """Every result should have the contract path set."""
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
-        report = v.run_checks(_FakeContract(SAMPLE_DATA, path="my/contract.yaml"))
+        # Compare with str(path): pathlib renders the separator per OS.
+        path = Path("my/contract.yaml")
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=path))
 
-        assert report.contract_file == "my/contract.yaml"
+        assert report.contract_file == str(path)
         for r in report.results:
-            assert r.contract_file == "my/contract.yaml"
+            assert r.contract_file == str(path)
 
     def test_report_success_property(self) -> None:
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
@@ -469,10 +473,10 @@ class TestValidateMultipleContracts:
     """Test the validate() method processing multiple contracts."""
 
     def test_multiple_contracts_individual_reports(self) -> None:
-        contract_a = _FakeContract(SAMPLE_DATA, path="a.yaml")
+        contract_a = _FakeContract(SAMPLE_DATA, path=Path("a.yaml"))
         contract_b = _FakeContract(
             {"info": {"title": "Other", "version": "1.0.0"}},
-            path="b.yaml",
+            path=Path("b.yaml"),
         )
 
         v = _make_validator(
@@ -488,8 +492,8 @@ class TestValidateMultipleContracts:
         assert all(r.success for r in reports)
 
     def test_one_contract_fails_other_passes(self) -> None:
-        good = _FakeContract({"info": {"title": "Good"}}, path="good.yaml")
-        bad = _FakeContract({"info": {}}, path="bad.yaml")
+        good = _FakeContract({"info": {"title": "Good"}}, path=Path("good.yaml"))
+        bad = _FakeContract({"info": {}}, path=Path("bad.yaml"))
 
         v = _make_validator(
             [
@@ -533,8 +537,8 @@ class TestGetSummary:
     """Test the get_summary() method for aggregated statistics."""
 
     def test_summary_structure(self) -> None:
-        good = _FakeContract({"info": {"title": "Good"}}, path="good.yaml")
-        bad = _FakeContract({"info": {}}, path="bad.yaml")
+        good = _FakeContract({"info": {"title": "Good"}}, path=Path("good.yaml"))
+        bad = _FakeContract({"info": {}}, path=Path("bad.yaml"))
 
         v = _make_validator(
             [
@@ -553,7 +557,7 @@ class TestGetSummary:
         assert len(summary["contracts"]) == 2
 
     def test_summary_all_pass(self) -> None:
-        c = _FakeContract({"info": {"title": "OK"}}, path="ok.yaml")
+        c = _FakeContract({"info": {"title": "OK"}}, path=Path("ok.yaml"))
 
         v = _make_validator([{"attribute": "info.title", "checks": [{"required": True}]}])
         reports = v.validate([c])
@@ -791,3 +795,53 @@ class TestMissingVsNull:
         assert {r.attribute for r in report.results} == {"models.orders.fields"}
         assert report.failed_checks == 3
         assert all("is null" in r.message for r in report.results)
+
+
+# ===================================================================
+# 10. contract_file is always a str
+# ===================================================================
+
+
+class TestContractFileIsStr:
+    """``Contract.contract_path`` is a ``Path``; reports must carry it as a ``str``.
+
+    The real loader hands the validator a ``Path``; the fakes above use a
+    ``str``, which is why the ``Path`` leaking into ``contract_file`` went
+    unnoticed. ``display_path`` and the JSON output want a ``str``, and a
+    ``Path`` compares unequal to the same text as a ``str``.
+    """
+
+    @staticmethod
+    def _validator() -> DataContractValidator:
+        return _make_validator(
+            [
+                {"attribute": "info.title", "checks": [{"required": True}]},
+                {"attribute": "models.*.fields.*.type", "checks": [{"required": True}]},
+            ]
+        )
+
+    def test_run_checks_converts_path_to_str(self) -> None:
+        v = self._validator()
+        # pathlib renders this with the OS separator ("contracts\\orders.yaml" on
+        # Windows); the report must carry exactly that string.
+        path = Path("contracts/orders.yaml")
+        report = v.run_checks(_FakeContract(SAMPLE_DATA, path=path))
+
+        assert isinstance(report.contract_file, str)
+        assert report.contract_file == str(path)
+        assert report.results, "wildcard and plain rules both ran"
+        assert all(r.contract_file == str(path) for r in report.results)
+
+    def test_processing_error_report_converts_path_to_str(self) -> None:
+        class _BrokenContract:
+            contract_path = Path("broken.yaml")
+            custom_schema_path = None
+
+            @property
+            def contract_content(self) -> None:
+                raise RuntimeError("Simulated file read error")
+
+        reports = self._validator().validate([_BrokenContract()])  # type: ignore[list-item]
+
+        assert reports[0].contract_file == "broken.yaml"
+        assert reports[0].results[0].contract_file == "broken.yaml"

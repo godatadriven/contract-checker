@@ -42,7 +42,7 @@ def build_summary(reports: List[ContractValidationReport]) -> Dict[str, Any]:
         "failed_checks": sum(r.failed_checks for r in reports),
         "contracts": [
             {
-                "file": str(r.contract_file),
+                "file": r.contract_file,
                 "success": r.success,
                 "passed": r.passed_checks,
                 "failed": r.failed_checks,
@@ -113,7 +113,7 @@ def github_annotations(reports: List[ContractValidationReport]) -> List[str]:
         for result in report.results:
             if result.passed:
                 continue
-            file_path = display_path(str(report.contract_file))
+            file_path = display_path(report.contract_file)
             lines.append(
                 f"::error file={_escape_annotation_property(file_path)},"
                 f"title={_escape_annotation_property(result.check_type)}"
@@ -242,7 +242,7 @@ class ValidationReporter:
             # Show the path relative to the working directory: unambiguous when
             # contracts in different folders share a filename, and clickable in
             # most terminals.
-            filename = display_path(str(report.contract_file))
+            filename = display_path(report.contract_file)
 
             # Add spacing before each contract (except the first one)
             if pos > 0:
@@ -317,7 +317,7 @@ class ValidationReporter:
 
         ordered = [r for r in reports if not r.success] + [r for r in reports if r.success]
         for report in ordered:
-            path = display_path(str(report.contract_file))
+            path = display_path(report.contract_file)
             if report.success:
                 table.add_row(
                     Text("✓", style="bold green"),
@@ -359,7 +359,7 @@ class ValidationReporter:
         total_failed_checks = 0
 
         for report in reports:
-            filename = display_path(str(report.contract_file))
+            filename = display_path(report.contract_file)
             failed_results = [r for r in report.results if not r.passed]
 
             if failed_results:
